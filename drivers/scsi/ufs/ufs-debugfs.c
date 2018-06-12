@@ -852,6 +852,7 @@ void ufsdbg_pr_buf_to_std(struct ufs_hba *hba, int offset, int num_regs,
 		size -= BUFF_LINE_SIZE/sizeof(u32);
 	}
 }
+EXPORT_SYMBOL_GPL(ufsdbg_pr_buf_to_std);
 
 static int ufsdbg_host_regs_show(struct seq_file *file, void *data)
 {
@@ -1103,6 +1104,8 @@ static int ufsdbg_show_hba_show(struct seq_file *file, void *data)
 	seq_printf(file, "dl_pa_error_ind_received = %d\n",
 		   hba->ufs_stats.dl_err_cnt[UFS_EC_DL_PA_ERROR_IND_RECEIVED]);
 	seq_printf(file, "dme_err_cnt = %d\n", hba->ufs_stats.dme_err_cnt);
+	seq_printf(file, "d_ext_ufs_feature_sup = 0x%x\n",
+		   hba->dev_info.d_ext_ufs_feature_sup);
 
 	return 0;
 }
@@ -1714,16 +1717,6 @@ void ufsdbg_add_debugfs(struct ufs_hba *hba)
 					   &ufsdbg_query_stats_fops);
 	if (!hba->debugfs_files.query_stats) {
 		dev_err(hba->dev, "%s:  NULL query_stats file, exiting\n",
-			__func__);
-		goto err;
-	}
-
-	hba->debugfs_files.err_stats =
-		debugfs_create_file("err_stats", 0600,
-					   hba->debugfs_files.stats_folder, hba,
-					   &ufsdbg_err_stats_fops);
-	if (!hba->debugfs_files.err_stats) {
-		dev_err(hba->dev, "%s:  NULL err_stats file, exiting\n",
 			__func__);
 		goto err;
 	}
