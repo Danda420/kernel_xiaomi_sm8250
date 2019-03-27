@@ -85,6 +85,7 @@ struct cpuidle_device {
 	unsigned int		use_deepest_state:1;
 	unsigned int		poll_time_limit:1;
 	unsigned int		cpu;
+	ktime_t			next_hrtimer;
 
 	int			last_state_idx;
 	int			last_residency;
