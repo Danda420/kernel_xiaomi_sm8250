@@ -1058,9 +1058,9 @@ static int exec_buckets_show(struct seq_file *m, void *v)
 
 			if (p->pkg.migt.flag & MINOR_TASK)
 				flag3 = 1;
-			if (!cpumask_test_cpu(4, &p->cpus_allowed))
+			if (!cpumask_test_cpu(4, p->cpus_ptr))
 				flag = 1;
-			if (!cpumask_test_cpu(4, &p->pkg.migt.cpus_allowed))
+			if (!cpumask_test_cpu(4, p->pkg.migt.cpus_ptr))
 				flag2 = 1;
 			seq_printf(m, "%5d,%16s buckests:{", p->pid, p->comm);
 

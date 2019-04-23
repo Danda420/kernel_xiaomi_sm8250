@@ -2140,11 +2140,11 @@ static void cpuset_fork(struct task_struct *task)
 
 #ifdef CONFIG_PACKAGE_RUNTIME_INFO
 	if (current->pkg.migt.flag & MINOR_TASK)
-		set_cpus_allowed_ptr(task, &current->pkg.migt.cpus_allowed);
+		set_cpus_allowed_ptr(task, current->pkg.migt.cpus_ptr);
 	else
-		set_cpus_allowed_ptr(task, &current->cpus_allowed);
+		set_cpus_allowed_ptr(task, current->cpus_ptr);
 #else
-	set_cpus_allowed_ptr(task, &current->cpus_allowed);
+	set_cpus_allowed_ptr(task, current->cpus_ptr);
 #endif
 
 	task->mems_allowed = current->mems_allowed;

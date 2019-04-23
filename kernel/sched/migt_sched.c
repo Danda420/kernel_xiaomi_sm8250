@@ -333,7 +333,7 @@ void migt_monitor_init(struct task_struct *p)
 	p->pkg.migt.run_times = 0;
 	p->pkg.migt.wake_render = 0;
 	p->pkg.migt.boost_end = 0;
-	cpumask_copy(&p->pkg.migt.cpus_allowed, cpu_possible_mask);
+	cpumask_copy(p->pkg.migt.cpus_ptr, cpu_possible_mask);
 	for (i = 0; i < NUM_MIGT_BUCKETS; i++) {
 		p->pkg.migt.bucket[i] = 0;
 #ifdef VTASK_BOOST_DEBUG
