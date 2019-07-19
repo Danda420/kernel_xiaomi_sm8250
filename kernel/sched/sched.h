@@ -882,9 +882,6 @@ struct root_domain {
 
 };
 
-extern struct root_domain def_root_domain;
-extern struct mutex sched_domains_mutex;
-
 extern void init_defrootdomain(void);
 extern void init_max_cpu_capacity(struct max_cpu_capacity *mcc);
 extern int sched_init_domains(const struct cpumask *cpu_map);
