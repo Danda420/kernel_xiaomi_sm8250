@@ -256,6 +256,12 @@ config INPUT_BOOST_FREQ_PERF
 	help
 	  Input boost frequency for the performance CPU cluster.
 
+config INPUT_BOOST_FREQ_PERFP
+	int "Prime cluster boost freq"
+	default "0"
+	help
+	  Input boost frequency for the prime CPU cluster.
+
 config MAX_BOOST_FREQ_LP
 	int "Low-power cluster max-boost freq"
 	default "0"
@@ -279,6 +285,13 @@ config MIN_FREQ_PERF
 	default "0"
 	help
 	  Min freq to set for hp cluster when boost is over.
+
+config MAX_BOOST_FREQ_PERFP
+	int "Prime cluster max-boost freq"
+	default "0"
+	help
+	  Max-boost frequency for the prime CPU cluster.
+
 endif
 
 comment "CPU frequency scaling drivers"
