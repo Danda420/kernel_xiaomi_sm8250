@@ -5221,6 +5221,10 @@
 	};
 };
 
+&msm_gpu {
+ 	tzone-names = "gpuss-0-usr";
+};
+
 &cpufreq_hw {
 	interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>,
 		   <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>,
