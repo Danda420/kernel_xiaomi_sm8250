@@ -4662,6 +4662,7 @@ static inline void check_schedstat_required(void)
 #endif
 }
 
+static inline bool cfs_bandwidth_used(void);
 
 static void
 enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
@@ -4721,10 +4722,16 @@ enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 		__enqueue_entity(cfs_rq, se);
 	se->on_rq = 1;
 
-	if (cfs_rq->nr_running == 1) {
+	/*
+	 * When bandwidth control is enabled, cfs might have been removed
+	 * because of a parent been throttled but cfs->nr_running > 1. Try to
+	 * add it unconditionnally.
+	 */
+	if (cfs_rq->nr_running == 1 || cfs_bandwidth_used())
 		list_add_leaf_cfs_rq(cfs_rq);
+
+	if (cfs_rq->nr_running == 1)
 		check_enqueue_throttle(cfs_rq);
-	}
 }
 
 static void __clear_buddies_next(struct sched_entity *se)
@@ -5244,12 +5251,23 @@ unthrottle_throttle:
 			break;
 	}
 
-	assert_list_leaf_cfs_rq(rq);
-
 	if (!se) {
 		add_nr_running(rq, task_delta);
 		walt_inc_throttled_cfs_rq_stats(&rq->walt_stats, tcfs_rq);
 	}
+
+	/*
+	 * The cfs_rq_throttled() breaks in the above iteration can result in
+	 * incomplete leaf list maintenance, resulting in triggering the
+	 * assertion below.
+	 */
+	for_each_sched_entity(se) {
+		cfs_rq = cfs_rq_of(se);
+
+		list_add_leaf_cfs_rq(cfs_rq);
+	}
+
+	assert_list_leaf_cfs_rq(rq);
 
 	/* Determine whether we need to wake up potentially idle CPU: */
 	if (rq->curr == rq->idle && rq->cfs.nr_running)
