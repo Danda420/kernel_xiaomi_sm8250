@@ -5153,6 +5153,7 @@ static void __sched notrace __schedule(bool preempt)
 		++*switch_count;
 
 		migrate_disable_switch(rq, prev);
+		psi_sched_switch(prev, next, !task_on_rq_queued(prev));
 
 		trace_sched_switch(preempt, prev, next);
 
