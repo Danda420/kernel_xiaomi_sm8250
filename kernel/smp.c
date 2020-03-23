@@ -595,20 +595,13 @@ static inline void free_boot_cpu_mask(void)
 void __init smp_init(void)
 {
 	int num_nodes, num_cpus;
-	unsigned int cpu;
 
 	idle_threads_init();
 	cpuhp_threads_init();
 
 	pr_info("Bringing up secondary CPUs ...\n");
 
-	/* FIXME: This should be done in userspace --RR */
-	for_each_present_cpu(cpu) {
-		if (num_online_cpus() >= setup_max_cpus)
-			break;
-		if (!cpu_online(cpu) && boot_cpu(cpu))
-			cpu_up(cpu);
-	}
+	bringup_nonboot_cpus(setup_max_cpus);
 	free_boot_cpu_mask();
 
 	num_nodes = num_online_nodes();
