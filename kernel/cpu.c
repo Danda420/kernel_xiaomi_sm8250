@@ -1107,7 +1107,7 @@ static int cpu_down_maps_locked(unsigned int cpu, enum cpuhp_state target)
 	return _cpu_down(cpu, 0, target);
 }
 
-static int do_cpu_down(unsigned int cpu, enum cpuhp_state target)
+static int cpu_down(unsigned int cpu, enum cpuhp_state target)
 {
 	struct cpumask newmask;
 	int err;
@@ -1140,11 +1140,18 @@ static int do_cpu_down(unsigned int cpu, enum cpuhp_state target)
 	return err;
 }
 
-int cpu_down(unsigned int cpu)
+/**
+ * cpu_device_down - Bring down a cpu device
+ * @dev: Pointer to the cpu device to offline
+ *
+ * This function is meant to be used by device core cpu subsystem only.
+ *
+ * Other subsystems should use remove_cpu() instead.
+ */
+int cpu_device_down(struct device *dev)
 {
-	return do_cpu_down(cpu, CPUHP_OFFLINE);
+	return cpu_down(dev->id, CPUHP_OFFLINE);
 }
-EXPORT_SYMBOL(cpu_down);
 
 int remove_cpu(unsigned int cpu)
 {
@@ -1270,8 +1277,8 @@ static int _cpu_up(unsigned int cpu, int tasks_frozen, enum cpuhp_state target)
 	}
 
 	/*
-	 * The caller of do_cpu_up might have raced with another
-	 * caller. Ignore it for now.
+	 * The caller of cpu_up() might have raced with another
+	 * caller. Nothing to do.
 	 */
 	if (st->state >= target)
 		goto out;
@@ -1344,7 +1351,7 @@ static int switch_to_fair_policy(void)
 	return sched_setscheduler_nocheck(current, SCHED_NORMAL, &param);
 }
 
-static int do_cpu_up(unsigned int cpu, enum cpuhp_state target)
+static int cpu_up(unsigned int cpu, enum cpuhp_state target)
 {
 	int err = 0;
 	int switch_err = 0;
@@ -1393,11 +1400,18 @@ out:
 	return err;
 }
 
-int cpu_up(unsigned int cpu)
+/**
+ * cpu_device_up - Bring up a cpu device
+ * @dev: Pointer to the cpu device to online
+ *
+ * This function is meant to be used by device core cpu subsystem only.
+ *
+ * Other subsystems should use add_cpu() instead.
+ */
+int cpu_device_up(struct device *dev)
 {
-	return do_cpu_up(cpu, CPUHP_ONLINE);
+	return cpu_up(dev->id, CPUHP_ONLINE);
 }
-EXPORT_SYMBOL_GPL(cpu_up);
 
 int add_cpu(unsigned int cpu)
 {
@@ -1425,7 +1439,7 @@ int bringup_hibernate_cpu(unsigned int sleep_cpu)
 
 	if (!cpu_online(sleep_cpu)) {
 		pr_info("Hibernated on a CPU that is offline! Bringing CPU up.\n");
-		ret = cpu_up(sleep_cpu);
+		ret = cpu_up(sleep_cpu, CPUHP_ONLINE);
 		if (ret) {
 			pr_err("Failed to bring hibernate-CPU up!\n");
 			return ret;
@@ -1442,7 +1456,7 @@ void bringup_nonboot_cpus(unsigned int setup_max_cpus)
 		if (num_online_cpus() >= setup_max_cpus)
 			break;
 		if (!cpu_online(cpu))
-			cpu_up(cpu);
+			cpu_up(cpu, CPUHP_ONLINE);
 	}
 }
 
@@ -2204,9 +2218,9 @@ static ssize_t write_cpuhp_target(struct device *dev,
 		goto out;
 
 	if (st->state < target)
-		ret = do_cpu_up(dev->id, target);
+		ret = cpu_up(dev->id, target);
 	else
-		ret = do_cpu_down(dev->id, target);
+		ret = cpu_down(dev->id, target);
 out:
 	unlock_device_hotplug();
 	return ret ? ret : count;
