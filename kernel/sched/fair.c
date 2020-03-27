@@ -7132,16 +7132,10 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 			 * Ensure minimum capacity to grant the required boost.
 			 * The target CPU can be already at a capacity level higher
 			 * than the one required to boost the task.
-			 * However, if the task prefers idle cpu and that
-			 * cpu is idle, skip this check, but still need to make
-			 * sure the task fits in that cpu after considering
-			 * capacity margin.
 			 */
 			new_util = max(min_util, new_util);
-			if ((!(prefer_idle && idle_cpu(i)) &&
-			    new_util > capacity_orig) ||
-			     (is_min_capacity_cpu(i) &&
-			      !task_fits_capacity(p, capacity_orig, i)))
+			if ((i < mid_cap_orig_cpu && !task_fits_max(p, i)) ||
+			    new_util > capacity_orig)
 				continue;
 
 			/*
