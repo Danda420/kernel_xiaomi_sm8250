@@ -7073,8 +7073,7 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 	int i, cpu, idle_cpu = -1, nr = INT_MAX;
 	bool smt = test_idle_cores(target, false);
 	u64 avg_cost, avg_idle;
-	u64 time, cost;
-	s64 delta;
+	u64 time;
 
 	/*
 	 * Due to large variance we need a large fuzz factor; hackbench in
@@ -7122,9 +7121,7 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 		set_idle_cores(target, false);
 
 	time = local_clock() - time;
-	cost = this_sd->avg_scan_cost;
-	delta = (s64)(time - cost) / 8;
-	this_sd->avg_scan_cost += delta;
+	update_avg(&this_sd->avg_scan_cost, time);
 
 	return idle_cpu;
 }
