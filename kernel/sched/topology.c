@@ -36,13 +36,6 @@ static int sched_domain_debug_one(struct sched_domain *sd, int cpu, int level,
 
 	printk(KERN_DEBUG "%*s domain-%d: ", level, "", level);
 
-	if (!(sd->flags & SD_LOAD_BALANCE)) {
-		printk("does not load-balance\n");
-		if (sd->parent)
-			printk(KERN_ERR "ERROR: !SD_LOAD_BALANCE domain has parent");
-		return -1;
-	}
-
 	printk(KERN_CONT "span=%*pbl level=%s\n",
 	       cpumask_pr_args(sched_domain_span(sd)), sd->name);
 
@@ -1483,8 +1476,7 @@ sd_init(struct sched_domain_topology_level *tl,
 		.wake_idx		= 0,
 		.forkexec_idx		= 0,
 
-		.flags			= 1*SD_LOAD_BALANCE
-					| 1*SD_BALANCE_NEWIDLE
+		.flags			= 1*SD_BALANCE_NEWIDLE
 					| 1*SD_BALANCE_EXEC
 					| 1*SD_BALANCE_FORK
 					| 0*SD_BALANCE_WAKE
