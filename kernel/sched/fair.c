@@ -6622,7 +6622,7 @@ static int wake_wide(struct task_struct *p, int sibling_count_hint)
 {
 	unsigned int master = current->wakee_flips;
 	unsigned int slave = p->wakee_flips;
-	int llc_size = this_cpu_read(sd_llc_size);
+	int llc_size = __this_cpu_read(sd_llc_size);
 
 	if (sibling_count_hint >= llc_size)
 		return 1;
