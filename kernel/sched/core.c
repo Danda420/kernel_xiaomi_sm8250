@@ -1246,6 +1246,11 @@ int sysctl_sched_uclamp_handler(struct ctl_table *table, int write,
 		uclamp_sync_util_min_rt_default();
 	}
 
+	if (old_min_rt != sysctl_sched_uclamp_util_min_rt_default) {
+		static_branch_enable(&sched_uclamp_used);
+		uclamp_sync_util_min_rt_default();
+	}
+
 	/*
 	 * We update all RUNNABLE tasks only when task groups are in use.
 	 * Otherwise, keep it simple and do just a lazy update at each next
