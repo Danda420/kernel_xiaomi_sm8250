@@ -503,8 +503,17 @@ struct binder_priority {
  *                        (protected by binder_deferred_lock)
  * @deferred_work:        bitmap of deferred work to perform
  *                        (protected by binder_deferred_lock)
+ * @outstanding_txns:     number of transactions to be transmitted before
+ *                        processes in freeze_wait are woken up
+ *                        (protected by @inner_lock)
  * @is_dead:              process is dead and awaiting free
  *                        when outstanding transactions are cleaned up
+ *                        (protected by @inner_lock)
+ * @is_frozen:            process is frozen and unable to service
+ *                        binder transactions
+ *                        (protected by @inner_lock)
+ * @freeze_wait:          waitqueue of processes waiting for all outstanding
+ *                        transactions to be processed
  *                        (protected by @inner_lock)
  * @todo:                 list of work for this process
  *                        (protected by @inner_lock)
@@ -551,7 +560,10 @@ struct binder_proc {
 	const struct cred *cred;
 	struct hlist_node deferred_work_node;
 	int deferred_work;
+	int outstanding_txns;
 	bool is_dead;
+	bool is_frozen;
+	wait_queue_head_t freeze_wait;
 
 	struct list_head todo;
 	struct binder_stats stats;
@@ -2173,6 +2185,10 @@ static void binder_free_transaction(struct binder_transaction *t)
 
 	if (target_proc) {
 		binder_inner_proc_lock(target_proc);
+		target_proc->outstanding_txns--;
+		BUG_ON(target_proc->outstanding_txns < 0);
+		if (!target_proc->outstanding_txns && target_proc->is_frozen)
+			wake_up_interruptible_all(&target_proc->freeze_wait);
 		if (t->buffer)
 			t->buffer->transaction = NULL;
 		binder_inner_proc_unlock(target_proc);
@@ -2952,12 +2968,9 @@ static inline void binder_thread_restore_inherit_top_app(struct binder_thread *t
  *
  * Return:	0 if the transaction was successfully queued
  *		BR_DEAD_REPLY if the target process or thread is dead
- *		BR_FROZEN_REPLY if the target process or thread is frozen and
- *			the sync transaction was rejected
- *		BR_TRANSACTION_PENDING_FROZEN if the target process is frozen
- *		and the async transaction was successfully queued
+ *		BR_FROZEN_REPLY if the target process or thread is frozen
  */
-static bool binder_proc_transaction(struct binder_transaction *t,
+static int binder_proc_transaction(struct binder_transaction *t,
 				    struct binder_proc *proc,
 				    struct binder_thread *thread)
 {
@@ -2984,6 +2997,7 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	}
 
 	binder_inner_proc_lock(proc);
+<<<<<<< HEAD
 	if (proc->is_frozen) {
 		frozen = true;
 		proc->sync_recv |= !oneway;
@@ -2994,6 +3008,15 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 		binder_inner_proc_unlock(proc);
 		binder_node_unlock(node);
 		return frozen ? BR_FROZEN_REPLY : BR_DEAD_REPLY;
+=======
+
+	if (proc->is_frozen || proc->is_dead || (thread && thread->is_dead)) {
+		bool proc_is_dead = proc->is_dead
+			|| (thread && thread->is_dead);
+		binder_inner_proc_unlock(proc);
+		binder_node_unlock(node);
+		return proc_is_dead ? BR_DEAD_REPLY : BR_FROZEN_REPLY;
+>>>>>>> cdf9effc4eff (binder: implement BINDER_FREEZE ioctl)
 	}
 
 	if (!thread && !pending_async)
@@ -3025,9 +3048,12 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 
 	if (!pending_async)
 		binder_wakeup_thread_ilocked(proc, thread, !oneway /* sync */);
+
+	proc->outstanding_txns++;
 	binder_inner_proc_unlock(proc);
 	binder_node_unlock(node);
 
+<<<<<<< HEAD
 	/*
 	 * To reduce potential contention, free the outdated transaction and
 	 * buffer after releasing the locks.
@@ -3047,6 +3073,8 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	if (oneway && frozen)
 		return BR_TRANSACTION_PENDING_FROZEN;
 
+=======
+>>>>>>> cdf9effc4eff (binder: implement BINDER_FREEZE ioctl)
 	return 0;
 }
 
@@ -3716,7 +3744,9 @@ static void binder_transaction(struct binder_proc *proc,
 	if (reply) {
 		binder_enqueue_thread_work(thread, tcomplete);
 		binder_inner_proc_lock(target_proc);
-		if (target_thread->is_dead) {
+		if (target_thread->is_dead || target_proc->is_frozen) {
+			return_error = target_proc->is_dead ?
+				BR_DEAD_REPLY : BR_FROZEN_REPLY;
 			binder_inner_proc_unlock(target_proc);
 			goto err_dead_proc_or_thread;
 		}
@@ -3726,6 +3756,7 @@ static void binder_transaction(struct binder_proc *proc,
 #endif
 		binder_pop_transaction_ilocked(target_thread, in_reply_to);
 		binder_enqueue_thread_work_ilocked(target_thread, &t->work);
+		target_proc->outstanding_txns++;
 		binder_inner_proc_unlock(target_proc);
 
 		wake_up_interruptible_sync(&target_thread->wait);
@@ -3750,7 +3781,9 @@ static void binder_transaction(struct binder_proc *proc,
 		t->timesRecord = binder_clock();
 #endif
 		binder_inner_proc_unlock(proc);
-		if (!binder_proc_transaction(t, target_proc, target_thread)) {
+		return_error = binder_proc_transaction(t,
+				target_proc, target_thread);
+		if (return_error) {
 			binder_inner_proc_lock(proc);
 			binder_pop_transaction_ilocked(thread, t);
 			binder_inner_proc_unlock(proc);
@@ -3768,8 +3801,16 @@ static void binder_transaction(struct binder_proc *proc,
 		if (return_error == BR_TRANSACTION_PENDING_FROZEN)
 			tcomplete->type = BINDER_WORK_TRANSACTION_PENDING;
 		binder_enqueue_thread_work(thread, tcomplete);
+<<<<<<< HEAD
 		if (return_error &&
 		    return_error != BR_TRANSACTION_PENDING_FROZEN)
+=======
+#ifdef CONFIG_MIHW
+		t->timesRecord = binder_clock();
+#endif
+		return_error = binder_proc_transaction(t, target_proc, NULL);
+		if (return_error)
+>>>>>>> cdf9effc4eff (binder: implement BINDER_FREEZE ioctl)
 			goto err_dead_proc_or_thread;
 	}
 	if (target_thread)
@@ -3786,7 +3827,6 @@ static void binder_transaction(struct binder_proc *proc,
 	return;
 
 err_dead_proc_or_thread:
-	return_error = BR_DEAD_REPLY;
 	return_error_line = __LINE__;
 	binder_dequeue_work(proc, tcomplete);
 err_translate_failed:
@@ -4946,6 +4986,7 @@ static void binder_free_proc(struct binder_proc *proc)
 
 	BUG_ON(!list_empty(&proc->todo));
 	BUG_ON(!list_empty(&proc->delivered_death));
+	WARN_ON(proc->outstanding_txns);
 	device = container_of(proc->context, struct binder_device, context);
 	if (refcount_dec_and_test(&device->ref)) {
 		kfree(proc->context->name);
@@ -5007,6 +5048,7 @@ static int binder_thread_release(struct binder_proc *proc,
 			     (t->to_thread == thread) ? "in" : "out");
 
 		if (t->to_thread == thread) {
+			t->to_proc->outstanding_txns--;
 			t->to_proc = NULL;
 			t->to_thread = NULL;
 			if (t->buffer) {
@@ -5374,6 +5416,63 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
+	case BINDER_FREEZE: {
+		struct binder_freeze_info info;
+		struct binder_proc *target_proc;
+		bool found = false;
+
+		if (copy_from_user(&info, ubuf, sizeof(info))) {
+			ret = -EFAULT;
+			goto err;
+		}
+		mutex_lock(&binder_procs_lock);
+		hlist_for_each_entry(target_proc, &binder_procs, proc_node) {
+			if (target_proc->pid == info.pid) {
+				found = true;
+				binder_inner_proc_lock(target_proc);
+				target_proc->tmp_ref++;
+				binder_inner_proc_unlock(target_proc);
+				break;
+			}
+		}
+		mutex_unlock(&binder_procs_lock);
+		if (!found) {
+			ret = -EINVAL;
+			goto err;
+		}
+		if (!info.enable) {
+			binder_inner_proc_lock(target_proc);
+			target_proc->is_frozen = false;
+			binder_inner_proc_unlock(target_proc);
+			binder_proc_dec_tmpref(target_proc);
+			break;
+		}
+		/*
+		 * Freezing the target. Prevent new transactions by
+		 * setting frozen state. If timeout specified, wait
+		 * for transactions to drain.
+		 */
+		binder_inner_proc_lock(target_proc);
+		target_proc->is_frozen = true;
+		binder_inner_proc_unlock(target_proc);
+		if (info.timeout_ms > 0)
+			ret = wait_event_interruptible_timeout(
+				target_proc->freeze_wait,
+				(!target_proc->outstanding_txns),
+				msecs_to_jiffies(info.timeout_ms));
+		if (!ret && target_proc->outstanding_txns) {
+			ret = -EAGAIN;
+		}
+		if (ret < 0) {
+			binder_inner_proc_lock(target_proc);
+			target_proc->is_frozen = false;
+			binder_inner_proc_unlock(target_proc);
+		}
+		binder_proc_dec_tmpref(target_proc);
+		if (ret < 0)
+			goto err;
+		break;
+	}
 	default:
 		ret = -EINVAL;
 		goto err;
@@ -5491,6 +5590,7 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	mutex_init(&proc->files_lock);
 	proc->cred = get_cred(filp->f_cred);
 	INIT_LIST_HEAD(&proc->todo);
+	init_waitqueue_head(&proc->freeze_wait);
 	if (binder_supported_policy(current->policy)) {
 		proc->default_priority.sched_policy = current->policy;
 		proc->default_priority.prio = current->normal_prio;
@@ -5914,6 +6014,7 @@ static void binder_deferred_release(struct binder_proc *proc)
 	proc->tmp_ref++;
 
 	proc->is_dead = true;
+	proc->is_frozen = false;
 	threads = 0;
 	active_transactions = 0;
 	while ((n = rb_first(&proc->threads))) {
