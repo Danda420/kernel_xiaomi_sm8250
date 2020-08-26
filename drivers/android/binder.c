@@ -2185,9 +2185,7 @@ static void binder_free_transaction(struct binder_transaction *t)
 	if (target_proc) {
 		binder_inner_proc_lock(target_proc);
 		target_proc->outstanding_txns--;
-		if (target_proc->outstanding_txns < 0)
-			pr_warn("%s: Unexpected outstanding_txns %d\n",
-				__func__, target_proc->outstanding_txns);
+		BUG_ON(target_proc->outstanding_txns < 0);
 		if (!target_proc->outstanding_txns && target_proc->is_frozen)
 			wake_up_interruptible_all(&target_proc->freeze_wait);
 		if (t->buffer)
@@ -3000,11 +2998,12 @@ static int binder_proc_transaction(struct binder_transaction *t,
 		proc->async_recv |= oneway;
 	}
 
-	if ((proc->is_frozen && !oneway) || proc->is_dead ||
-			(thread && thread->is_dead)) {
+	if (proc->is_frozen || proc->is_dead || (thread && thread->is_dead)) {
+		bool proc_is_dead = proc->is_dead
+			|| (thread && thread->is_dead);
 		binder_inner_proc_unlock(proc);
 		binder_node_unlock(node);
-		return proc->is_frozen ? BR_FROZEN_REPLY : BR_DEAD_REPLY;
+		return proc_is_dead ? BR_DEAD_REPLY : BR_FROZEN_REPLY;
 	}
 
 	if (!thread && !pending_async)
@@ -3710,8 +3709,9 @@ static void binder_transaction(struct binder_proc *proc,
 	if (reply) {
 		binder_enqueue_thread_work(thread, tcomplete);
 		binder_inner_proc_lock(target_proc);
-		if (target_thread->is_dead) {
-			return_error = BR_DEAD_REPLY;
+		if (target_thread->is_dead || target_proc->is_frozen) {
+			return_error = target_proc->is_dead ?
+				BR_DEAD_REPLY : BR_FROZEN_REPLY;
 			binder_inner_proc_unlock(target_proc);
 			goto err_dead_proc_or_thread;
 		}
@@ -3761,7 +3761,8 @@ static void binder_transaction(struct binder_proc *proc,
 #ifdef CONFIG_MIHW
 		t->timesRecord = binder_clock();
 #endif
-		if (!binder_proc_transaction(t, target_proc, NULL))
+		return_error = binder_proc_transaction(t, target_proc, NULL);
+		if (return_error)
 			goto err_dead_proc_or_thread;
 	}
 	if (target_thread)
@@ -4940,9 +4941,7 @@ static void binder_free_proc(struct binder_proc *proc)
 
 	BUG_ON(!list_empty(&proc->todo));
 	BUG_ON(!list_empty(&proc->delivered_death));
-	if (proc->outstanding_txns)
-		pr_warn("%s: Unexpected outstanding_txns %d\n",
-			__func__, proc->outstanding_txns);
+	WARN_ON(proc->outstanding_txns);
 	device = container_of(proc->context, struct binder_device, context);
 	if (refcount_dec_and_test(&device->ref)) {
 		kfree(proc->context->name);
@@ -5004,7 +5003,7 @@ static int binder_thread_release(struct binder_proc *proc,
 			     (t->to_thread == thread) ? "in" : "out");
 
 		if (t->to_thread == thread) {
-			thread->proc->outstanding_txns--;
+			t->to_proc->outstanding_txns--;
 			t->to_proc = NULL;
 			t->to_thread = NULL;
 			if (t->buffer) {
