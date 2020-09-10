@@ -503,8 +503,9 @@ struct binder_priority {
  * @is_dead:              process is dead and awaiting free
  *                        when outstanding transactions are cleaned up
  *                        (protected by @inner_lock)
- * @is_frozen:            process is frozen and unable to service
- *                        binder transactions
+ * @sync_recv:            process received sync transactions since last frozen
+ *                        (protected by @inner_lock)
+ * @async_recv:           process received async transactions since last frozen
  *                        (protected by @inner_lock)
  * @sync_recv:            process received sync transactions since last frozen
  *                        (protected by @inner_lock)
@@ -2998,7 +2999,8 @@ static int binder_proc_transaction(struct binder_transaction *t,
 		proc->async_recv |= oneway;
 	}
 
-	if (proc->is_frozen || proc->is_dead || (thread && thread->is_dead)) {
+	if ((proc->is_frozen && !oneway) || proc->is_dead ||
+			(thread && thread->is_dead)) {
 		bool proc_is_dead = proc->is_dead
 			|| (thread && thread->is_dead);
 		binder_inner_proc_unlock(proc);
@@ -3710,7 +3712,7 @@ static void binder_transaction(struct binder_proc *proc,
 		binder_enqueue_thread_work(thread, tcomplete);
 		binder_inner_proc_lock(target_proc);
 		if (target_thread->is_dead || target_proc->is_frozen) {
-			return_error = target_proc->is_dead ?
+			return_error = target_thread->is_dead ?
 				BR_DEAD_REPLY : BR_FROZEN_REPLY;
 			binder_inner_proc_unlock(target_proc);
 			goto err_dead_proc_or_thread;
