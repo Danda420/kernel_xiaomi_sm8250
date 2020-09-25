@@ -276,7 +276,7 @@ static inline bool need_pull_rt_task(struct rq *rq, struct task_struct *prev)
 	 * Try to pull RT tasks here if we lower this rq's prio and cpu is not
 	 * isolated
 	 */
-	return rq->rt.highest_prio.curr > prev->prio &&
+	return rq->online && rq->rt.highest_prio.curr > prev->prio &&
 	       !cpu_isolated(cpu_of(rq));
 }
 
