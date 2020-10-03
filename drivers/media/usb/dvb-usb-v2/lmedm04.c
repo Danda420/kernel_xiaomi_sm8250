@@ -412,7 +412,7 @@ static int lme2510_int_read(struct dvb_usb_adapter *adap)
 	struct lme2510_state *lme_int = adap_to_priv(adap);
 	struct usb_host_endpoint *ep;
 
-	lme_int->lme_urb = usb_alloc_urb(0, GFP_ATOMIC);
+	lme_int->lme_urb = usb_alloc_urb(0, GFP_KERNEL);
 
 	if (lme_int->lme_urb == NULL)
 			return -ENOMEM;
@@ -440,7 +440,7 @@ static int lme2510_int_read(struct dvb_usb_adapter *adap)
 
 	lme_int->lme_urb->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
 
-	usb_submit_urb(lme_int->lme_urb, GFP_ATOMIC);
+	usb_submit_urb(lme_int->lme_urb, GFP_KERNEL);
 	info("INT Interrupt Service Started");
 
 	return 0;
