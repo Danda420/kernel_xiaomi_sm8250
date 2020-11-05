@@ -910,7 +910,7 @@ static int __maybe_unused _get_cpu_power(unsigned long *mW, unsigned long *kHz,
  * This checks whether the "dynamic-power-coefficient" devicetree property has
  * been specified, and tries to register an Energy Model with it if it has.
  */
-void dev_pm_opp_of_register_em(struct cpumask *cpus)
+int dev_pm_opp_of_register_em(struct cpumask *cpus)
 {
 	struct em_data_callback em_cb = EM_DATA_CB(_get_cpu_power);
 	int ret, nr_opp, cpu = cpumask_first(cpus);
@@ -942,6 +942,14 @@ void dev_pm_opp_of_register_em(struct cpumask *cpus)
 	if (ret || !cap)
 		return;
 
-	em_dev_register_perf_domain(cpu_dev, nr_opp, &em_cb, cpus);
+	ret = em_dev_register_perf_domain(cpu_dev, nr_opp, &em_cb, cpus, true);
+	if (ret)
+		goto failed;
+
+	return 0;
+
+failed:
+	dev_dbg(cpu_dev, "Couldn't register Energy Model %d\n", ret);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_of_register_em);
