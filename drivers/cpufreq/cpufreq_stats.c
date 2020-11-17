@@ -12,6 +12,7 @@
 #include <linux/cpu.h>
 #include <linux/cpufreq.h>
 #include <linux/module.h>
+#include <linux/sched/clock.h>
 #include <linux/slab.h>
 
 static DEFINE_SPINLOCK(cpufreq_stats_lock);
@@ -34,7 +35,7 @@ struct cpufreq_stats {
 static void cpufreq_stats_update(struct cpufreq_stats *stats,
 				 unsigned long long time)
 {
-	unsigned long long cur_time = get_jiffies_64();
+	unsigned long long cur_time = local_clock();
 	unsigned long flags;
 
 	spin_lock_irqsave(&cpufreq_stats_lock, flags);
@@ -49,7 +50,7 @@ static void cpufreq_stats_reset_table(struct cpufreq_stats *stats)
 
 	memset(stats->time_in_state, 0, count * sizeof(u64));
 	memset(stats->trans_table, 0, count * count * sizeof(int));
-	stats->last_time = get_jiffies_64();
+	stats->last_time = local_clock();
 	stats->total_trans = 0;
 
 	/* Adjust for the time elapsed since reset was requested */
@@ -88,18 +89,18 @@ static ssize_t show_time_in_state(struct cpufreq_policy *policy, char *buf)
 				 * before the reset_pending read above.
 				 */
 				smp_rmb();
-				time = get_jiffies_64() - READ_ONCE(stats->reset_time);
+				time = local_clock() - READ_ONCE(stats->reset_time);
 			} else {
 				time = 0;
 			}
 		} else {
 			time = stats->time_in_state[i];
 			if (i == stats->last_index)
-				time += get_jiffies_64() - stats->last_time;
+				time += local_clock() - stats->last_time;
 		}
 
 		len += sprintf(buf + len, "%u %llu\n", stats->freq_table[i],
-			       jiffies_64_to_clock_t(time));
+			       nsec_to_clock_t(time));
 	}
 	return len;
 }
@@ -114,7 +115,7 @@ static ssize_t store_reset(struct cpufreq_policy *policy, const char *buf,
 	 * Defer resetting of stats to cpufreq_stats_record_transition() to
 	 * avoid races.
 	 */
-	WRITE_ONCE(stats->reset_time, get_jiffies_64());
+	WRITE_ONCE(stats->reset_time, local_clock());
 	/*
 	 * The memory barrier below is to prevent the readers of reset_time from
 	 * seeing a stale or partially updated value.
@@ -257,7 +258,7 @@ void cpufreq_stats_create_table(struct cpufreq_policy *policy)
 			stats->freq_table[i++] = pos->frequency;
 
 	stats->state_num = i;
-	stats->last_time = get_jiffies_64();
+	stats->last_time = local_clock();
 	stats->last_index = freq_table_get_index(stats, policy->cur);
 
 	policy->stats = stats;
