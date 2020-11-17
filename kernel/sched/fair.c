@@ -1442,7 +1442,7 @@ struct numa_group {
 static struct numa_group *deref_task_numa_group(struct task_struct *p)
 {
 	return rcu_dereference_check(p->numa_group, p == current ||
-		(lockdep_is_held(&task_rq(p)->lock) && !READ_ONCE(p->on_cpu)));
+		(lockdep_is_held(rq_lockp(task_rq(p))) && !READ_ONCE(p->on_cpu)));
 }
 
 static struct numa_group *deref_curr_numa_group(struct task_struct *p)
@@ -5789,7 +5789,7 @@ static void __maybe_unused update_runtime_enabled(struct rq *rq)
 {
 	struct task_group *tg;
 
-	lockdep_assert_held(&rq->lock);
+	lockdep_assert_rq_held(rq);
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(tg, &task_groups, list) {
@@ -5808,7 +5808,7 @@ static void __maybe_unused unthrottle_offline_cfs_rqs(struct rq *rq)
 {
 	struct task_group *tg;
 
-	lockdep_assert_held(&rq->lock);
+	lockdep_assert_rq_held(rq);
 
 	// Do not unthrottle for an active CPU
 	if (cpumask_test_cpu(cpu_of(rq), cpu_active_mask))
@@ -8072,7 +8072,7 @@ static void migrate_task_rq_fair(struct task_struct *p, int new_cpu)
 		 * In case of TASK_ON_RQ_MIGRATING we in fact hold the 'old'
 		 * rq->lock and can modify state directly.
 		 */
-		lockdep_assert_held(&task_rq(p)->lock);
+		lockdep_assert_rq_held(task_rq(p));
 		detach_entity_cfs_rq(&p->se);
 
 	} else {
@@ -8641,7 +8641,7 @@ static int task_hot(struct task_struct *p, struct lb_env *env)
 {
 	s64 delta;
 
-	lockdep_assert_held(&env->src_rq->lock);
+	lockdep_assert_rq_held(env->src_rq);
 
 	if (p->sched_class != &fair_sched_class)
 		return 0;
@@ -8758,7 +8758,7 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 {
 	int tsk_cache_hot;
 
-	lockdep_assert_held(&env->src_rq->lock);
+	lockdep_assert_rq_held(env->src_rq);
 
 	/*
 	 * We do not migrate tasks that are:
@@ -8858,7 +8858,7 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
  */
 static void detach_task(struct task_struct *p, struct lb_env *env)
 {
-	lockdep_assert_held(&env->src_rq->lock);
+	lockdep_assert_rq_held(env->src_rq);
 
 	deactivate_task(env->src_rq, p, DEQUEUE_NOCLOCK);
 	set_task_cpu(p, env->dst_cpu);
@@ -8874,7 +8874,7 @@ static struct task_struct *detach_one_task(struct lb_env *env)
 {
 	struct task_struct *p;
 
-	lockdep_assert_held(&env->src_rq->lock);
+	lockdep_assert_rq_held(env->src_rq);
 
 	list_for_each_entry_reverse(p,
 			&env->src_rq->cfs_tasks, se.group_node) {
@@ -8912,7 +8912,7 @@ static int detach_tasks(struct lb_env *env)
 	int orig_loop = env->loop;
 	u64 start_t = rq_clock(env->src_rq);
 
-	lockdep_assert_held(&env->src_rq->lock);
+	lockdep_assert_rq_held(env->src_rq);
 
 	if (env->imbalance <= 0)
 		return 0;
@@ -9037,7 +9037,7 @@ next:
  */
 static void attach_task(struct rq *rq, struct task_struct *p)
 {
-	lockdep_assert_held(&rq->lock);
+	lockdep_assert_rq_held(rq);
 
 	BUG_ON(task_rq(p) != rq);
 	activate_task(rq, p, ENQUEUE_NOCLOCK);
@@ -10755,7 +10755,7 @@ no_move:
 		if (need_active_balance(&env)) {
 			unsigned long flags;
 
-			raw_spin_lock_irqsave(&busiest->lock, flags);
+			raw_spin_rq_lock_irqsave(busiest, flags);
 
 			/*
 			 * Don't kick the active_load_balance_cpu_stop,
@@ -10763,8 +10763,7 @@ no_move:
 			 * moved to this_cpu:
 			 */
 			if (!cpumask_test_cpu(this_cpu, busiest->curr->cpus_ptr)) {
-				raw_spin_unlock_irqrestore(&busiest->lock,
-							    flags);
+				raw_spin_rq_unlock_irqrestore(busiest, flags);
 				env.flags |= LBF_ALL_PINNED;
 				goto out_one_pinned;
 			}
@@ -10779,7 +10778,7 @@ no_move:
 				busiest->push_cpu = this_cpu;
 				active_balance = 1;
 			}
-			raw_spin_unlock_irqrestore(&busiest->lock, flags);
+			raw_spin_rq_unlock_irqrestore(busiest, flags);
 
 			if (active_balance) {
 				stop_one_cpu_nowait(cpu_of(busiest),
@@ -11661,7 +11660,7 @@ static void nohz_newidle_balance(struct rq *this_rq)
 	    time_before(jiffies, READ_ONCE(nohz.next_blocked)))
 		return;
 
-	raw_spin_unlock(&this_rq->lock);
+	raw_spin_rq_unlock(this_rq);
 	/*
 	 * This CPU is going to be idle and blocked load of idle CPUs
 	 * need to be updated. Run the ilb locally as it is a good
@@ -11670,7 +11669,7 @@ static void nohz_newidle_balance(struct rq *this_rq)
 	 */
 	if (!_nohz_idle_balance(this_rq, NOHZ_STATS_KICK, CPU_NEWLY_IDLE))
 		kick_ilb(NOHZ_STATS_KICK);
-	raw_spin_lock(&this_rq->lock);
+	raw_spin_rq_lock(this_rq);
 }
 
 #else /* !CONFIG_NO_HZ_COMMON */
@@ -11738,7 +11737,7 @@ static int newidle_balance(struct rq *this_rq, struct rq_flags *rf)
 	}
 	rcu_read_unlock();
 
-	raw_spin_unlock(&this_rq->lock);
+	raw_spin_rq_unlock(this_rq);
 
 	t0 = sched_clock_cpu(this_cpu);
 	update_blocked_averages(this_cpu);
@@ -11779,7 +11778,7 @@ static int newidle_balance(struct rq *this_rq, struct rq_flags *rf)
 	}
 	rcu_read_unlock();
 
-	raw_spin_lock(&this_rq->lock);
+	raw_spin_rq_lock(this_rq);
 
 	if (curr_cost > this_rq->max_idle_balance_cost)
 		this_rq->max_idle_balance_cost = curr_cost;
@@ -12205,13 +12204,13 @@ void unregister_fair_sched_group(struct task_group *tg)
 
 		if (se) {
 			if (se->sched_delayed) {
-				raw_spin_lock_irqsave(&rq->lock, flags);
+				raw_spin_rq_lock_irqsave(rq, flags);
 				if (se->sched_delayed) {
 					update_rq_clock(rq);
 					dequeue_entities(rq, se, DEQUEUE_SLEEP | DEQUEUE_DELAYED);
 				}
 				list_del_leaf_cfs_rq(cfs_rq);
-				raw_spin_unlock_irqrestore(&rq->lock, flags);
+				raw_spin_rq_unlock_irqrestore(rq, flags);
 			}
 			remove_entity_load_avg(se);
 		}
@@ -12221,9 +12220,9 @@ void unregister_fair_sched_group(struct task_group *tg)
 		 * check on_list without danger of it being re-added.
 		 */
 		if (cfs_rq->on_list) {
-			raw_spin_lock_irqsave(&rq->lock, flags);
+			raw_spin_lock_irqsave(rq, flags);
 			list_del_leaf_cfs_rq(cfs_rq);
-			raw_spin_unlock_irqrestore(&rq->lock, flags);
+			raw_spin_unlock_irqrestore(rq, flags);
 		}
 	}
 }
