@@ -5259,7 +5259,7 @@ struct task_struct *idle_task(int cpu)
  * based on the task model parameters and gives the minimal utilization
  * required to meet deadlines.
  */
-unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
+unsigned long effective_cpu_util(int cpu, unsigned long util_cfs,
 				 unsigned long *min,
 				 unsigned long *max)
 {
@@ -5331,6 +5331,11 @@ unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
 	util += irq;
 
 	return min(scale, util);
+}
+
+unsigned long sched_cpu_util(int cpu, unsigned long max)
+{
+	return effective_cpu_util(cpu, cpu_util_cfs(cpu_rq(cpu)), NULL, &max);
 }
 #endif
 

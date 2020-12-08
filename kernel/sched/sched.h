@@ -2669,7 +2669,7 @@ static inline unsigned long cpu_util_cfs(struct rq *rq)
 	return util;
 }
 
-unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
+unsigned long effective_cpu_util(int cpu, unsigned long util_cfs,
 				 unsigned long *min,
 				 unsigned long *max);
 

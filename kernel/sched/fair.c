@@ -7675,7 +7675,7 @@ compute_energy(struct task_struct *p, int dst_cpu, struct perf_domain *pd)
 			 * is already enough to scale the EM reported power
 			 * consumption at the (eventually clamped) cpu_capacity.
 			 */
-			sum_util += schedutil_cpu_util(cpu, util_running, NULL, NULL);
+			sum_util += effective_cpu_util(cpu, util_running, NULL, NULL);
 
 			/*
 			 * Performance domain frequency: utilization clamping
@@ -7684,7 +7684,7 @@ compute_energy(struct task_struct *p, int dst_cpu, struct perf_domain *pd)
 			 * NOTE: in case RT tasks are running, by default the
 			 * FREQUENCY_UTIL's utilization can be max OPP.
 			 */
-			cpu_util = schedutil_cpu_util(cpu, util_freq, &min, &max);
+			cpu_util = effective_cpu_util(cpu, util_freq, &min, &max);
 			/* Task's uclamp can modify min and max value */
 			if (uclamp_is_used()) {
 				min = max(min, uclamp_eff_value(p, UCLAMP_MIN));
@@ -7732,7 +7732,7 @@ static void select_cpu_candidates(struct sched_domain *sd, cpumask_t *cpus,
 			 * IOW, placing the task there would make the CPU
 			 * overutilized. Take uclamp into account to see how
 			 * much capacity we can get out of the CPU; this is
-			 * aligned with schedutil_cpu_util().
+			 * aligned with effective_cpu_util().
 			 */
 			util = uclamp_rq_util_with(cpu_rq(cpu), util, p);
 
