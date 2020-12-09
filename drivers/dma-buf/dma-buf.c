@@ -48,6 +48,18 @@
 
 static atomic_long_t name_counter;
 
+static struct kmem_cache *kmem_attach_pool;
+static struct kmem_cache *kmem_dma_buf_pool;
+
+void __init init_dma_buf_kmem_pool(void)
+{
+	kmem_attach_pool = KMEM_CACHE(dma_buf_attachment, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
+	kmem_dma_buf_pool = kmem_cache_create("dma_buf",
+		(sizeof(struct dma_buf) + sizeof(struct reservation_object)),
+		(sizeof(struct dma_buf) + sizeof(struct reservation_object)),
+		SLAB_HWCACHE_ALIGN | SLAB_PANIC, NULL);
+}
+
 static inline int is_dma_buf_file(struct file *);
 
 struct dma_buf_list {
