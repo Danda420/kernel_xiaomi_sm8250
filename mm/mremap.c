@@ -344,13 +344,9 @@ static unsigned long get_extent(enum pgt_entry entry, unsigned long old_addr,
 
 	next = (old_addr + size) & mask;
 	/* even if next overflowed, extent below will be ok */
-<<<<<<< HEAD
 	extent = next - old_addr;
 	if (extent > old_end - old_addr)
 		extent = old_end - old_addr;
-=======
-	extent = (next > old_end) ? old_end - old_addr : next - old_addr;
->>>>>>> 964979c8c611 (BACKPORT: mm: speedup mremap on 1GB or larger regions)
 	next = (new_addr + size) & mask;
 	if (extent > next - new_addr)
 		extent = next - new_addr;
@@ -403,10 +399,7 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 		bool need_rmap_locks)
 {
 	unsigned long extent, old_end;
-<<<<<<< HEAD
 	struct mmu_notifier_range range;
-=======
->>>>>>> 964979c8c611 (BACKPORT: mm: speedup mremap on 1GB or larger regions)
 	pmd_t *old_pmd, *new_pmd;
 
 	if (!len)
@@ -437,11 +430,7 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 				break;
 			if (move_pgt_entry(NORMAL_PUD, vma, old_addr, new_addr,
 						old_end, old_pud, new_pud,
-<<<<<<< HEAD
-						true))
-=======
 						need_rmap_locks))
->>>>>>> 964979c8c611 (BACKPORT: mm: speedup mremap on 1GB or larger regions)
 				continue;
 		}
 
