@@ -5321,6 +5321,9 @@ static int binder_ioctl_get_freezer_info(
 	info->sync_recv = 0;
 	info->async_recv = 0;
 
+	info->sync_recv = 0;
+	info->async_recv = 0;
+
 	mutex_lock(&binder_procs_lock);
 	hlist_for_each_entry(target_proc, &binder_procs, proc_node) {
 		if (target_proc->pid == info->pid) {
