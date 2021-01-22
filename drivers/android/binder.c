@@ -5483,8 +5483,8 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			goto err;
 		}
 
-		target_procs = kcalloc(target_procs_count,
-				       sizeof(struct binder_proc *),
+		target_procs = kmalloc(sizeof(struct binder_proc *) *
+					       target_procs_count,
 				       GFP_KERNEL);
 
 		if (!target_procs) {
