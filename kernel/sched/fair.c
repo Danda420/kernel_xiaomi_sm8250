@@ -5885,7 +5885,7 @@ static void hrtick_update(struct rq *rq)
 {
 	struct task_struct *curr = rq->curr;
 
-	if (!hrtick_enabled(rq) || curr->sched_class != &fair_sched_class)
+	if (!hrtick_enabled_fair(rq) || curr->sched_class != &fair_sched_class)
 		return;
 
 	hrtick_start_fair(rq, curr);
@@ -12027,7 +12027,7 @@ static void __set_next_task_fair(struct rq *rq, struct task_struct *p)
 
 	SCHED_WARN_ON(se->sched_delayed);
 
-	if (hrtick_enabled(rq))
+	if (hrtick_enabled_fair(rq))
 		hrtick_start_fair(rq, p);
 
 	update_misfit_status(p, rq);
