@@ -1493,7 +1493,7 @@ update_stats_enqueue_wakeup(struct rq *rq, struct task_struct *p)
 #endif
 }
 
-#if defined CONFIG_SMP || defined CONFIG_RT_GROUP_SCHED
+#ifdef CONFIG_SMP
 static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 					bool sync)
 {
