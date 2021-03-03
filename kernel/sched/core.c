@@ -62,9 +62,9 @@ void raw_spin_rq_lock_nested(struct rq *rq, int subclass)
 	}
 
 	for (;;) {
-		lock = rq_lockp(rq);
+		lock = __rq_lockp(rq);
 		raw_spin_lock_nested(lock, subclass);
-		if (likely(lock == rq_lockp(rq)))
+		if (likely(lock == __rq_lockp(rq)))
 			return;
 		raw_spin_unlock(lock);
 	}
@@ -79,9 +79,9 @@ bool raw_spin_rq_trylock(struct rq *rq)
 		return raw_spin_trylock(&rq->__lock);
 
 	for (;;) {
-		lock = rq_lockp(rq);
+		lock = __rq_lockp(rq);
 		ret = raw_spin_trylock(lock);
-		if (!ret || (likely(lock == rq_lockp(rq))))
+		if (!ret || (likely(lock == __rq_lockp(rq))))
 			return ret;
 		raw_spin_unlock(lock);
 	}
@@ -89,7 +89,7 @@ bool raw_spin_rq_trylock(struct rq *rq)
 
 void raw_spin_rq_unlock(struct rq *rq)
 {
-	raw_spin_unlock(rq_lockp(rq));
+	raw_spin_unlock(__rq_lockp(rq));
 }
 
 #ifdef CONFIG_SMP
@@ -104,7 +104,7 @@ void double_rq_lock(struct rq *rq1, struct rq *rq2)
 		swap(rq1, rq2);
 
 	raw_spin_rq_lock(rq1);
-	if (rq_lockp(rq1) == rq_lockp(rq2))
+	if (__rq_lockp(rq1) == __rq_lockp(rq2))
 		return;
 
 	raw_spin_rq_lock_nested(rq2, SINGLE_DEPTH_NESTING);
@@ -2660,7 +2660,7 @@ void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 	 * task_rq_lock().
 	 */
 	WARN_ON_ONCE(debug_locks && !(lockdep_is_held(&p->pi_lock) ||
-				      lockdep_is_held(rq_lockp(task_rq(p)))));
+				      lockdep_is_held(__rq_lockp(task_rq(p)))));
 #endif
 	/*
 	 * Clearly, migrating tasks to offline CPUs is a fairly daft thing.
@@ -4426,10 +4426,10 @@ prepare_lock_switch(struct rq *rq, struct task_struct *next, struct rq_flags *rf
 	 * do an early lockdep release here:
 	 */
 	rq_unpin_lock(rq, rf);
-	spin_release(&rq_lockp(rq)->dep_map, 1, _THIS_IP_);
+	spin_release(&__rq_lockp(rq)->dep_map, 1, _THIS_IP_);
 #ifdef CONFIG_DEBUG_SPINLOCK
 	/* this is a valid case when another task releases the spinlock */
-	rq_lockp(rq)->owner = next;
+	__rq_lockp(rq)->owner = next;
 #endif
 }
 
