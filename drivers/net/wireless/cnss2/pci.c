@@ -3839,7 +3839,7 @@ int cnss_smmu_map(struct device *dev,
 
 	pci_priv->smmu_iova_ipa_current = iova + len;
 	*iova_addr = (uint32_t)(iova + paddr - rounddown(paddr, PAGE_SIZE));
-	cnss_pr_dbg("IOMMU map: iova_addr %lx\n", *iova_addr);
+	cnss_pr_dbg("IOMMU map: iova_addr %x\n", *iova_addr);
 
 	return 0;
 }
