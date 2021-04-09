@@ -6169,6 +6169,7 @@ static const char * const binder_return_strings[] = {
 	"BR_DEAD_BINDER",
 	"BR_CLEAR_DEATH_NOTIFICATION_DONE",
 	"BR_FAILED_REPLY",
+	"BR_FROZEN_REPLY",
 	"BR_ONEWAY_SPAM_SUSPECT",
 };
 
