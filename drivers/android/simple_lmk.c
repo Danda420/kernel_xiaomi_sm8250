@@ -216,7 +216,7 @@ static void scan_and_kill(unsigned long pages_needed)
 			victim->size << (PAGE_SHIFT - 10));
 
 		/* Accelerate the victim's death by forcing the kill signal */
-		do_send_sig_info(SIGKILL, SEND_SIG_FORCED, vtsk, true);
+		do_send_sig_info(SIGKILL, SEND_SIG_FORCED, vtsk, PIDTYPE_TGID);
 
 		/* Mark the thread group dead so that other kernel code knows */
 		rcu_read_lock();
