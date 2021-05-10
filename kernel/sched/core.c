@@ -8092,7 +8092,7 @@ static int cpu_cgroup_css_online(struct cgroup_subsys_state *css)
 	rcu_read_unlock();
 	mutex_unlock(&uclamp_mutex);
 #ifdef CONFIG_UCLAMP_ASSIST
-	uclamp_set(css);
+        uclamp_set(css);
 #endif
 #endif
 
