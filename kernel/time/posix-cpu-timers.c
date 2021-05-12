@@ -500,7 +500,7 @@ static void arm_timer(struct k_itimer *timer)
 		if (CPUCLOCK_PERTHREAD(timer->it_clock))
 			tick_dep_set_task(p, TICK_DEP_BIT_POSIX_TIMER);
 		else
-			tick_dep_set_signal(p->signal, TICK_DEP_BIT_POSIX_TIMER);
+			tick_dep_set_signal(p, TICK_DEP_BIT_POSIX_TIMER);
 	}
 }
 
@@ -1250,7 +1250,7 @@ void set_process_cpu_timer(struct task_struct *tsk, unsigned int clock_idx,
 		break;
 	}
 
-	tick_dep_set_signal(tsk->signal, TICK_DEP_BIT_POSIX_TIMER);
+	tick_dep_set_signal(tsk, TICK_DEP_BIT_POSIX_TIMER);
 }
 
 static int do_cpu_nanosleep(const clockid_t which_clock, int flags,
