@@ -2152,6 +2152,8 @@ static inline void set_task_cpu(struct task_struct *p, unsigned int cpu)
 
 #endif /* CONFIG_SMP */
 
+extern bool sched_task_on_rq(struct task_struct *p);
+
 static inline bool task_is_runnable(struct task_struct *p)
 {
 	return p->on_rq && !p->se.sched_delayed;
