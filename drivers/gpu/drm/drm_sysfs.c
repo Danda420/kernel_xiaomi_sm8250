@@ -8,13 +8,10 @@
  * Copyright (c) 2004 Jon Smirl <jonsmirl@gmail.com>
  * Copyright (c) 2003-2004 Greg Kroah-Hartman <greg@kroah.com>
  * Copyright (c) 2003-2004 IBM Corp.
-<<<<<<< HEAD
-=======
  * Copyright (C) 2022 Xiaomi, Inc.
  *
  * This file is released under the GPLv2
  *
->>>>>>> aa51362664b6 (drm: msm: Import xiaomi display drivers modifications)
  */
 
 #include <linux/device.h>
