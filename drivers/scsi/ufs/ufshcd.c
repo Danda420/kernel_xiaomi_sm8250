@@ -8657,7 +8657,9 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 	model_index = desc_buf[DEVICE_DESC_PARAM_PRDCT_NAME];
 
 
-	if ((dev_desc->wmanufacturerid == UFS_VENDOR_TOSHIBA &&
+	/* Enable WB only for UFS-3.1 OR if desc len >= 0x59 */
+	if ((dev_desc->wspecversion >= 0x310) ||
+	    (dev_desc->wmanufacturerid == UFS_VENDOR_TOSHIBA &&
 	     dev_desc->wspecversion >= 0x300 &&
 	     hba->desc_size.dev_desc >= 0x59))
 		hba->dev_info.d_ext_ufs_feature_sup =
