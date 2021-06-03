@@ -326,6 +326,7 @@ EXT4_ATTR_FEATURE(casefold);
 EXT4_ATTR_FEATURE(verity);
 #endif
 EXT4_ATTR_FEATURE(metadata_csum_seed);
+EXT4_ATTR_FEATURE(encrypted_casefold);
 #ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
 extern bool ext4_fsync_nobarrier;
 extern bool ext4_fsync_protect;
@@ -347,6 +348,7 @@ static struct attribute *ext4_feat_attrs[] = {
 	ATTR_LIST(verity),
 #endif
 	ATTR_LIST(metadata_csum_seed),
+	ATTR_LIST(encrypted_casefold),
 #ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
 	ATTR_LIST(fsync_nobarrier),
 	ATTR_LIST(fsync_protect),
