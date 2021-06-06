@@ -11117,12 +11117,14 @@ out:
 static inline int find_new_ilb(void)
 {
 	int ilb;
+	const struct cpumask *hk_mask;
 
 	if (static_branch_likely(&sched_energy_present))
 		return find_energy_aware_new_ilb();
 
-	for_each_cpu_and(ilb, nohz.idle_cpus_mask,
-			      housekeeping_cpumask(HK_FLAG_MISC)) {
+	hk_mask = housekeeping_cpumask(HK_FLAG_MISC);
+
+	for_each_cpu_and(ilb, nohz.idle_cpus_mask, hk_mask) {
 		if (idle_cpu(ilb))
 			return ilb;
 	}
