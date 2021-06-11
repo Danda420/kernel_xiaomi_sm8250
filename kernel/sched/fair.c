@@ -1346,11 +1346,12 @@ update_stats_dequeue_fair(struct cfs_rq *cfs_rq, struct sched_entity *se, int fl
 
 	if ((flags & DEQUEUE_SLEEP) && entity_is_task(se)) {
 		struct task_struct *tsk = task_of(se);
+		unsigned int state;
 
-		if (tsk->state & TASK_INTERRUPTIBLE)
+		if (state & TASK_INTERRUPTIBLE)
 			__schedstat_set(se->stats.sleep_start,
 				      rq_clock(rq_of(cfs_rq)));
-		if (tsk->state & TASK_UNINTERRUPTIBLE)
+		if (state & TASK_UNINTERRUPTIBLE)
 			__schedstat_set(se->stats.block_start,
 				      rq_clock(rq_of(cfs_rq)));
 	}

@@ -1421,7 +1421,7 @@ update_stats_dequeue_rt(struct rt_rq *rt_rq, struct sched_rt_entity *rt_se,
 	if ((flags & DEQUEUE_SLEEP) && p) {
 		unsigned int state;
 
-		state = READ_ONCE(p->state);
+		state = READ_ONCE(p->__state);
 		if (state & TASK_INTERRUPTIBLE)
 			__schedstat_set(p->stats.sleep_start,
 					rq_clock(rq_of_rt_rq(rt_rq)));

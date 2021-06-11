@@ -462,9 +462,9 @@ static void enqueue_reclaim_data(pid_t nr, struct reclaim_info *info)
 	waken_task = (info == &out_info? nswapoutd : nswapind);
 	if (!waken_task)
 		return;
-	if (waken_task->state == TASK_INTERRUPTIBLE)
+	if (waken_task->__state == TASK_INTERRUPTIBLE)
 		wake_up_process(waken_task);
-	if (nswapdropd->state == TASK_INTERRUPTIBLE)
+	if (nswapdropd->__state == TASK_INTERRUPTIBLE)
 		wake_up_process(nswapdropd);
 }
 
@@ -902,7 +902,7 @@ static int swapoutd_fn(void *p)
 
 			do {
 				msleep(30);
-			} while (nswapind && (nswapind->state == TASK_RUNNING));
+			} while (nswapind && task_is_running(nswapind));
 
 			reclaim_anon(task);
 			enqueue_reclaim_data(task->pid, &drop_info);
@@ -1125,7 +1125,7 @@ static int swapdropd_fn(void *p)
 
 			do {
 				msleep(30);
-			} while (nswapind && (nswapind->state == TASK_RUNNING));
+			} while (nswapind && task_is_running(nswapind));
 
 			retry = drop_swapcache_task(task);
 			put_task_struct(task);
