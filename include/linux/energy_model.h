@@ -88,12 +88,15 @@ int em_register_perf_domain(cpumask_t *span, unsigned int nr_states,
  * @pd		: performance domain for which energy has to be estimated
  * @max_util	: highest utilization among CPUs of the domain
  * @sum_util	: sum of the utilization of all CPUs in the domain
+ * @allowed_cpu_cap	: maximum allowed CPU capacity for the @pd, which
+			  might reflect reduced frequency (due to thermal)
  *
  * Return: the sum of the energy consumed by the CPUs of the domain assuming
  * a capacity state satisfying the max utilization of the domain.
  */
 static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
-				unsigned long max_util, unsigned long sum_util)
+				unsigned long max_util, unsigned long sum_util,
+				unsigned long allowed_cpu_cap)
 {
 	unsigned long freq, scale_cpu;
 	struct em_cap_state *cs;
@@ -105,12 +108,18 @@ static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
 	/*
 	 * In order to predict the capacity state, map the utilization of the
 	 * most utilized CPU of the performance domain to a requested frequency,
-	 * like schedutil.
+	 * frequency, like schedutil. Take also into account that the real
+	 * frequency might be set lower (due to thermal capping). Thus, clamp
+	 * max utilization to the allowed CPU capacity before calculating
+	 * effective frequency.
 	 */
 	cpu = cpumask_first(to_cpumask(pd->cpus));
 	scale_cpu = arch_scale_cpu_capacity(NULL, cpu);
 	cs = &pd->table[pd->nr_cap_states - 1];
-	freq = map_util_freq(max_util, cs->frequency, scale_cpu);
+
+	max_util = map_util_perf(max_util);
+	max_util = min(max_util, allowed_cpu_cap);
+	freq = map_util_freq(max_util, cs->frequency, scale_cpu, last_exp_util);
 
 	/*
 	 * Find the lowest capacity state of the Energy Model above the
@@ -193,7 +202,8 @@ static inline struct em_perf_domain *em_cpu_get(int cpu)
 	return NULL;
 }
 static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
-			unsigned long max_util, unsigned long sum_util)
+			unsigned long max_util, unsigned long sum_util,
+			unsigned long allowed_cpu_cap)
 {
 	return 0;
 }
