@@ -4546,7 +4546,7 @@ static void fts_ts_sleep_work(struct work_struct *work)
 		if (!r) {
 			logError(1, "%s pm_resume_completion timeout, i2c is closed", tag);
 			pm_relax(info->dev);
-			fts_enableInterrupt(true);
+			fts_enableInterrupt();
 			return;
 		} else {
 			logError(1, "%s pm_resume_completion be completed, handling irq", tag);
@@ -4600,7 +4600,7 @@ static void fts_ts_sleep_work(struct work_struct *work)
 	wake_up(&info->wait_queue);
 #endif
 	pm_relax(info->dev);
-	fts_enableInterrupt(true);
+	fts_enableInterrupt();
 
 	return;
 }
@@ -6214,7 +6214,7 @@ static void fts_suspend_work(struct work_struct *work)
 
 	info->sensor_sleep = true;
 	if (info->gesture_enabled || fts_need_enter_lp_mode())
-		fts_enableInterrupt(true);
+		fts_enableInterrupt();
 }
 
 #ifdef CONFIG_DRM
