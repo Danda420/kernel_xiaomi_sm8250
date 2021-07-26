@@ -64,10 +64,8 @@ static void cluster_prepare(struct lpm_cluster *cluster,
 static bool print_parsed_dt;
 module_param_named(print_parsed_dt, print_parsed_dt, bool, 0664);
 
-#ifdef CONFIG_MIHW
 static bool sleep_disabled_dev;
 module_param_named(sleep_disabled_dev, sleep_disabled_dev, bool, 0664);
-#endif
 
 /**
  * msm_cpuidle_get_deep_idle_latency - Get deep idle latency value
