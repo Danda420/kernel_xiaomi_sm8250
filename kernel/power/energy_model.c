@@ -187,7 +187,7 @@ static int em_create_perf_table(struct device *dev, struct em_perf_domain *pd,
 
 	/* Compute the cost of each performance state. */
 	fmax = (u64) table[nr_states - 1].frequency;
-	for (i = nr_states - 1; i >= 0; i--) {
+	for (i = 0; i < nr_states; i++) {
 		unsigned long power_res = em_scale_power(table[i].power);
 
 		table[i].cost = div64_u64(fmax * power_res,
