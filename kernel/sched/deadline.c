@@ -1419,6 +1419,9 @@ s64 dl_scaled_delta_exec(struct rq *rq, struct sched_dl_entity *dl_se, s64 delta
 	return scaled_delta_exec;
 }
 
+static inline void
+update_stats_dequeue_dl(struct dl_rq *dl_rq, struct sched_dl_entity *dl_se,
+			int flags);
 static void update_curr_dl_se(struct rq *rq, struct sched_dl_entity *dl_se, s64 delta_exec)
 {
 	s64 scaled_delta_exec;
@@ -1487,8 +1490,10 @@ throttle:
 			dl_se->dl_overrun = 1;
 
 		dequeue_dl_entity(dl_se, 0);
-		if (!dl_server(dl_se))
+		if (!dl_server(dl_se)) {
+			update_stats_dequeue_dl(&rq->dl, dl_se, 0);
 			dequeue_pushable_dl_task(rq, dl_task_of(dl_se));
+		}
 
 		if (unlikely(dl_se->dl_boosted || !start_dl_timer(dl_se))) {
 			if (dl_server(dl_se))
@@ -1865,6 +1870,82 @@ static inline bool __dl_less(struct rb_node *a, const struct rb_node *b)
 	return dl_time_before(__node_2_dle(a)->deadline, __node_2_dle(b)->deadline);
 }
 
+static inline struct sched_statistics *
+__schedstats_from_dl_se(struct sched_dl_entity *dl_se)
+{
+	return &dl_task_of(dl_se)->stats;
+}
+
+static inline void
+update_stats_wait_start_dl(struct dl_rq *dl_rq, struct sched_dl_entity *dl_se)
+{
+	struct sched_statistics *stats;
+
+	if (!schedstat_enabled())
+		return;
+
+	stats = __schedstats_from_dl_se(dl_se);
+	__update_stats_wait_start(rq_of_dl_rq(dl_rq), dl_task_of(dl_se), stats);
+}
+
+static inline void
+update_stats_wait_end_dl(struct dl_rq *dl_rq, struct sched_dl_entity *dl_se)
+{
+	struct sched_statistics *stats;
+
+	if (!schedstat_enabled())
+		return;
+
+	stats = __schedstats_from_dl_se(dl_se);
+	__update_stats_wait_end(rq_of_dl_rq(dl_rq), dl_task_of(dl_se), stats);
+}
+
+static inline void
+update_stats_enqueue_sleeper_dl(struct dl_rq *dl_rq, struct sched_dl_entity *dl_se)
+{
+	struct sched_statistics *stats;
+
+	if (!schedstat_enabled())
+		return;
+
+	stats = __schedstats_from_dl_se(dl_se);
+	__update_stats_enqueue_sleeper(rq_of_dl_rq(dl_rq), dl_task_of(dl_se), stats);
+}
+
+static inline void
+update_stats_enqueue_dl(struct dl_rq *dl_rq, struct sched_dl_entity *dl_se,
+			int flags)
+{
+	if (!schedstat_enabled())
+		return;
+
+	if (flags & ENQUEUE_WAKEUP)
+		update_stats_enqueue_sleeper_dl(dl_rq, dl_se);
+}
+
+static inline void
+update_stats_dequeue_dl(struct dl_rq *dl_rq, struct sched_dl_entity *dl_se,
+			int flags)
+{
+	struct task_struct *p = dl_task_of(dl_se);
+
+	if (!schedstat_enabled())
+		return;
+
+	if ((flags & DEQUEUE_SLEEP)) {
+		unsigned int state;
+
+		state = READ_ONCE(p->state);
+		if (state & TASK_INTERRUPTIBLE)
+			__schedstat_set(p->stats.sleep_start,
+					rq_clock(rq_of_dl_rq(dl_rq)));
+
+		if (state & TASK_UNINTERRUPTIBLE)
+			__schedstat_set(p->stats.block_start,
+					rq_clock(rq_of_dl_rq(dl_rq)));
+	}
+}
+
 static void __enqueue_dl_entity(struct sched_dl_entity *dl_se)
 {
 	struct dl_rq *dl_rq = dl_rq_of_se(dl_se);
@@ -1895,6 +1976,8 @@ enqueue_dl_entity(struct sched_dl_entity *dl_se,
 		  struct sched_dl_entity *pi_se, int flags)
 {
 	BUG_ON(on_dl_rq(dl_se));
+
+	update_stats_enqueue_dl(dl_rq_of_se(dl_se), dl_se, flags);
 
 	/*
 	 * Check if a constrained deadline task was activated
@@ -2047,6 +2130,9 @@ static void enqueue_task_dl(struct rq *rq, struct task_struct *p, int flags)
 		BUG_ON(!p->dl.dl_boosted || flags != ENQUEUE_REPLENISH);
 		return;
 	}
+
+	check_schedstat_required();
+	update_stats_wait_start_dl(dl_rq_of_se(&p->dl), &p->dl);
 
 	if (p->on_rq == TASK_ON_RQ_MIGRATING)
 		flags |= ENQUEUE_MIGRATING;
@@ -2266,7 +2352,12 @@ static void start_hrtick_dl(struct rq *rq, struct sched_dl_entity *dl_se)
 
 static void set_next_task_dl(struct rq *rq, struct task_struct *p)
 {
+	struct sched_dl_entity *dl_se = &p->dl;
+	struct dl_rq *dl_rq = &rq->dl;
+
 	p->se.exec_start = rq_clock_task(rq);
+	if (on_dl_rq(&p->dl))
+		update_stats_wait_end_dl(dl_rq, dl_se);
 
 	/* You can't push away the running task */
 	dequeue_pushable_dl_task(rq, p);
@@ -2352,6 +2443,12 @@ static struct task_struct *pick_next_task_dl(struct rq *rq)
 
 static void put_prev_task_dl(struct rq *rq, struct task_struct *p)
 {
+	struct sched_dl_entity *dl_se = &p->dl;
+	struct dl_rq *dl_rq = &rq->dl;
+
+	if (on_dl_rq(&p->dl))
+		update_stats_wait_start_dl(dl_rq, dl_se);
+
 	update_curr_dl(rq);
 
 	update_dl_rq_load_avg(rq_clock_pelt(rq), rq, 1);
