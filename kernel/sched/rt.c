@@ -1427,35 +1427,35 @@ static inline void
 update_stats_enqueue_wakeup(struct rq *rq, struct task_struct *p)
 {
 #ifdef CONFIG_SCHEDSTATS
-	struct sched_entity *se = &p->se;
-	if (se->statistics.sleep_start) {
-		u64 delta = rq_clock(rq) - se->statistics.sleep_start;
+	struct task_struct *curr = rq->curr;
+	if (curr->stats.sleep_start) {
+		u64 delta = rq_clock(rq) - curr->stats.sleep_start;
 		if ((s64)delta < 0)
 			delta = 0;
 
-		if (unlikely(delta > se->statistics.sleep_max))
-			se->statistics.sleep_max = delta;
+		if (unlikely(delta > curr->stats.sleep_max))
+			curr->stats.sleep_max = delta;
 
-		se->statistics.sleep_start = 0;
-		se->statistics.sum_sleep_runtime += delta;
+		curr->stats.sleep_start = 0;
+		curr->stats.sum_sleep_runtime += delta;
 
 		account_scheduler_latency(p, delta >> 10, 1);
 		trace_sched_stat_sleep(p, delta);
 	}
-	if (se->statistics.block_start) {
-		u64 delta = rq_clock(rq) - se->statistics.block_start;
+	if (curr->stats.block_start) {
+		u64 delta = rq_clock(rq) - curr->stats.block_start;
 		if ((s64)delta < 0)
 			delta = 0;
 
-		if (unlikely(delta > se->statistics.block_max))
-			se->statistics.block_max = delta;
+		if (unlikely(delta > curr->stats.block_max))
+			curr->stats.block_max = delta;
 
-		se->statistics.block_start = 0;
-		se->statistics.sum_sleep_runtime += delta;
+		curr->stats.block_start = 0;
+		curr->stats.sum_sleep_runtime += delta;
 
 		if (p->in_iowait) {
-			se->statistics.iowait_sum += delta;
-			se->statistics.iowait_count++;
+			curr->stats.iowait_sum += delta;
+			curr->stats.iowait_count++;
 			trace_sched_stat_iowait(p, delta);
 		}
 
@@ -1513,11 +1513,11 @@ static inline void
 update_stats_dequeue_sleep(struct rq *rq, struct task_struct *p)
 {
 #ifdef CONFIG_SCHEDSTATS
-	struct sched_entity *se = &p->se;
+	struct sched_entity *curr = rq->curr;
 	if (p->state & TASK_INTERRUPTIBLE)
-		se->statistics.sleep_start = rq_clock(rq);
+		curr->stats.sleep_start = rq_clock(rq);
 	if (p->state & TASK_UNINTERRUPTIBLE)
-		se->statistics.block_start = rq_clock(rq);
+		curr->stats.block_start = rq_clock(rq);
 #endif
 }
 
