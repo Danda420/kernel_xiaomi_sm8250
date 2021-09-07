@@ -504,6 +504,8 @@ struct binder_priority {
  *                        when outstanding transactions are cleaned up
  *                        (protected by @inner_lock)
  * @sync_recv:            process received sync transactions since last frozen
+ *                        bit 0: received sync transaction after being frozen
+ *                        bit 1: new pending sync transaction during freezing
  *                        (protected by @inner_lock)
  * @async_recv:           process received async transactions since last frozen
  *                        (protected by @inner_lock)
@@ -3711,9 +3713,8 @@ static void binder_transaction(struct binder_proc *proc,
 	if (reply) {
 		binder_enqueue_thread_work(thread, tcomplete);
 		binder_inner_proc_lock(target_proc);
-		if (target_thread->is_dead || target_proc->is_frozen) {
-			return_error = target_thread->is_dead ?
-				BR_DEAD_REPLY : BR_FROZEN_REPLY;
+		if (target_thread->is_dead) {
+			return_error = BR_DEAD_REPLY;
 			binder_inner_proc_unlock(target_proc);
 			goto err_dead_proc_or_thread;
 		}
@@ -5317,9 +5318,6 @@ static int binder_ioctl_get_freezer_info(
 	struct binder_proc *target_proc;
 	bool found = false;
 	__u32 txns_pending;
-
-	info->sync_recv = 0;
-	info->async_recv = 0;
 
 	info->sync_recv = 0;
 	info->async_recv = 0;
