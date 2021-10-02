@@ -1194,6 +1194,7 @@ static int map_delete_elem(union bpf_attr *attr)
 	rcu_read_unlock();
 	bpf_enable_instrumentation();
 	maybe_wait_bpf_programs(map);
+
 out:
 	kfree(key);
 err_put:
