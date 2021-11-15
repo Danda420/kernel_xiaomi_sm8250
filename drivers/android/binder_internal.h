@@ -13,6 +13,7 @@
 #include <linux/types.h>
 #include <linux/uidgid.h>
 #include <uapi/linux/android/binderfs.h>
+#include <uapi/linux/eventpoll.h>
 #include "binder_alloc.h"
 
 struct binder_context {

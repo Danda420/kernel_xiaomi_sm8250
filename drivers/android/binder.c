@@ -65,7 +65,6 @@
 #include <linux/ratelimit.h>
 #include <linux/syscalls.h>
 #include <linux/task_work.h>
-#include <linux/android_vendor.h>
 
 #include <uapi/linux/sched/types.h>
 #include <uapi/linux/android/binder.h>
@@ -3194,7 +3193,6 @@ static void binder_transaction(struct binder_proc *proc,
 		target_proc->outstanding_txns++;
 		binder_inner_proc_unlock(target_proc);
 		wake_up_interruptible_sync(&target_thread->wait);
-		trace_android_vh_binder_restore_priority(in_reply_to, current);
 		binder_restore_priority(current, in_reply_to->saved_priority);
 		binder_free_transaction(in_reply_to);
 	} else if (!(t->flags & TF_ONE_WAY)) {
@@ -3308,7 +3306,6 @@ err_invalid_target_handle:
 
 	BUG_ON(thread->return_error.cmd != BR_OK);
 	if (in_reply_to) {
-		trace_android_vh_binder_restore_priority(in_reply_to, current);
 		binder_restore_priority(current, in_reply_to->saved_priority);
 		thread->return_error.cmd = BR_TRANSACTION_COMPLETE;
 		binder_enqueue_thread_work(thread, &thread->return_error.work);
@@ -3382,12 +3379,14 @@ static int binder_thread_write(struct binder_proc *proc,
 		if (get_user(cmd, (uint32_t __user *)ptr))
 			return -EFAULT;
 		ptr += sizeof(uint32_t);
+#ifdef CONFIG_ANDROID_BINDER_LOGS
 		trace_binder_command(cmd);
 		if (_IOC_NR(cmd) < ARRAY_SIZE(binder_stats.bc)) {
 			atomic_inc(&binder_stats.bc[_IOC_NR(cmd)]);
 			atomic_inc(&proc->stats.bc[_IOC_NR(cmd)]);
 			atomic_inc(&thread->stats.bc[_IOC_NR(cmd)]);
 		}
+#endif
 		switch (cmd) {
 		case BC_INCREFS:
 		case BC_ACQUIRE:
@@ -3807,12 +3806,14 @@ static int binder_thread_write(struct binder_proc *proc,
 static void binder_stat_br(struct binder_proc *proc,
 			   struct binder_thread *thread, uint32_t cmd)
 {
+#ifdef CONFIG_ANDROID_BINDER_LOGS
 	trace_binder_return(cmd);
 	if (_IOC_NR(cmd) < ARRAY_SIZE(binder_stats.br)) {
 		atomic_inc(&binder_stats.br[_IOC_NR(cmd)]);
 		atomic_inc(&proc->stats.br[_IOC_NR(cmd)]);
 		atomic_inc(&thread->stats.br[_IOC_NR(cmd)]);
 	}
+#endif
 }
 
 static int binder_put_node_cmd(struct binder_proc *proc,
@@ -3979,7 +3980,6 @@ retry:
 			wait_event_interruptible(binder_user_error_wait,
 						 binder_stop_on_user_error < 2);
 		}
-		trace_android_vh_binder_restore_priority(NULL, current);
 		binder_restore_priority(current, proc->default_priority);
 	}
 
