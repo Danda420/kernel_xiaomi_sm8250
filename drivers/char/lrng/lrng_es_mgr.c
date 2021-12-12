@@ -7,9 +7,10 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/preempt.h>
 #include <asm/irq_regs.h>
 #include <linux/percpu.h>
-#include <linux/random.h>
+#include <linux/random.h> /* TODO: #include <linux/lrng.h> may be required */
 #include <linux/utsname.h>
 #include <linux/workqueue.h>
 
@@ -274,8 +275,8 @@ int __init rand_initialize(void)
 	seed.time = ktime_get_real();
 
 	for (i = 0; i < ARRAY_SIZE(seed.data); i++) {
-		if (!arch_get_random_seed_long_early(&(seed.data[i])) &&
-		    !arch_get_random_long_early(&seed.data[i]))
+		if (!arch_get_random_seed_long(&(seed.data[i])) &&
+		    !arch_get_random_long(&seed.data[i]))
 			seed.data[i] = random_get_entropy();
 	}
 	memcpy(&seed.utsname, utsname(), sizeof(*(utsname())));
@@ -294,6 +295,7 @@ int __init rand_initialize(void)
 
 	return 0;
 }
+early_initcall(rand_initialize);
 
 /* Interface requesting a reseed of the DRNG */
 void lrng_pool_add_entropy(void)

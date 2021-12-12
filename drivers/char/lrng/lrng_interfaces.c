@@ -436,7 +436,7 @@ static ssize_t lrng_read_common(char __user *buf, size_t nbytes)
 
 	/* Wipe data just returned from memory */
 	if (tmp_large)
-		kfree_sensitive(tmp_large);
+		kzfree(tmp_large);
 	else
 		memzero_explicit(tmpbuf, sizeof(tmpbuf));
 
@@ -616,7 +616,6 @@ const struct file_operations random_fops = {
 	.write = lrng_drng_write,
 	.poll  = lrng_random_poll,
 	.unlocked_ioctl = lrng_ioctl,
-	.compat_ioctl = compat_ptr_ioctl,
 	.fasync = lrng_fasync,
 	.llseek = noop_llseek,
 };
@@ -625,7 +624,6 @@ const struct file_operations urandom_fops = {
 	.read  = lrng_drng_read,
 	.write = lrng_drng_write,
 	.unlocked_ioctl = lrng_ioctl,
-	.compat_ioctl = compat_ptr_ioctl,
 	.fasync = lrng_fasync,
 	.llseek = noop_llseek,
 };

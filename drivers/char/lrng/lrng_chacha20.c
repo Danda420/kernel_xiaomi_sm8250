@@ -29,7 +29,7 @@ struct chacha20_state {
  * kmalloc too early in the boot cycle. For subsequent allocation requests,
  * such as per-NUMA-node DRNG instances, kmalloc will be used.
  */
-struct chacha20_state chacha20 __latent_entropy;
+struct chacha20_state lrng_chacha20 __latent_entropy;
 
 /*
  * Update of the ChaCha20 state by either using an unused buffer part or by
@@ -175,21 +175,22 @@ static void lrng_cc20_drng_dealloc(void *drng)
 {
 	struct chacha20_state *chacha20_state = (struct chacha20_state *)drng;
 
-	if (drng == &chacha20) {
+	if (drng == &lrng_chacha20) {
 		memzero_explicit(chacha20_state, sizeof(*chacha20_state));
 		pr_debug("static ChaCha20 core zeroized\n");
 		return;
 	}
 
 	pr_debug("ChaCha20 core zeroized and freed\n");
-	kfree_sensitive(chacha20_state);
+	kzfree(chacha20_state);
 }
 
 /******************************* Hash Operation *******************************/
 
 #ifdef CONFIG_CRYPTO_LIB_SHA256
 
-#include <crypto/sha2.h>
+#include <crypto/sha.h>
+#include <linux/sha256.h>
 
 static u32 lrng_cc20_hash_digestsize(void *hash)
 {
@@ -231,7 +232,7 @@ static void lrng_cc20_hash_desc_zero(struct shash_desc *shash)
 
 #else /* CONFIG_CRYPTO_LIB_SHA256 */
 
-#include <crypto/sha1.h>
+#include <crypto/sha.h>
 #include <crypto/sha1_base.h>
 
 /*
