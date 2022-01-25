@@ -128,6 +128,18 @@ struct psi_trigger {
 	 * events to one per window
 	 */
 	u64 last_event_time;
+
+	/* Task that created the trigger */
+	char comm[TASK_COMM_LEN];
+	struct timer_list wdog_timer;
+
+	/*
+	 * Stall time growth for the last event in ns.
+	 */
+	u64 last_event_growth;
+
+	/* Deferred event(s) from previous ratelimit window */
+	bool pending_event;
 };
 
 struct psi_group {

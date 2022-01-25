@@ -517,7 +517,7 @@ static void init_triggers(struct psi_group *group, u64 now)
 static u64 update_triggers(struct psi_group *group, u64 now)
 {
 	struct psi_trigger *t;
-	bool new_stall = false;
+	bool update_total = false;
 	u64 *total = group->total[PSI_POLL];
 
 	/*
@@ -526,30 +526,44 @@ static u64 update_triggers(struct psi_group *group, u64 now)
 	 */
 	list_for_each_entry(t, &group->triggers, node) {
 		u64 growth;
+		bool new_stall;
 
-		/* Check for stall activity */
-		if (group->polling_total[t->state] == total[t->state])
+		new_stall = group->polling_total[t->state] != total[t->state];
+
+		/* Check for stall activity or a previous threshold breach */
+		if (!new_stall && !t->pending_event)
 			continue;
-
 		/*
-		 * Multiple triggers might be looking at the same state,
-		 * remember to update group->polling_total[] once we've
-		 * been through all of them. Also remember to extend the
-		 * polling time if we see new stall activity.
+		 * Check for new stall activity, as well as deferred
+		 * events that occurred in the last window after the
+		 * trigger had already fired (we want to ratelimit
+		 * events without dropping any).
 		 */
-		new_stall = true;
+		if (new_stall) {
+			/*
+			 * Multiple triggers might be looking at the same state,
+			 * remember to update group->polling_total[] once we've
+			 * been through all of them. Also remember to extend the
+			 * polling time if we see new stall activity.
+			 */
+			update_total = true;
 
-		/* Calculate growth since last update */
-		growth = window_update(&t->win, now, total[t->state]);
-		trace_psi_update_trigger_growth(t, now, growth);
+			/* Calculate growth since last update */
+			growth = window_update(&t->win, now, total[t->state]);
+			trace_psi_update_trigger_growth(t, now, growth);
+			if (growth < t->threshold)
+				continue;
 
-		if (growth < t->threshold)
-			continue;
-
+			t->pending_event = true;
+		}
 		/* Limit event signaling to once per window */
 		if (now < t->last_event_time + t->win.size)
 			continue;
 
+		t->last_event_time = now;
+		t->last_event_growth = growth;
+		/* Reset threshold breach flag once event got generated */
+		t->pending_event = false;
 		/* Generate an event */
 		if (cmpxchg(&t->event, 0, 1) == 0) {
 			trace_psi_update_trigger_wake_up(t, growth);
@@ -557,7 +571,7 @@ static u64 update_triggers(struct psi_group *group, u64 now)
 		}
 	}
 
-	if (new_stall)
+	if (update_total)
 		memcpy(group->polling_total, total,
 				sizeof(group->polling_total));
 
@@ -1112,6 +1126,9 @@ struct psi_trigger *psi_trigger_create(struct psi_group *group,
 	t->event = 0;
 	t->last_event_time = 0;
 	init_waitqueue_head(&t->event_wait);
+	get_task_comm(t->comm, current);
+	t->pending_event = false;
+	timer_setup(&t->wdog_timer, ulmk_watchdog_fn, TIMER_DEFERRABLE);
 
 	mutex_lock(&group->trigger_lock);
 
