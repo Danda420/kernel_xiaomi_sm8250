@@ -4540,6 +4540,9 @@ struct bpf_sock_ops {
 	__u32 sk_txhash;
 	__u64 bytes_received;
 	__u64 bytes_acked;
+	__u32 sk_uid;
+	__u32 voip_daddr;
+	__u32 voip_dport;
 	__bpf_md_ptr(struct bpf_sock *, sk);
 	/* [skb_data, skb_data_end) covers the whole TCP header.
 	 *
