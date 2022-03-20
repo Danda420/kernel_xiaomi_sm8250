@@ -485,6 +485,8 @@ void read_qseelog_wakeup(void)
 	}
 }
 
+static int tzdbg_request_encrypted_log(dma_addr_t buf_paddr,
+				       size_t len, uint32_t log_id);
 /*
  * Debugfs data structure and functions
  */
@@ -769,6 +771,7 @@ static int _disp_log_stats(struct tzdbg_log_t *log,
 			}
 	pr_debug("diag_buf wrap = %u, offset = %u\n",
 		log->log_pos.wrap, log->log_pos.offset);
+
 	while (log_start->offset == log->log_pos.offset) {
 		/*
 		 * No data in ring buffer,
