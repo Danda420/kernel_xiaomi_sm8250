@@ -719,9 +719,7 @@ static bool psci_enter_sleep(struct lpm_cpu *cpu, int idx, bool from_idle)
 	 */
 
 	if (!idx) {
-		stop_critical_timings();
 		cpu_do_idle();
-		start_critical_timings();
 		return true;
 	}
 
@@ -735,11 +733,7 @@ static bool psci_enter_sleep(struct lpm_cpu *cpu, int idx, bool from_idle)
 	affinity_level = PSCI_AFFINITY_LEVEL(affinity_level);
 	state_id += power_state + affinity_level + cpu->levels[idx].psci_id;
 
-	stop_critical_timings();
-
 	success = !arm_cpuidle_suspend(state_id);
-
-	start_critical_timings();
 
 	if (from_idle && cpu->levels[idx].use_bc_timer)
 		tick_broadcast_exit();
@@ -782,9 +776,7 @@ exit:
 
 	cluster_unprepare(cpu->parent, cpumask, idx, true, 0, success);
 	cpu_unprepare(cpu, idx, true);
-	dev->last_residency = ktime_us_delta(ktime_get(), start);
 	RCU_NONIDLE(trace_cpu_idle_exit(idx, success));
-	local_irq_enable();
 	return idx;
 }
 
