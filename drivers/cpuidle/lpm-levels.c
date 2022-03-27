@@ -1003,7 +1003,7 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 	if (need_resched())
 		goto exit;
 
-	cpu_do_idle();
+	wfi();
 	success = true;
 
 exit:
