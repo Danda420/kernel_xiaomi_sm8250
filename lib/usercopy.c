@@ -2,6 +2,7 @@
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
 #include <linux/nospec.h>
+#include <linux/bitops.h>
 
 /* out-of-line parts */
 
