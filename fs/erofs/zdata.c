@@ -732,13 +732,11 @@ static void z_erofs_vle_unzip_kickoff(void *ptr, int bios)
 	struct z_erofs_unzip_io *io = tagptr_unfold_ptr(t);
 	bool background = tagptr_unfold_tags(t);
 
-	if (!background) {
-		unsigned long flags;
-
-		spin_lock_irqsave(&io->u.wait.lock, flags);
+	/* wake up the caller thread for sync decompression */
+	if (sync) {
 		if (!atomic_add_return(bios, &io->pending_bios))
-			wake_up_locked(&io->u.wait);
-		spin_unlock_irqrestore(&io->u.wait.lock, flags);
+			complete(&io->u.done);
+
 		return;
 	}
 
@@ -1160,13 +1158,18 @@ static struct z_erofs_unzip_io *jobqueue_init(struct super_block *sb,
 {
 	struct z_erofs_unzip_io_sb *iosb;
 
-	if (foreground) {
-		/* waitqueue available for foreground io */
-		DBG_BUGON(!io);
-
-		init_waitqueue_head(&io->u.wait);
-		atomic_set(&io->pending_bios, 0);
-		goto out;
+	if (fg && !*fg) {
+		q = kvzalloc(sizeof(*q), GFP_KERNEL | __GFP_NOWARN);
+		if (!q) {
+			*fg = true;
+			goto fg_out;
+		}
+		INIT_WORK(&q->u.work, z_erofs_decompressqueue_work);
+	} else {
+fg_out:
+		q = fgq;
+		init_completion(&fgq->u.done);
+		atomic_set(&fgq->pending_bios, 0);
 	}
 
 	iosb = kvzalloc(sizeof(*iosb), GFP_KERNEL | __GFP_NOFAIL);
@@ -1364,8 +1367,7 @@ static void z_erofs_submit_and_unzip(struct super_block *sb,
 		return;
 
 	/* wait until all bios are completed */
-	io_wait_event(io[JQ_SUBMIT].u.wait,
-		      !atomic_read(&io[JQ_SUBMIT].pending_bios));
+	wait_for_completion_io(&io[JQ_SUBMIT].u.done);
 
 	/* let's synchronous decompression */
 	z_erofs_vle_unzip_all(sb, &io[JQ_SUBMIT], pagepool);
