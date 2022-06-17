@@ -14,6 +14,11 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 
+#define arch_get_random_seed_long_early arch_get_random_seed_long
+#define arch_get_random_long_early arch_get_random_long
+
+#define kfree_sensitive kzfree
+
 /*************************** General LRNG parameter ***************************/
 
 /* Security strength of LRNG -- this must match DRNG security strength */
