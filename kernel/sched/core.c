@@ -5333,9 +5333,9 @@ unsigned long effective_cpu_util(int cpu, unsigned long util_cfs,
 	return min(scale, util);
 }
 
-unsigned long sched_cpu_util(int cpu, unsigned long max)
+unsigned long sched_cpu_util(int cpu)
 {
-	return effective_cpu_util(cpu, cpu_util_cfs(cpu_rq(cpu)), NULL, &max);
+	return effective_cpu_util(cpu, cpu_util_cfs(cpu_rq(cpu)), NULL, NULL);
 }
 #endif
 
