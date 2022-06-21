@@ -55,6 +55,7 @@ static unsigned int aggr_big_nr;
 static unsigned int aggr_top_load;
 static unsigned int top_load[CLUSTER_MAX];
 static unsigned int curr_cap[CLUSTER_MAX];
+extern int kp_active_mode(void);
 
 /*******************************sysfs start************************************/
 static int set_touchboost(const char *buf, const struct kernel_param *kp)
@@ -92,6 +93,9 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 
  	if (touchboost == 0)
  		cp = reset;
+
+	if (kp_active_mode() == 1)
+	  return 0;
 
 	while ((cp = strpbrk(cp + 1, " :")))
 		ntokens++;
@@ -173,6 +177,9 @@ static int set_cpu_max_freq(const char *buf, const struct kernel_param *kp)
 	struct cpu_status *i_cpu_stats;
 	struct cpufreq_policy policy;
 	cpumask_var_t limit_mask;
+
+	if (kp_active_mode() == 1)
+	  return 0;
 
 	while ((cp = strpbrk(cp + 1, " :")))
 		ntokens++;
