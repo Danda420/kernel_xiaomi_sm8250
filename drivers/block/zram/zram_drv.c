@@ -1218,7 +1218,9 @@ static void zram_free_page(struct zram *zram, size_t index)
 	struct zram_entry *entry;
 	bool is_deduped;
 
+#ifdef CONFIG_ZRAM_MEMORY_TRACKING
 	zram->table[index].ac_time = 0;
+#endif
 	if (zram_test_flag(zram, index, ZRAM_IDLE))
 		zram_clear_flag(zram, index, ZRAM_IDLE);
 
