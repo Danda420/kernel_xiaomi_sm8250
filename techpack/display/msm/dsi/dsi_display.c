@@ -1047,8 +1047,6 @@ static void _dsi_display_setup_misr(struct dsi_display *display)
 	}
 }
 
-extern void zram_set_screen_state(bool on);
-
 int dsi_display_set_power(struct drm_connector *connector,
 		int power_mode, void *disp)
 {
@@ -1106,11 +1104,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 			rc = dsi_panel_set_nolp(display->panel);
 			mi_drm_notifier_call_chain(MI_DRM_EVENT_BLANK, &notify_data);
 		}
-		zram_set_screen_state(true);
 		break;
 	case SDE_MODE_DPMS_OFF:
-		zram_set_screen_state(false);
-		break;
 	default:
 		return rc;
 	}
