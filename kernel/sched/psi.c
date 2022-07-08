@@ -1299,7 +1299,6 @@ __poll_t psi_trigger_poll(void **trigger_ptr,
 		if (!strcmp(t->comm, ULMK_MAGIC))
 			ulmk_watchdog_pet(&t->wdog_timer);
 	}
-
 	return ret;
 }
 
