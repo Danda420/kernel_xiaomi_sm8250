@@ -1258,7 +1258,7 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		return 0;
 	}
 
-	if (!strcmp(name, "modem"))
+	if (!strcmp(name, "modem") || !strcmp(name, "adsp"))
 		dev->restart_level = RESET_SUBSYS_COUPLED;
 
         __subsystem_restart_dev(dev);
