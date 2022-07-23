@@ -3720,8 +3720,8 @@ static int dwc_dpdm_cb(struct notifier_block *nb, unsigned long evt, void *p)
 
 	return NOTIFY_OK;
 }
-
-void usb_reset_host(void)
+static ssize_t usb_data_enabled_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
 {
 	struct dwc3_msm *mdwc = container_of(rst_work, struct dwc3_msm, rst_work);
 	if (rst_work != NULL)
