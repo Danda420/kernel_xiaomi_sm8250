@@ -60,13 +60,14 @@
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
 				qcom,mdss-dsi-panel-clockrate = <1100000000>;
+				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
 				qcom,mdss-mdp-transfer-time-us = <14000>;
 				qcom,mdss-dsi-on-command = [
-					/* 1 Sleep Out */
-					05 01 00 00 0A 00 02 11 00            /* Sleep Out */
+					/* Sleep Out, Wait 10 ms */
+					05 01 00 00 0A 00 01 11
 					/* 3 Common Setting */
 					/* 3.1 TE(Vsync) On/Off */
-					39 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
+					15 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
 					/* DSC Setting */
 					39 01 00 00 00 00 02 9D 01            /* Compression Enable */
 					39 01 00 00 00 00 81 9E               /* PPS Setting */
@@ -147,7 +148,7 @@
 					/* 5 Display On */
 					05 01 00 00 00 00 02 29 00
 					/* 60hz Frequency Select*/
-					39 01 00 00 00 00 02 60 00];
+					15 01 00 00 00 00 02 60 00];
 				qcom,mdss-dsi-off-command = [
 					05 01 00 00 14 00 02 28 00
 					/* Default Frequency Setting */
@@ -207,13 +208,14 @@
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
 				qcom,mdss-dsi-panel-clockrate = <1100000000>;
+				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
 				qcom,mdss-mdp-transfer-time-us = <7000>;
 				qcom,mdss-dsi-on-command = [
-					/* 1 Sleep Out */
-					05 01 00 00 0A 00 02 11 00            /* Sleep Out */
+					/* Sleep Out, Wait 10 ms */
+					05 01 00 00 0A 00 01 11
 					/* 3 Common Setting */
 					/* 3.1 TE(Vsync) On/Off */
-					39 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
+					15 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
 					/* DSC Setting */
 					39 01 00 00 00 00 02 9D 01            /* Compression Enable */
 					39 01 00 00 00 00 81 9E               /* PPS Setting */
