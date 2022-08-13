@@ -2636,6 +2636,7 @@ static QDF_STATUS sap_fsm_state_starting(struct sap_context *sap_ctx,
 					  QDF_TRACE_LEVEL_INFO_HIGH,
 					FL("skip cac timer"));
 				mac_ctx->sap.SapDfsInfo.sap_radar_found_status = false;
+
 				/*
 				 * If hostapd starts AP on dfs channel,
 				 * hostapd will wait for CAC START/CAC END
