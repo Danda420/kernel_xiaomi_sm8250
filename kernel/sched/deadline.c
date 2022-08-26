@@ -743,6 +743,14 @@ static void enqueue_task_dl(struct rq *rq, struct task_struct *p, int flags);
 static void dequeue_dl_entity(struct sched_dl_entity *dl_se, int flags);
 static void check_preempt_curr_dl(struct rq *rq, struct task_struct *p, int flags);
 
+static inline void replenish_dl_new_period(struct sched_dl_entity *dl_se,
+					    struct rq *rq)
+{
+	/* for non-boosted task, pi_of(dl_se) == dl_se */
+	dl_se->deadline = rq_clock(rq) + pi_of(dl_se)->dl_deadline;
+	dl_se->runtime = pi_of(dl_se)->dl_runtime;
+}
+
 /*
  * We are being explicitly informed that a new instance is starting,
  * and this means that:
@@ -776,8 +784,7 @@ static inline void setup_new_dl_entity(struct sched_dl_entity *dl_se)
 	 * future; in fact, we must consider execution overheads (time
 	 * spent on hardirq context, etc.).
 	 */
-	dl_se->deadline = rq_clock(rq) + dl_se->dl_deadline;
-	dl_se->runtime = dl_se->dl_runtime;
+	replenish_dl_new_period(dl_se, rq);
 }
 
 static int start_dl_timer(struct sched_dl_entity *dl_se);
@@ -849,8 +856,7 @@ static void replenish_dl_entity(struct sched_dl_entity *dl_se)
 	 */
 	if (dl_time_before(dl_se->deadline, rq_clock(rq))) {
 		printk_deferred_once("sched: DL replenish lagged too much\n");
-		dl_se->deadline = rq_clock(rq) + pi_of(dl_se)->dl_deadline;
-		dl_se->runtime = pi_of(dl_se)->dl_runtime;
+		replenish_dl_new_period(dl_se, rq);
 	}
 
 	if (dl_se->dl_yielded)
@@ -1044,8 +1050,7 @@ static void update_dl_entity(struct sched_dl_entity *dl_se)
 			return;
 		}
 
-		dl_se->deadline = rq_clock(rq) + pi_of(dl_se)->dl_deadline;
-		dl_se->runtime = pi_of(dl_se)->dl_runtime;
+		replenish_dl_new_period(dl_se, rq);
 	} else if (dl_server(dl_se) && dl_se->dl_defer) {
 		/*
 		 * The server can still use its previous deadline, so check if
