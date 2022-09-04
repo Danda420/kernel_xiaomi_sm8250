@@ -2146,7 +2146,7 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 			return ERR_PTR(ret);
 		}
 
-		cgrp_dfl_visible = true;
+		WRITE_ONCE(cgrp_dfl_visible, true);
 		cgroup_get_live(&cgrp_dfl_root.cgrp);
 
 		dentry = cgroup_do_mount(&cgroup2_fs_type, flags, &cgrp_dfl_root,
@@ -5867,7 +5867,7 @@ int proc_cgroup_show(struct seq_file *m, struct pid_namespace *ns,
 		struct cgroup *cgrp;
 		int ssid, count = 0;
 
-		if (root == &cgrp_dfl_root && !cgrp_dfl_visible)
+		if (root == &cgrp_dfl_root && !READ_ONCE(cgrp_dfl_visible))
 			continue;
 
 		seq_printf(m, "%d:", root->hierarchy_id);
