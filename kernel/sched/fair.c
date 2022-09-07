@@ -7110,10 +7110,6 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 	s64 delta;
 	int cpu, nr = INT_MAX;
 
-	this_sd = rcu_dereference(*this_cpu_ptr(&sd_llc));
-	if (!this_sd)
-		return -1;
-
 	/*
 	 * Due to large variance we need a large fuzz factor; hackbench in
 	 * particularly is sensitive here.
@@ -7126,6 +7122,11 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 
 	if (sched_feat(SIS_PROP)) {
 		u64 span_avg = sd->span_weight * avg_idle;
+
+		this_sd = rcu_dereference(*this_cpu_ptr(&sd_llc));
+		if (!this_sd)
+			return -1;
+
 		if (span_avg > 4*avg_cost)
 			nr = div_u64(span_avg, avg_cost);
 		else
