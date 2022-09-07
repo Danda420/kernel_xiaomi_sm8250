@@ -7037,9 +7037,6 @@ static int select_idle_core(struct task_struct *p, struct sched_domain *sd, int 
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(select_idle_mask);
 	int core, cpu;
 
-	if (!static_branch_likely(&sched_smt_present))
-		return -1;
-
 	if (!test_idle_cores(target, false))
 		return -1;
 
