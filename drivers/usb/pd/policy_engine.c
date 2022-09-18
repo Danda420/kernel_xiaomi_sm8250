@@ -5600,9 +5600,6 @@ static void usbpd_pdo_workfunc(struct work_struct *w)
 					usbpd_info(&pd->dev, "weak pps detect\n");
 				}
 			}
-			pd->pps_found = true;
-			pd->pps_insert = true;
-		}
 		usbpd_info(&pd->dev, "%s max_volt:%d,min_volt:%d,max_curr:%d\n",
 				(PD_SRC_PDO_TYPE(pdo) == PD_SRC_PDO_TYPE_AUGMENTED) ? "PPS" : "PD2.0",
 				max_volt, min_volt, max_curr);
