@@ -2174,6 +2174,12 @@ void set_cpus_allowed_common(struct task_struct *p, struct affinity_context *ctx
 
 	cpumask_copy(&p->cpus_mask, ctx->new_mask);
 	p->nr_cpus_allowed = cpumask_weight(ctx->new_mask);
+
+	/*
+	 * Swap in a new user_cpus_ptr if SCA_USER flag set
+	 */
+	if (ctx->flags & SCA_USER)
+		swap(p->user_cpus_ptr, ctx->user_mask);
 }
 
 static void
@@ -2234,6 +2240,8 @@ void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 int dup_user_cpus_ptr(struct task_struct *dst, struct task_struct *src,
 		      int node)
 {
+	unsigned long flags;
+
 	if (!src->user_cpus_ptr)
 		return 0;
 
@@ -2241,7 +2249,10 @@ int dup_user_cpus_ptr(struct task_struct *dst, struct task_struct *src,
 	if (!dst->user_cpus_ptr)
 		return -ENOMEM;
 
+	/* Use pi_lock to protect content of user_cpus_ptr */
+	raw_spin_lock_irqsave(&src->pi_lock, flags);
 	cpumask_copy(dst->user_cpus_ptr, src->user_cpus_ptr);
+	raw_spin_unlock_irqrestore(&src->pi_lock, flags);
 	return 0;
 }
 
@@ -6858,9 +6869,8 @@ static bool task_is_unity_game(struct task_struct *p)
 
 long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 {
-	struct affinity_context ac = {
-		.new_mask = in_mask,
-	};
+	struct affinity_context ac;
+	struct cpumask *user_mask;
 	cpumask_var_t cpus_allowed, new_mask;
 	struct task_struct *p;
 	int retval = 0;
@@ -6937,7 +6947,19 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 		rcu_read_unlock();
 	}
 #endif
-again:
+
+	user_mask = kmalloc(cpumask_size(), GFP_KERNEL);
+	if (!user_mask) {
+		retval = -ENOMEM;
+		goto out_put_task;
+	}
+	cpumask_copy(user_mask, in_mask);
+	ac = (struct affinity_context){
+		.new_mask  = in_mask,
+		.user_mask = user_mask,
+		.flags     = SCA_USER,
+	};
+
 	retval = __set_cpus_allowed_ptr(p, &ac);
 	if (!retval) {
 		cpuset_cpus_allowed(p, cpus_allowed);
@@ -6948,9 +6970,28 @@ again:
 			 * cpuset's cpus_allowed
 			 */
 			cpumask_copy(new_mask, cpus_allowed);
-			goto again;
+
+			/*
+			 * If SCA_USER is set, a 2nd call to __set_cpus_allowed_ptr()
+			 * will restore the previous user_cpus_ptr value.
+			 *
+			 * In the unlikely event a previous user_cpus_ptr exists,
+			 * we need to further restrict the mask to what is allowed
+			 * by that old user_cpus_ptr.
+			 */
+			if (unlikely((ac.flags & SCA_USER) && ac.user_mask)) {
+				bool empty = !cpumask_and(new_mask, new_mask,
+							  ac.user_mask);
+
+				if (WARN_ON_ONCE(empty))
+					cpumask_copy(new_mask, cpus_allowed);
+			}
+			__set_cpus_allowed_ptr(p, &ac);
+			retval = -EINVAL;
 		}
 	}
+	kfree(ac.user_mask);
+
 out_free_new_mask:
 	free_cpumask_var(new_mask);
 out_free_cpus_allowed:
