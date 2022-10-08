@@ -34,6 +34,7 @@ static LIST_HEAD(perf_crit_irqs);
 static DEFINE_RAW_SPINLOCK(perf_irqs_lock);
 static int perf_cpu_index = -1;
 static int prime_cpu_index = -1;
+static int lp_cpu_index = -1;
 static bool perf_crit_suspended;
 
 #ifdef CONFIG_IRQ_FORCED_THREADING
@@ -1295,8 +1296,10 @@ static void affine_one_perf_thread(struct irqaction *action)
 
 	if (action->flags & IRQF_PERF_AFFINE)
 		mask = cpu_perf_mask;
-	else
+	else if (action->flags & IRQF_PRIME_AFFINE)
 		mask = cpu_prime_mask;
+	else
+		mask = cpu_lp_mask;
 
 	action->thread->flags |= PF_PERF_CRITICAL;
 	set_cpus_allowed_ptr(action->thread, mask);
@@ -1320,9 +1323,12 @@ static void affine_one_perf_irq(struct irq_desc *desc, unsigned int perf_flag)
 	if (perf_flag & IRQF_PERF_AFFINE) {
 		mask = cpu_perf_mask;
 		mask_index = &perf_cpu_index;
-	} else {
+	} else if (perf_flag & IRQF_PRIME_AFFINE) {
 		mask = cpu_prime_mask;
 		mask_index = &prime_cpu_index;
+	} else {
+		mask = cpu_lp_mask;
+		mask_index = &lp_cpu_index;
 	}
 
 	if (!cpumask_intersects(mask, cpu_online_mask)) {
@@ -1399,6 +1405,7 @@ void reaffine_perf_irqs(bool from_hotplug)
 		perf_crit_suspended = false;
 		perf_cpu_index = -1;
 		prime_cpu_index = -1;
+		lp_cpu_index = -1;
 		list_for_each_entry(data, &perf_crit_irqs, list) {
 			struct irq_desc *desc = data->desc;
 
@@ -1683,7 +1690,7 @@ __setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
 			irqd_set(&desc->irq_data, IRQD_NO_BALANCING);
 		}
 
-		if (new->flags & (IRQF_PERF_AFFINE | IRQF_PRIME_AFFINE)) {
+		if (new->flags & (IRQF_PERF_AFFINE | IRQF_PRIME_AFFINE | IRQF_LITTLE_AFFINE)) {
 			affine_one_perf_thread(new);
 			irqd_set(&desc->irq_data, IRQD_PERF_CRITICAL);
 			*old_ptr = new;
