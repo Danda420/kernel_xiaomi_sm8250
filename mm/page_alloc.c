@@ -4912,6 +4912,8 @@ fail:
 			goto got_pg;
 	}
 #endif
+	warn_alloc(gfp_mask, ac->nodemask,
+			"page allocation failure: order:%u", order);
 got_pg:
 	if (woke_kswapd)
 		atomic_long_dec(&kswapd_waiters);
