@@ -2950,8 +2950,12 @@ static inline void binder_thread_restore_inherit_top_app(struct binder_thread *t
  * If the @thread parameter is not NULL, the transaction is always queued
  * to the waitlist of that specific thread.
  *
- * Return:	true if the transactions was successfully queued
- *		false if the target process or thread is dead
+ * Return:	0 if the transaction was successfully queued
+ *		BR_DEAD_REPLY if the target process or thread is dead
+ *		BR_FROZEN_REPLY if the target process or thread is frozen and
+ *			the sync transaction was rejected
+ *		BR_TRANSACTION_PENDING_FROZEN if the target process is frozen
+ *		and the async transaction was successfully queued
  */
 static bool binder_proc_transaction(struct binder_transaction *t,
 				    struct binder_proc *proc,
@@ -2961,6 +2965,9 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	struct binder_priority node_prio;
 	bool oneway = !!(t->flags & TF_ONE_WAY);
 	bool pending_async = false;
+	bool skip = false;
+	struct binder_transaction *t_outdated = NULL;
+	bool frozen = false;
 
 	BUG_ON(!node);
 	binder_node_lock(node);
@@ -2977,11 +2984,16 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	}
 
 	binder_inner_proc_lock(proc);
-
-	if (proc->is_dead || (thread && thread->is_dead)) {
+	if (proc->is_frozen) {
+		frozen = true;
+		proc->sync_recv |= !oneway;
+		proc->async_recv |= oneway;
+	}
+	if ((frozen && !oneway) || proc->is_dead ||
+			(thread && thread->is_dead)) {
 		binder_inner_proc_unlock(proc);
 		binder_node_unlock(node);
-		return false;
+		return frozen ? BR_FROZEN_REPLY : BR_DEAD_REPLY;
 	}
 
 	if (!thread && !pending_async)
@@ -2997,6 +3009,17 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	} else if (!pending_async) {
 		binder_enqueue_work_ilocked(&t->work, &proc->todo);
 	} else {
+		if ((t->flags & TF_UPDATE_TXN) && frozen) {
+			t_outdated = binder_find_outdated_transaction_ilocked(t,
+									      &node->async_todo);
+			if (t_outdated) {
+				binder_debug(BINDER_DEBUG_TRANSACTION,
+					     "txn %d supersedes %d\n",
+					     t->debug_id, t_outdated->debug_id);
+				list_del_init(&t_outdated->work.entry);
+				proc->outstanding_txns--;
+			}
+		}
 		binder_enqueue_work_ilocked(&t->work, &node->async_todo);
 	}
 
@@ -3005,7 +3028,26 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	binder_inner_proc_unlock(proc);
 	binder_node_unlock(node);
 
-	return true;
+	/*
+	 * To reduce potential contention, free the outdated transaction and
+	 * buffer after releasing the locks.
+	 */
+	if (t_outdated) {
+		struct binder_buffer *buffer = t_outdated->buffer;
+
+		t_outdated->buffer = NULL;
+		buffer->transaction = NULL;
+		trace_binder_transaction_update_buffer_release(buffer);
+		binder_release_entire_buffer(proc, NULL, buffer, false);
+		binder_alloc_free_buf(&proc->alloc, buffer);
+		kfree(t_outdated);
+		binder_stats_deleted(BINDER_STAT_TRANSACTION);
+	}
+
+	if (oneway && frozen)
+		return BR_TRANSACTION_PENDING_FROZEN;
+
+	return 0;
 }
 
 /**
@@ -3717,11 +3759,17 @@ static void binder_transaction(struct binder_proc *proc,
 	} else {
 		BUG_ON(target_node == NULL);
 		BUG_ON(t->buffer->async_transaction != 1);
+		return_error = binder_proc_transaction(t, target_proc, NULL);
+		/*
+		 * Let the caller know when async transaction reaches a frozen
+		 * process and is put in a pending queue, waiting for the target
+		 * process to be unfrozen.
+		 */
+		if (return_error == BR_TRANSACTION_PENDING_FROZEN)
+			tcomplete->type = BINDER_WORK_TRANSACTION_PENDING;
 		binder_enqueue_thread_work(thread, tcomplete);
-#ifdef CONFIG_MIHW
-		t->timesRecord = binder_clock();
-#endif
-		if (!binder_proc_transaction(t, target_proc, NULL))
+		if (return_error &&
+		    return_error != BR_TRANSACTION_PENDING_FROZEN)
 			goto err_dead_proc_or_thread;
 	}
 	if (target_thread)
@@ -4495,7 +4543,16 @@ retry:
 
 			binder_stat_br(proc, thread, cmd);
 		} break;
-		case BINDER_WORK_TRANSACTION_COMPLETE: {
+		case BINDER_WORK_TRANSACTION_COMPLETE:
+		case BINDER_WORK_TRANSACTION_PENDING:
+		case BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT: {
+			if (proc->oneway_spam_detection_enabled &&
+				   w->type == BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT)
+				cmd = BR_ONEWAY_SPAM_SUSPECT;
+			else if (w->type == BINDER_WORK_TRANSACTION_PENDING)
+				cmd = BR_TRANSACTION_PENDING_FROZEN;
+			else
+				cmd = BR_TRANSACTION_COMPLETE;
 			binder_inner_proc_unlock(proc);
 			cmd = BR_TRANSACTION_COMPLETE;
 			kmem_cache_free(binder_work_pool, w);
@@ -6222,7 +6279,10 @@ static const char * const binder_return_strings[] = {
 	"BR_FINISHED",
 	"BR_DEAD_BINDER",
 	"BR_CLEAR_DEATH_NOTIFICATION_DONE",
-	"BR_FAILED_REPLY"
+	"BR_FAILED_REPLY",
+	"BR_FROZEN_REPLY",
+	"BR_ONEWAY_SPAM_SUSPECT",
+	"BR_TRANSACTION_PENDING_FROZEN"
 };
 
 static const char * const binder_command_strings[] = {
