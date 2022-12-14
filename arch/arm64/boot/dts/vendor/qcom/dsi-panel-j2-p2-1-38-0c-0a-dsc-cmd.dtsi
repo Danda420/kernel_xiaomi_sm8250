@@ -23,8 +23,8 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-reset-sequence = <0 1>, <1 6>;
-		qcom,mdss-pan-physical-width-dimension = <71>;
-		qcom,mdss-pan-physical-height-dimension = <154>;
+		qcom,mdss-pan-physical-width-dimension = <710>;
+		qcom,mdss-pan-physical-height-dimension = <1537>;
 		qcom,mdss-dsi-te-pin-select = <1>;
 		qcom,mdss-dsi-wr-mem-start = <0x2c>;
 		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
@@ -412,6 +412,7 @@
 	mi,mdss-dsi-panel-fod-dimlayer-enabled;
 	mi,mdss-panel-delay-before-fod-hbm-on;
 	mi,mdss-panel-delay-before-fod-hbm-off;
+	mi,mdss-panel-fod-skip-nolp;
 
 	mi,mdss-dsi-dimlayer-brightness-alpha-lut-item-count = <21>;
 	mi,mdss-dsi-dimlayer-brightness-alpha-lut =

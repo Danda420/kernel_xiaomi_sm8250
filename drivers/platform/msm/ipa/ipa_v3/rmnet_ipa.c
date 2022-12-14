@@ -489,8 +489,8 @@ static void ipa3_copy_qmi_flt_rule_ex(
 	 */
 	flt_spec_ptr = (struct ipa_filter_spec_ex_type_v01 *) flt_spec_ptr_void;
 
-	q6_ul_flt_rule_ptr->ip = flt_spec_ptr->ip_type;
-	q6_ul_flt_rule_ptr->action = flt_spec_ptr->filter_action;
+	//q6_ul_flt_rule_ptr->ip = flt_spec_ptr->ip_type;
+	//q6_ul_flt_rule_ptr->action = flt_spec_ptr->filter_action;
 	if (flt_spec_ptr->is_routing_table_index_valid == true)
 		q6_ul_flt_rule_ptr->rt_tbl_idx =
 		flt_spec_ptr->route_table_index;
@@ -2932,7 +2932,8 @@ static void tethering_stats_poll_queue(struct work_struct *work)
 
 	/* Schedule again only if there's an active polling interval */
 	if (ipa3_rmnet_ctx.polling_interval != 0)
-		schedule_delayed_work(&ipa_tether_stats_poll_wakequeue_work,
+		queue_delayed_work(system_power_efficient_wq,
+			&ipa_tether_stats_poll_wakequeue_work,
 			msecs_to_jiffies(ipa3_rmnet_ctx.polling_interval*1000));
 }
 
@@ -3024,7 +3025,8 @@ int rmnet_ipa3_poll_tethering_stats(struct wan_ioctl_poll_tethering_stats *data)
 		return 0;
 	}
 
-	schedule_delayed_work(&ipa_tether_stats_poll_wakequeue_work, 0);
+	queue_delayed_work(system_power_efficient_wq,
+						&ipa_tether_stats_poll_wakequeue_work, 0);
 	return 0;
 }
 
@@ -4900,3 +4902,4 @@ late_initcall(ipa3_wwan_init);
 module_exit(ipa3_wwan_cleanup);
 MODULE_DESCRIPTION("WWAN Network Interface");
 MODULE_LICENSE("GPL v2");
+

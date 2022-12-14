@@ -20,6 +20,7 @@ subdir-y += lg
 subdir-y += marvell
 subdir-y += mediatek
 subdir-y += nvidia
+subdir-y += qcom
 subdir-y += realtek
 subdir-y += renesas
 subdir-y += rockchip
@@ -30,12 +31,10 @@ subdir-y += ti
 subdir-y += xilinx
 subdir-y += zte
 
-
 else
         subdir-y += vendor
 endif
-
-dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(dtstree)/%.dts,%.dtb, $(foreach d,$(subdir), $(wildcard $(dtstree)/$(d)/*.dts)))
+dts-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(dtstree)/%.dts,%.dtb, $(foreach d,$(subdir), $(wildcard $(dtstree)/$(d)/*.dts)))
 
 always		:= $(dtb-y)
 

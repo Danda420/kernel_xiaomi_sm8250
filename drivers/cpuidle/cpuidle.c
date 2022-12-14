@@ -38,6 +38,24 @@ static int enabled_devices;
 static int off __read_mostly;
 static int initialized __read_mostly;
 
+#ifdef CONFIG_SMP
+static atomic_t idled = ATOMIC_INIT(0);
+
+#if NR_CPUS > 32
+#error idled CPU mask not big enough for NR_CPUS
+#endif
+
+void cpuidle_set_idle_cpu(unsigned int cpu)
+{
+	atomic_or(BIT(cpu), &idled);
+}
+
+void cpuidle_clear_idle_cpu(unsigned int cpu)
+{
+	atomic_andnot(BIT(cpu), &idled);
+}
+#endif
+
 int cpuidle_disabled(void)
 {
 	return off;
@@ -228,6 +246,9 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 
 	trace_cpu_idle_rcuidle(index, dev->cpu);
 	time_start = ns_to_ktime(local_clock());
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+	g_time_in_state_update_idle(dev->cpu, 1);
+#endif
 
 	stop_critical_timings();
 	entered_state = target_state->enter(dev, drv, index);
@@ -235,6 +256,9 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 
 	sched_clock_idle_wakeup_event();
 	time_end = ns_to_ktime(local_clock());
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+	g_time_in_state_update_idle(dev->cpu, 0);
+#endif
 	trace_cpu_idle_rcuidle(PWR_EVENT_EXIT, dev->cpu);
 
 	/* The cpu is no longer idle or about to enter idle. */
@@ -676,7 +700,6 @@ static void wake_up_idle_cpus(void *v)
 	}
 	preempt_enable();
 }
-
 /*
  * This function gets called when a part of the kernel has a new latency
  * requirement.  This means we need to get only those processors out of their

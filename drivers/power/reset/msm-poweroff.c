@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/delay.h>
@@ -39,7 +38,7 @@
 #define SCM_DLOAD_FULLDUMP		0X10
 #define SCM_EDLOAD_MODE			0X01
 #define SCM_DLOAD_CMD			0x10
-#define SCM_DLOAD_MINIDUMP		0X40
+#define SCM_DLOAD_MINIDUMP		0X20
 #define SCM_DLOAD_BOTHDUMPS	(SCM_DLOAD_MINIDUMP | SCM_DLOAD_FULLDUMP)
 
 #define DL_MODE_PROP "qcom,msm-imem-download_mode"
@@ -48,7 +47,6 @@
 
 #define KASLR_OFFSET_PROP "qcom,msm-imem-kaslr_offset"
 #define KASLR_OFFSET_BIT_MASK	0x00000000FFFFFFFF
-#define DISPLAY_CONFIG_OFFSET_PROP "qcom,msm-imem-display_config_offset"
 
 static int restart_mode;
 static void *restart_reason, *dload_type_addr;
@@ -67,8 +65,8 @@ static void scm_disable_sdi(void);
 static int download_mode = 1;
 static struct kobject dload_kobj;
 
-int in_panic = 0;
-static int dload_type = SCM_DLOAD_BOTHDUMPS;
+static int in_panic;
+static int dload_type = SCM_DLOAD_FULLDUMP;
 static void *dload_mode_addr;
 static bool dload_mode_enabled;
 static void *emergency_dload_mode_addr;
@@ -282,25 +280,6 @@ static void store_kaslr_offset(void)
 }
 #endif /* CONFIG_RANDOMIZE_BASE */
 
-/*
- * set display config imem first 4 bytes to 0xdead4ead, because imem context
- * will not lost when warm reset. if panic, xbl ramdump will display orange
- * screen, and framebuffer addr is determined by these four bytes in
- * MDP_GetDisplayBootConfig function. so set these four bytes to a invalid
- * value and let the framebuffer of orange screen use
- * RAMDUMP_FRAME_BUFFER_ADDRESS(0xb0400000)
- */
-static void clear_display_config(void)
-{
-	void *display_config_imem_addr = map_prop_mem(DISPLAY_CONFIG_OFFSET_PROP);
-
-	if (display_config_imem_addr) {
-		__raw_writel(0xdead4ead, display_config_imem_addr);
-		iounmap(display_config_imem_addr);
-	}
-	pr_err("%s clear display config\n", __func__);
-}
-
 static void setup_dload_mode_support(void)
 {
 	int ret;
@@ -315,7 +294,6 @@ static void setup_dload_mode_support(void)
 	emergency_dload_mode_addr = map_prop_mem(EDL_MODE_PROP);
 
 	store_kaslr_offset();
-	clear_display_config();
 
 	dload_type_addr = map_prop_mem(IMEM_DL_TYPE_PROP);
 	if (!dload_type_addr)
@@ -512,14 +490,12 @@ static void msm_restart_prepare(const char *cmd)
 		pr_info("Forcing a warm reset of the system\n");
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (force_warm_reboot || need_warm_reset || in_panic)
+	if (force_warm_reboot || need_warm_reset)
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 
-	if (in_panic) {
-		qpnp_pon_set_restart_reason(PON_RESTART_REASON_PANIC);
-	} else if (cmd != NULL) {
+	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_BOOTLOADER);
@@ -527,10 +503,6 @@ static void msm_restart_prepare(const char *cmd)
 		} else if (!strncmp(cmd, "recovery", 8)) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RECOVERY);
-			__raw_writel(0x77665502, restart_reason);
-		} else if (!strncmp(cmd, "exaid", 5)) {
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_EXAID);
 			__raw_writel(0x77665502, restart_reason);
 		} else if (!strcmp(cmd, "rtc")) {
 			qpnp_pon_set_restart_reason(
@@ -557,15 +529,10 @@ static void msm_restart_prepare(const char *cmd)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
-			if (0)
 			enable_emergency_dload_mode();
 		} else {
-			qpnp_pon_set_restart_reason(PON_RESTART_REASON_NORMAL);
 			__raw_writel(0x77665501, restart_reason);
 		}
-	} else {
-		qpnp_pon_set_restart_reason(PON_RESTART_REASON_NORMAL);
-		__raw_writel(0x77665501, restart_reason);
 	}
 
 	flush_cache_all();

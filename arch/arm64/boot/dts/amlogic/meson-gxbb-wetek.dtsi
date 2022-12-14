@@ -6,7 +6,6 @@
  */
 
 #include "meson-gxbb.dtsi"
-#include <dt-bindings/gpio/gpio.h>
 
 / {
 	aliases {

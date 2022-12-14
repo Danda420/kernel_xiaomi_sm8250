@@ -11,6 +11,10 @@
 
 #include <trace/events/sched.h>
 
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+#include "../../drivers/oplus/game_opt/game_ctrl.h"
+#endif
+
 #include "walt.h"
 
 int sched_rr_timeslice = RR_TIMESLICE;
@@ -1056,6 +1060,9 @@ static void update_curr_rt(struct rq *rq)
 
 	curr->se.exec_start = now;
 	cgroup_account_cputime(curr, delta_exec);
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+	g_update_task_runtime(curr, delta_exec);
+#endif
 
 	if (!rt_bandwidth_enabled())
 		return;

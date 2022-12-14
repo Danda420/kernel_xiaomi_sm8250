@@ -137,21 +137,14 @@ CPU_BE( rev16		\reg, \reg	)
 0:	bitorder	w0, \be
 	ret
 	.endm
-
+	
+	
 	.align		5
-SYM_FUNC_START(crc32_le)
+ENTRY(crc32_le)
 	__crc32
-SYM_FUNC_END(crc32_le)
+ENDPROC(crc32_le)
 
 	.align		5
-SYM_FUNC_START(__crc32c_le)
+ENTRY(__crc32c_le)
 	__crc32		c
-SYM_FUNC_END(__crc32c_le)
-
-	.align		5
-SYM_FUNC_START(crc32_be)
-alternative_if_not ARM64_HAS_CRC32
-	b		crc32_be_base
-alternative_else_nop_endif
-	__crc32		be=1
-SYM_FUNC_END(crc32_be)
+ENDPROC(__crc32c_le)

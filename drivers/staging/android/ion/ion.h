@@ -459,6 +459,7 @@ struct ion_page_pool {
 	struct mutex mutex;
 	gfp_t gfp_mask;
 	unsigned int order;
+	bool graphic_buffer_flag;
 	struct plist_node list;
 	struct device *dev;
 };

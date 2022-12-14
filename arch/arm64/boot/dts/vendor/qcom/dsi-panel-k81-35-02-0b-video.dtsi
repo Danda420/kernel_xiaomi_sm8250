@@ -42,8 +42,8 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-reset-sequence = <0 12>, <1 12>, <0 12>, <1 12>;
 		qcom,adjust-timer-wakeup-ms = <1>;
-		qcom,mdss-pan-physical-width-dimension = <148>;
-		qcom,mdss-pan-physical-height-dimension = <236>;
+		qcom,mdss-pan-physical-width-dimension = <1474>;
+		qcom,mdss-pan-physical-height-dimension = <2359>;
 		qcom,mdss-dsi-panel-mode-gpio-state = "invalid";
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-dsi-rx-eot-ignore;
@@ -72,9 +72,9 @@
 				qcom,mdss-dsi-panel-framerate = <120>;
 				qcom,mdss-dsi-panel-width = <800>; // 1600/2
 				qcom,mdss-dsi-panel-height = <2560>;
-				qcom,mdss-dsi-h-pulse-width = <4>;
-				qcom,mdss-dsi-h-back-porch = <30>;
-				qcom,mdss-dsi-h-front-porch = <30>;
+				qcom,mdss-dsi-h-pulse-width = <20>;
+				qcom,mdss-dsi-h-back-porch = <26>;
+				qcom,mdss-dsi-h-front-porch = <100>;
 				qcom,mdss-dsi-h-sync-skew = <0>;
 				qcom,mdss-dsi-v-pulse-width = <4>;
 				qcom,mdss-dsi-v-back-porch = <168>;
@@ -294,7 +294,10 @@
 						15 00 00 00 00 00 02 09 EE
 						15 00 00 00 00 00 02 1C 99
 						15 01 00 00 00 00 02 1D 09
-						15 00 00 00 00 00 02 FF 10
+						15 01 00 00 00 00 02 FF 24
+						15 01 00 00 00 00 02 FB 01
+						15 01 00 00 00 00 02 C2 DA
+						15 01 00 00 00 00 02 FF 10
 						15 00 00 00 00 00 02 FB 01
 						39 01 00 00 00 00 03 51 0F FF
 						15 00 00 00 00 00 02 53 2C
@@ -361,7 +364,7 @@
 	mi,esd-err-irq-gpio = <&tlmm 51 0x2002>; /* trig-flags: falling-0x0002 rasing-0x0001*/
 	mi,mdss-dsi-panel-xy-coordinate = <0x6 0x18>;
 	mi,mdss-dsi-panel-max-luminance = <0x6 0x4>;
-	// mi,mdss-dsi-pan-enable-smart-fps;
+	mi,mdss-dsi-pan-enable-smart-fps;
 	mi,mdss-panel-idle-fps = <60>;
 
 	qcom,mdss-dsi-display-timings {
@@ -419,6 +422,13 @@
 			mi,mdss-dsi-max-luminance-read-command = [
 				06 01 00 00 00 00 01 A1];
 			mi,mdss-dsi-max-luminance-read-command-state = "dsi_lp_mode";
+
+			mi,mdss-dsi-disable-insert-black-command = [
+				05 01 00 00 00 00 02 13 00];
+			mi,mdss-dsi-disable-insert-black-command-state = "dsi_lp_mode";
+			mi,mdss-dsi-insert-black-screen-command = [
+				05 01 00 00 00 00 02 22 00];
+			mi,mdss-dsi-insert-black-screen-command-state = "dsi_lp_mode";
 		};
 	};
 };

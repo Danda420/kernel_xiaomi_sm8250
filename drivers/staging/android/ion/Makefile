@@ -6,3 +6,4 @@ obj-$(CONFIG_ION) +=	ion.o ion-ioctl.o ion_heap.o \
 			ion_camera_heap.o\
 			ion_secure_util.o ion_cma_secure_heap.o msm/
 
+obj-y	+= ion/

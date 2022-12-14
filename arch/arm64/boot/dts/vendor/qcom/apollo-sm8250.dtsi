@@ -1,5 +1,6 @@
 /*
-this file is for attribution only of apollo
+this file is for attribution only of umi
+And public attribution of xiaomi platforms(like apollo and so and)
 */
 
 #include "apollo-pinctrl.dtsi"
@@ -532,7 +533,7 @@ this file is for attribution only of apollo
 	qcom,sec-charger-config = <0>;
 	qcom,usb-icl-ua = <3000000>;
 	qcom,fcc-max-ua = <6000000>;
-	qcom,fv-max-uv = <4440000>;
+	qcom,fv-max-uv = <4480000>;
 	qcom,non-fcc-fv-max-uv = <4450000>;
 	qcom,dc-icl-ua = <1000000>;
 	qcom,auto-recharge-soc = <99>;
@@ -544,10 +545,10 @@ this file is for attribution only of apollo
 	qcom,chg-cool-th= <150>;
 	//qcom,suspend-input-on-debug-batt;
 	qcom,usbpd-phandle = <&pm8150b_pdphy>;
-	qcom,battery-data = <&apollo_batterydata>;
+	qcom,battery-data = <&umi_batterydata>;
 	mi,six-pin-step-chg-params = <4250000  6000000
 				4450000  5400000
-				4440000  3680000>;
+				4480000  3680000>;
 	mi,six-pin-step-chg;
 	mi,six-pin-soc-th = <22>;
 	mi,fcc-batt-unverify-ua = <2000000>;
@@ -617,7 +618,7 @@ this file is for attribution only of apollo
 };
 
 &pm8150b_fg {
-	qcom,battery-data = <&apollo_batterydata>;
+	qcom,battery-data = <&umi_batterydata>;
 	qcom,rapid-soc-dec-en;
 	qcom,five-pin-battery;
 	qcom,soc-hi-res;
@@ -672,7 +673,7 @@ this file is for attribution only of apollo
 	usbpd_pm {
 		compatible = "xiaomi,usbpd-pm";
 		status = "ok";
-		mi,pd-bat-volt-max = <4440>;
+		mi,pd-bat-volt-max = <4480>;
 		mi,pd-bat-curr-max = <6000>;
 		mi,pd-bus-volt-max = <12000>;
 		mi,pd-bus-curr-max = <3000>;
@@ -682,9 +683,10 @@ this file is for attribution only of apollo
 		mi,use-qcom-gauge;
 		//mi,cp-sec-enable;
 		mi,therm-level-threshold = <12>;
+		mi,pd-power-max = <33>; /*charge power max : 33W */
 	};
 
-	apollo_batterydata: qcom,battery-data {
+	umi_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "fg-gen4-batterydata-apollo-sun-5000mah.dtsi"
 	};
@@ -712,6 +714,7 @@ this file is for attribution only of apollo
 
 &pm8150b_pdphy {
 	mi,non-qcom-pps-ctrl;
+	mi,pd-power-max = <33>; /*charge power max : 33W */
 };
 
 &smb1390 {

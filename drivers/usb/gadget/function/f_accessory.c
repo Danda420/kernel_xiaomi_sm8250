@@ -1446,3 +1446,4 @@ static struct usb_function *acc_alloc(struct usb_function_instance *fi)
 }
 DECLARE_USB_FUNCTION_INIT(accessory, acc_alloc_inst, acc_alloc);
 MODULE_LICENSE("GPL");
+

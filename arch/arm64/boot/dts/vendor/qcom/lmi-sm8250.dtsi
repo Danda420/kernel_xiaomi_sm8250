@@ -7,26 +7,6 @@ And public attribution of xiaomi platforms(like J1 and so and)
 #include "xiaomi-sm8250-common.dtsi"
 #include "lmi-audio-overlay.dtsi"
 
-// SLPI Memory Region
-&pil_slpi_mem {
-	reg = <0x0 0x88c00000 0x0 0x1500000>;
-};
-
-// ADSP Memory Region
-&pil_adsp_mem {
-	reg = <0x0 0x8a100000 0x0 0x2500000>;
-};
-
-// SPSS Memory Region
-&pil_spss_mem {
-	reg = <0x0 0x8c600000 0x0 0x100000>;
-};
-
-// CDSP Memory Region
-&cdsp_secure_heap {
-	reg = <0x0 0x8c700000 0x0 0x4600000>;
-};
-
 &qupv3_se15_i2c {
 	status = "ok";
 	nq@64 {
@@ -255,7 +235,7 @@ And public attribution of xiaomi platforms(like J1 and so and)
 	qcom,chg-cool-th= <150>;
 	//qcom,suspend-input-on-debug-batt;
 	qcom,usbpd-phandle = <&pm8150b_pdphy>;
-	qcom,battery-data = <&lmi_batterydata>;
+	qcom,battery-data = <&umi_batterydata>;
 	mi,six-pin-step-chg-params = <4250000  6000000
 				4450000  5400000
 				4480000  3680000>;
@@ -325,7 +305,7 @@ And public attribution of xiaomi platforms(like J1 and so and)
 };
 
 &pm8150b_fg {
-	qcom,battery-data = <&lmi_batterydata>;
+	qcom,battery-data = <&umi_batterydata>;
 	qcom,rapid-soc-dec-en;
 	qcom,five-pin-battery;
 	qcom,soc-hi-res;
@@ -385,9 +365,10 @@ And public attribution of xiaomi platforms(like J1 and so and)
 		mi,pd-battery-warm-th = <480>;
 		mi,use-qcom-gauge;
 		//mi,cp-sec-enable;
+		mi,pd-power-max = <33>; /*charge power max : 33W */
 	};
 
-	lmi_batterydata: qcom,battery-data {
+	umi_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "fg-gen4-batterydata-lmi-sun-4700mah.dtsi"
 	};
@@ -415,6 +396,7 @@ And public attribution of xiaomi platforms(like J1 and so and)
 
 &pm8150b_pdphy {
 	mi,non-qcom-pps-ctrl;
+	mi,pd-power-max = <33>; /*charge power max : 33W */
 };
 
 &smb1390 {

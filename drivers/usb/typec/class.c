@@ -3,7 +3,6 @@
  * USB Type-C Connector Class
  *
  * Copyright (C) 2017, Intel Corporation
- * Copyright (C) 2021 XiaoMi, Inc.
  * Author: Heikki Krogerus <heikki.krogerus@linux.intel.com>
  */
 
@@ -1385,10 +1384,6 @@ void typec_set_pwr_opmode(struct typec_port *port,
 						(opmode > TYPEC_PWR_MODE_MAX))
 		return;
 
-	pr_err("%s pwr opmode:%d\n", __func__, opmode);
-	if (opmode > TYPEC_PWR_MODE_PD)
-		return;
-
 	port->pwr_opmode = opmode;
 	sysfs_notify(&port->dev.kobj, NULL, "power_operation_mode");
 	kobject_uevent(&port->dev.kobj, KOBJ_CHANGE);
@@ -1401,6 +1396,7 @@ void typec_set_pwr_opmode(struct typec_port *port,
 			partner->usb_pd = 1;
 			sysfs_notify(&partner_dev->kobj, NULL,
 				     "supports_usb_power_delivery");
+			kobject_uevent(&partner_dev->kobj, KOBJ_CHANGE);
 		}
 		put_device(partner_dev);
 	}

@@ -1,0 +1,5 @@
+#ifdef OPLUS_FEATURE_POWERINFO_STANDBY
+
+obj-$(CONFIG_OPLUS_WAKELOCK_PROFILER)    += oplus_wakelock_profiler.o
+
+#endif /* OPLUS_FEATURE_POWERINFO_STANDBY */
