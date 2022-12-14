@@ -39,6 +39,9 @@
 	|| typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH)	\
 	&& (!chg->typec_legacy || chg->typec_legacy_use_rp_icl))
 
+/* AUTO platform specific compile time flag */
+#define PLATFORM_TARGET_AUTO    1
+
 static void update_sw_icl_max(struct smb_charger *chg,
 				enum power_supply_type type);
 static int smblite_lib_get_prop_typec_mode(struct smb_charger *chg);
@@ -440,7 +443,11 @@ static void smblite_lib_uusb_removal(struct smb_charger *chg)
 	vote(chg->pl_enable_votable_indirect, USBIN_I_VOTER, false, 0);
 	vote(chg->pl_enable_votable_indirect, USBIN_V_VOTER, false, 0);
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+#ifndef PLATFORM_TARGET_AUTO
 			is_flashlite_active(chg) ? USBIN_200UA : USBIN_100UA);
+#else
+			is_flashlite_active(chg) ? USBIN_500UA : USBIN_100UA);
+#endif
 	vote(chg->usb_icl_votable, FLASH_ACTIVE_VOTER, false, 0);
 
 	/* Remove SW thermal regulation votes */
@@ -1584,8 +1591,8 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 		break;
 	case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
 	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
-	/* fall through */
-	default:
+	//'fallthrough;'
+	default :
 		rp_ua = DCP_CURRENT_UA;
 	}
 
@@ -1627,14 +1634,6 @@ int smblite_lib_set_prop_current_max(struct smb_charger *chg,
 	if (chg->real_charger_type != POWER_SUPPLY_TYPE_USB)
 		return 0;
 
-	if (is_flashlite_active(chg) && (val->intval >= USBIN_400UA)) {
-		/* For Uusb based SDP port */
-		vote(chg->usb_icl_votable, FLASH_ACTIVE_VOTER, true,
-				val->intval - USBIN_300UA);
-		smblite_lib_dbg(chg, PR_MISC, "flash_active = 1, ICL set to  %d\n",
-						val->intval - USBIN_300UA);
-	}
-
 	rc = vote(chg->usb_icl_votable, USB_PSY_VOTER, true, val->intval);
 	if (rc < 0) {
 		pr_err("Couldn't vote ICL USB_PSY_VOTER rc=%d\n", rc);
@@ -1648,10 +1647,19 @@ int smblite_lib_set_prop_current_max(struct smb_charger *chg,
 	}
 
 	/* Update TypeC Rp based current */
-	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_TYPEC) {
+#ifndef PLATFORM_TARGET_AUTO
+	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_TYPEC){
 		update_sw_icl_max(chg, chg->real_charger_type);
 	}
-
+#else
+	if (is_flashlite_active(chg) && (val->intval >=  USBIN_400UA)) {
+		/* For Uusb based SDP port */
+		vote(chg->usb_icl_votable, FLASH_ACTIVE_VOTER, true,
+				val->intval - USBIN_300UA);
+		smblite_lib_dbg(chg, PR_MISC, "flash_active = 1, ICL set to  %d\n",
+						val->intval - USBIN_300UA);
+	}
+#endif
 	return 0;
 }
 
@@ -2348,28 +2356,67 @@ static void update_sw_icl_max(struct smb_charger *chg,
 	/* rp-std or legacy, USB BC 1.2 */
 	switch (type) {
 	case POWER_SUPPLY_TYPE_USB:
+#ifndef PLATFORM_TARGET_AUTO
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
+#else
+		/*
+		 * USB_PSY will vote to increase the current to 500/900mA once
+		 * enumeration is done.
+		 */
+		if (!is_client_vote_enabled(chg->usb_icl_votable,
+						USB_PSY_VOTER)) {
+			/* if flash is active force 500mA */
+			vote(chg->usb_icl_votable, USB_PSY_VOTER, true,
+					is_flashlite_active(chg) ?
+					USBIN_500UA : USBIN_100UA);
+		}
+#endif
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
+#ifndef PLATFORM_TARGET_AUTO
 		icl_ua = CDP_CURRENT_UA;
+#else
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+					CDP_CURRENT_UA);
+#endif
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
+#ifndef PLATFORM_TARGET_AUTO
 		icl_ua = get_rp_based_dcp_current(chg, typec_mode);
+#else
+		rp_ua = get_rp_based_dcp_current(chg, typec_mode);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, rp_ua);
+#endif
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	default:
+#ifndef PLATFORM_TARGET_AUTO
 		icl_ua = USBIN_100UA;
+#else
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+					USBIN_100UA);
+#endif
 		break;
 	}
-
+#ifndef PLATFORM_TARGET_AUTO
 	if (is_flashlite_active(chg) && type != POWER_SUPPLY_TYPE_USB) {
 		vote(chg->usb_icl_votable, FLASH_ACTIVE_VOTER, true,
-				icl_ua - USBIN_300UA);
+			icl_ua - USBIN_300UA);
 		smblite_lib_dbg(chg, PR_MISC, "flash_active = 1 ICL is set to %d\n",
 					icl_ua - USBIN_300UA);
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, icl_ua);
 	}
-
+#else
+	if (is_flashlite_active(chg)) {
+		icl_ua =  get_effective_result(chg->usb_icl_votable);
+		if (icl_ua >=  USBIN_400UA) {
+			vote(chg->usb_icl_votable, FLASH_ACTIVE_VOTER, true,
+				icl_ua - USBIN_300UA);
+			smblite_lib_dbg(chg, PR_MISC, "flash_active = 1 ICL is set to %d\n",
+						icl_ua - USBIN_300UA);
+		}
+	}
+#endif
 }
 
 static void typec_sink_insertion(struct smb_charger *chg)
@@ -2582,7 +2629,11 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	/* reset input current limit voters */
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+#ifndef PLATFORM_TARGET_AUTO
 			is_flashlite_active(chg) ? USBIN_200UA : USBIN_100UA);
+#else
+			is_flashlite_active(chg) ? USBIN_500UA : USBIN_100UA);
+#endif
 	vote(chg->usb_icl_votable, FLASH_ACTIVE_VOTER, false, 0);
 	vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 
@@ -2894,6 +2945,7 @@ irqreturn_t smblite_usb_id_irq_handler(int irq, void *data)
 
 	smblite_lib_dbg(chg, PR_INTERRUPT, "IRQ: %s, id_state=%d\n",
 					"usb-id-irq", id_state);
+#ifndef PLATFORM_TARGET_AUTO
 	if (id_state) {
 		/*otg cable removed */
 		if (chg->otg_present) {
@@ -2910,7 +2962,7 @@ irqreturn_t smblite_usb_id_irq_handler(int irq, void *data)
 		typec_set_data_role(chg->typec_port, TYPEC_HOST);
 		typec_set_pwr_role(chg->typec_port, TYPEC_SOURCE);
 	}
-
+#endif
 	smblite_lib_notify_usb_host(chg, !id_state);
 
 	return IRQ_HANDLED;
