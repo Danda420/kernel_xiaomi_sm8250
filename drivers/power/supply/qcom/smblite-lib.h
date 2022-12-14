@@ -15,6 +15,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/extcon-provider.h>
 #include <linux/usb/typec.h>
+#include <linux/input.h>
 #include "storm-watch.h"
 #include "battery.h"
 
@@ -72,6 +73,9 @@ enum print_reason {
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
 #define ROLE_REVERSAL_DELAY_MS		500
+
+/* AUTO platform specific compile time flag */
+#define PLATFORM_TARGET_AUTO    1
 
 enum smb_mode {
 	PARALLEL_MASTER = 0,
@@ -340,7 +344,13 @@ struct smb_charger {
 	bool			flash_active;
 	u32			irq_status;
 };
+#ifdef PLATFORM_TARGET_AUTO
+struct dc_pwr_key {
+	struct input_dev *input;
+};
 
+int smblite_lib_input_dc_pwr_key(struct dc_pwr_key *pwr_key);
+#endif
 int smblite_lib_read(struct smb_charger *chg, u16 addr, u8 *val);
 int smblite_lib_masked_write(struct smb_charger *chg, u16 addr, u8 mask,
 				u8 val);

@@ -46,6 +46,22 @@ static void update_sw_icl_max(struct smb_charger *chg,
 				enum power_supply_type type);
 static int smblite_lib_get_prop_typec_mode(struct smb_charger *chg);
 
+#ifdef PLATFORM_TARGET_AUTO
+struct dc_pwr_key *pwr_key_local=NULL;
+
+int smblite_lib_input_dc_pwr_key(struct dc_pwr_key *pwr_key)
+{
+	int rc = 0;
+	if (!pwr_key || !pwr_key->input) {
+		rc = -1 ;
+	}
+	else{
+		pwr_key_local = pwr_key;
+	}
+	return rc;
+}
+#endif
+
 int smblite_lib_read(struct smb_charger *chg, u16 addr, u8 *val)
 {
 	unsigned int value;
@@ -2315,6 +2331,18 @@ void smblite_lib_usb_plugin_locked(struct smb_charger *chg)
 	power_supply_changed(chg->usb_psy);
 	smblite_lib_dbg(chg, PR_INTERRUPT, "IRQ: usbin-plugin %s\n",
 					vbus_rising ? "attached" : "detached");
+#ifdef PLATFORM_TARGET_AUTO
+	if(pwr_key_local)
+	{
+	        smblite_lib_dbg(chg, PR_INTERRUPT, "Input report key %d \n",KEY_POWER);
+		input_report_key(pwr_key_local->input, KEY_POWER, 1);
+		pm_wakeup_event(pwr_key_local->input->dev.parent, 0);
+		input_sync(pwr_key_local->input);
+
+		input_report_key(pwr_key_local->input, KEY_POWER, 0);
+		input_sync(pwr_key_local->input);
+	}
+#endif
 }
 
 irqreturn_t smblite_usb_plugin_irq_handler(int irq, void *data)

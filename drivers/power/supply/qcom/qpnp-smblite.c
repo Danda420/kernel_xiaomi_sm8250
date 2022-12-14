@@ -24,6 +24,7 @@
 
 static struct power_supply_desc usb_psy_desc;
 
+
 static struct smb_params smblite_params = {
 	.fcc			= {
 		.name   = "fast charge current",
@@ -1922,7 +1923,11 @@ static int smblite_probe(struct platform_device *pdev)
 	struct smblite *chip;
 	struct smb_charger *chg;
 	int rc = 0;
-
+#ifdef PLATFORM_TARGET_AUTO
+	int rc1= 0;
+	struct dc_pwr_key *pwr_key;
+	struct input_dev *input_dev;
+#endif
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
@@ -2060,6 +2065,30 @@ static int smblite_probe(struct platform_device *pdev)
 	}
 
 	device_init_wakeup(chg->dev, true);
+#ifdef PLATFORM_TARGET_AUTO
+	pwr_key = kzalloc(sizeof(struct dc_pwr_key), GFP_KERNEL);
+	input_dev = input_allocate_device();
+
+	if (!pwr_key || !input_dev) {
+		pr_err( "Failed to allocate memory pwr_key & input_dev \n");
+	}
+        pwr_key->input = input_dev;
+
+	pwr_key->input->name = "qpnp_pwron_smb";
+	pwr_key->input->phys = "qpnp_pwron_smb/input0";
+	pwr_key->input->dev.parent = &pdev->dev;
+        input_set_capability(pwr_key->input, EV_KEY, KEY_POWER);
+
+	rc1 = input_register_device(pwr_key->input);
+	if (rc1 < 0) {
+		pr_err("Failed to input register dc_pwr_key \n");
+	}
+
+        rc1 = smblite_lib_input_dc_pwr_key(pwr_key);
+	if (rc1 < 0) {
+		pr_err("Failed to pass smblite_lib_input_dc_pwr_key \n");
+	}
+#endif
 
 	return rc;
 
