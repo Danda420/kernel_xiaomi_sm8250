@@ -19,6 +19,9 @@ on property:persist.spectrum.profile=default
    write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2419200
    write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2419200
    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2841600
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 10
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
 
 #balance
 on property:persist.spectrum.profile=0
@@ -33,6 +36,9 @@ on property:persist.spectrum.profile=0
    write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2246400
    write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2246400
    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2419200
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 10
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
    
 #perf
 on property:persist.spectrum.profile=1
@@ -47,6 +53,9 @@ on property:persist.spectrum.profile=1
    write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2419200
    write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2419200
    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2841600
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 16
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
    
    
 #batt
@@ -62,6 +71,9 @@ on property:persist.spectrum.profile=2
    write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 1344000
    write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 1344000
    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 1862400
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 2
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
    
 
 #game
@@ -77,3 +89,6 @@ on property:persist.spectrum.profile=3
    write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2246400
    write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2246400
    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2745600
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 13
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
