@@ -1231,15 +1231,6 @@ static int aw869xx_haptic_set_bst_peak_cur(struct aw8697 *aw8697)
 }
 
 
-static int aw8697_haptic_set_gain(struct aw8697 *aw8697, unsigned char gain)
-{
-	if (aw8697->chip_version == AW8697_CHIP_9X)
-		aw8697_i2c_write(aw8697, AW8697_REG_DATDBG, gain);
-	else
-		aw8697_i2c_write(aw8697, AW869XX_REG_PLAYCFG2, gain);
-
-	return 0;
-}
 
 static unsigned char aw8697_haptic_set_level(struct aw8697 *aw8697, int gain)
 {
@@ -1250,6 +1241,16 @@ static unsigned char aw8697_haptic_set_level(struct aw8697 *aw8697, int gain)
         val = 255;
 
     return val;
+}
+
+static int aw8697_haptic_set_gain(struct aw8697 *aw8697, unsigned char gain)
+{
+	if (aw8697->chip_version == AW8697_CHIP_9X) {
+		aw8697_i2c_write(aw8697, AW8697_REG_DATDBG, aw8697_haptic_set_level(aw8697, gain));
+	} else {
+		aw8697_i2c_write(aw8697, AW869XX_REG_PLAYCFG2, aw8697_haptic_set_level(aw8697, gain));
+	}
+	return 0;
 }
 
 static int aw8697_haptic_set_pwm(struct aw8697 *aw8697, unsigned char mode)
