@@ -48,3 +48,6 @@ config OPLUS_ION_BOOSTPOOL
 	default n
 	help
 	  This driver supports ION boost pool.
+	  
+#Add for NandSwap
+source "drivers/oplus/oplus_performance/oplus_nandswap/Kconfig"

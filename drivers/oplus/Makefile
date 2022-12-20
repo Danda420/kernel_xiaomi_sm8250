@@ -18,3 +18,6 @@ obj-y += network/
 obj-y += wakelock_profiler/
 obj-y += oplus_performance/healthinfo/fs/
 obj-y += oplus_performance/healthinfo/mm/
+
+#Add for NandSwap
+obj-$(CONFIG_NANDSWAP)		+= oplus_performance/oplus_nandswap/
