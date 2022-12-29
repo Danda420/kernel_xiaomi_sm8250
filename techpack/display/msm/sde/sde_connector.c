@@ -766,6 +766,40 @@ static int _sde_connector_update_dirty_properties(
 	return 0;
 }
 
+void sde_connector_update_fod_hbm(struct drm_connector *connector)
+{
+	static atomic_t effective_status = ATOMIC_INIT(false);
+	struct sde_crtc_state *cstate;
+	struct sde_connector *c_conn;
+	struct dsi_display *display;
+	bool status;
+
+	if (!connector) {
+		SDE_ERROR("invalid connector\n");
+		return;
+	}
+
+	c_conn = to_sde_connector(connector);
+	if (c_conn->connector_type != DRM_MODE_CONNECTOR_DSI)
+		return;
+
+	display = (struct dsi_display *) c_conn->display;
+
+	if (!c_conn->encoder || !c_conn->encoder->crtc ||
+			!c_conn->encoder->crtc->state)
+		return;
+
+	cstate = to_sde_crtc_state(c_conn->encoder->crtc->state);
+	status = cstate->fod_dim_layer != NULL;
+	if (atomic_xchg(&effective_status, status) == status)
+		return;
+
+	mutex_lock(&display->panel->panel_lock);
+	dsi_panel_set_fod_hbm(display->panel, status);
+	mutex_unlock(&display->panel->panel_lock);
+	dsi_display_set_fod_ui(display, status);
+}
+
 struct sde_connector_dyn_hdr_metadata *sde_connector_get_dyn_hdr_meta(
 		struct drm_connector *connector)
 {
@@ -828,7 +862,7 @@ static int _sde_connector_mi_dimlayer_hbm_fence(struct drm_connector *connector)
 	c_conn = to_sde_connector(connector);
 
 	if (c_conn->connector_type != DRM_MODE_CONNECTOR_DSI)
-		return 0;
+		return -EINVAL;
 
 	dsi_display = (struct dsi_display *) c_conn->display;
 	if (!dsi_display || !dsi_display->panel) {
@@ -842,18 +876,6 @@ static int _sde_connector_mi_dimlayer_hbm_fence(struct drm_connector *connector)
 		return -EINVAL;
 	}
 
-	if (!c_conn->allow_bl_update) {
-		/*Skip 2 frames after panel on to avoid hbm flicker*/
-		if (mi_cfg->dc_type == 1 && dsi_display->panel->power_mode == SDE_MODE_DPMS_ON)
-			skip_frame_count = 2;
-		return 0;
-	}
-
-	if (skip_frame_count) {
-		SDE_INFO("skip_frame_count=%d\n", skip_frame_count);
-		skip_frame_count--;
-		return 0;
-	}
 
 	mi_cfg->layer_fod_unlock_success =
 			c_conn->mi_dimlayer_state.mi_dimlayer_type & MI_FOD_UNLOCK_SUCCESS;
@@ -886,18 +908,6 @@ static int _sde_connector_mi_dimlayer_hbm_fence(struct drm_connector *connector)
 				c_conn->fod_frame_count = 0;
 			}
 			if (skip == false) {
-				/* dimming off before hbm ctl */
-				if (mi_cfg->prepare_before_fod_hbm_on && ((mi_cfg->panel_id >> 8) == 0x4A3232003808)) {
-					/* Set flags to disable dimming and backlight */
-					mi_cfg->dimming_state = STATE_DIM_BLOCK;
-					mi_cfg->fod_hbm_enabled = true;
-
-					sde_connector_pre_hbm_ctl(connector);
-					sde_encoder_wait_for_event(c_conn->encoder, MSM_ENC_VBLANK);
-				}
-
-				if (mi_cfg->delay_before_fod_hbm_on)
-					sde_encoder_wait_for_event(c_conn->encoder, MSM_ENC_VBLANK);
 
 				sde_connector_hbm_ctl(connector, DISPPARAM_HBM_FOD_ON);
 
@@ -914,10 +924,6 @@ static int _sde_connector_mi_dimlayer_hbm_fence(struct drm_connector *connector)
 					}
 				}
 
-				if (mi_cfg->delay_after_fod_hbm_on) {
-					sde_encoder_wait_for_event(c_conn->encoder, MSM_ENC_VBLANK);
-				}
-
 				/* Turn off crc after delay of hbm on can avoid flash high
 				 * brightness if DC on (MIUI-1755728) */
 				if (mi_cfg->dc_type == 2 && crc_off_after_delay_of_hbm_on) {
@@ -928,8 +934,7 @@ static int _sde_connector_mi_dimlayer_hbm_fence(struct drm_connector *connector)
 				}
 
 				mi_cfg->fod_hbm_layer_enabled = true;
-				/*sde_crtc_fod_ui_ready(dsi_display, 1, 1);*/
-			}
+			}	sde_crtc_fod_ui_ready(dsi_display, 1, 1);
 		}
 	} else {
 		if (mi_cfg->fod_hbm_layer_enabled == true) {
@@ -945,7 +950,7 @@ static int _sde_connector_mi_dimlayer_hbm_fence(struct drm_connector *connector)
 				sde_encoder_wait_for_event(c_conn->encoder, MSM_ENC_VBLANK);
 
 			mi_cfg->fod_hbm_layer_enabled = false;
-			/*sde_crtc_fod_ui_ready(dsi_display, 1, 0);*/
+			sde_crtc_fod_ui_ready(dsi_display, 1, 0);
 		}
 	}
 #if 0
@@ -1068,6 +1073,8 @@ int sde_connector_pre_kickoff(struct drm_connector *connector)
 
 	/* fingerprint hbm fence */
 	_sde_connector_mi_dimlayer_hbm_fence(connector);
+
+	sde_connector_update_fod_hbm(connector);
 
 	rc = c_conn->ops.pre_kickoff(connector, c_conn->display, &params);
 
@@ -3309,6 +3316,9 @@ static uint32_t brightness_to_alpha(struct dsi_panel_mi_cfg *mi_cfg, uint32_t br
 	int i;
 	int level = mi_cfg->brightnes_alpha_lut_item_count;
 
+	if (!mi_cfg->brightness_alpha_lut)
+		return 0;
+
 	if (brightness == 0x0)
 		return mi_cfg->brightness_alpha_lut[0].alpha;
 
@@ -3316,6 +3326,9 @@ static uint32_t brightness_to_alpha(struct dsi_panel_mi_cfg *mi_cfg, uint32_t br
 		if (mi_cfg->brightness_alpha_lut[i].brightness >= brightness)
 			break;
 	}
+
+	if (i == 0)
+		return mi_cfg->brightness_alpha_lut[i].alpha;
 
 	if (i == level)
 		return mi_cfg->brightness_alpha_lut[i - 1].alpha;

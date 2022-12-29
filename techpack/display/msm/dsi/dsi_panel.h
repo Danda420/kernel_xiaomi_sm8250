@@ -52,6 +52,11 @@ enum dsi_backlight_type {
 	DSI_BACKLIGHT_MAX,
 };
 
+enum dsi_doze_mode_type {
+	DSI_DOZE_LPM = 0,
+	DSI_DOZE_HBM,
+};
+
 enum bl_update_flag {
 	BL_UPDATE_DELAY_UNTIL_FIRST_FRAME,
 	BL_UPDATE_NONE,
@@ -123,7 +128,11 @@ struct dsi_backlight_config {
 	u32 bl_level;
 	u32 bl_scale;
 	u32 bl_scale_sv;
+	u32 bl_doze_lpm;
+	u32 bl_doze_hbm;
 	bool bl_inverted_dbv;
+	u32 real_bl_level;
+
 
 	int en_gpio;
 	/* PWM params */
@@ -171,6 +180,12 @@ struct drm_panel_esd_config {
 	u8 *return_buf;
 	u8 *status_buf;
 	u32 groups;
+};
+
+#define BRIGHTNESS_ALPHA_PAIR_LEN 2
+struct brightness_alpha_pair {
+	uint32_t brightness;
+	uint32_t alpha;
 };
 
 struct dsi_panel {
@@ -227,6 +242,14 @@ struct dsi_panel {
 	int panel_test_gpio;
 	int power_mode;
 	enum dsi_panel_physical_type panel_type;
+
+	int hbm_mode;
+
+	struct brightness_alpha_pair *fod_dim_lut;
+	uint32_t fod_dim_lut_count;
+
+	bool doze_enabled;
+	enum dsi_doze_mode_type doze_mode;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -362,5 +385,13 @@ int dsi_panel_create_cmd_packets(const char *data,
 				struct dsi_cmd_desc *cmd);
 void dsi_panel_destroy_cmd_packets(struct dsi_panel_cmd_set *set);
 void dsi_panel_dealloc_cmd_packets(struct dsi_panel_cmd_set *set);
+
+int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status);
+
+uint32_t dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel);
+
+int dsi_panel_set_doze_status(struct dsi_panel *panel, bool status);
+int dsi_panel_set_doze_mode(struct dsi_panel *panel, enum dsi_doze_mode_type mode);
+int dsi_panel_apply_hbm_mode(struct dsi_panel *panel);
 
 #endif /* _DSI_PANEL_H_ */
