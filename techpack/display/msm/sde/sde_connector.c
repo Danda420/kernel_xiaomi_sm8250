@@ -844,7 +844,6 @@ static int _sde_connector_mi_dimlayer_hbm_fence(struct drm_connector *connector)
 	struct sde_connector *c_conn;
 	struct dsi_display *dsi_display;
 	bool skip = false;
-	static int skip_frame_count = 0;
 	bool hbm_overlay;
 	static bool last_fod_unlock_success;
 	static bool last_layer_aod_flag;

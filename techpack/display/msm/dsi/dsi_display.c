@@ -1093,17 +1093,11 @@ int dsi_display_set_power(struct drm_connector *connector,
 		mi_cfg->in_aod = true;
 		mi_drm_notifier_call_chain(MI_DRM_EARLY_EVENT_BLANK, &notify_data);
 		rc = dsi_panel_set_lp2(display->panel);
-<<<<<<< HEAD
 		if (mi_cfg->last_bl_level>70)
 			mi_cfg->unset_doze_brightness=DOZE_BRIGHTNESS_HBM;
 		else
 			mi_cfg->unset_doze_brightness=DOZE_BRIGHTNESS_LBM;
 		dsi_panel_set_doze_brightness(display->panel,
-=======
-		mi_cfg->unset_doze_brightness=DOZE_BRIGHTNESS_HBM;
-		if (mi_cfg->unset_doze_brightness)
-			dsi_panel_set_doze_brightness(display->panel,
->>>>>>> 03e7c5ac8296... Fix AOD OxygenOS 13
 				mi_cfg->unset_doze_brightness, true);
 		mi_drm_notifier_call_chain(MI_DRM_EVENT_BLANK, &notify_data);
 		break;
@@ -5808,10 +5802,7 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 	display->panel_node = panel_node;
 	display->pdev = pdev;
 	display->boot_disp = boot_disp;
-<<<<<<< HEAD
-=======
-	display->is_prim_display = true;
->>>>>>> 03e7c5ac8296... Fix AOD OxygenOS 13
+
 
 	dsi_display_parse_cmdline_topology(display, index);
 
@@ -6819,10 +6810,7 @@ exit:
 	*out_modes = display->modes;
 	rc = 0;
 	primary_display = display;
-<<<<<<< HEAD
 
-=======
->>>>>>> 03e7c5ac8296... Fix AOD OxygenOS 13
 error:
 	if (rc)
 		kfree(display->modes);
