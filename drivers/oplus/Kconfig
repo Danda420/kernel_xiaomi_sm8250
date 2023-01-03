@@ -26,6 +26,7 @@ source "drivers/oplus/oplus_performance/healthinfo/mm/Kconfig"
 source "drivers/oplus/oplus_performance/healthinfo/fs/Kconfig"
 source "drivers/oplus/network/Kconfig"
 source "drivers/oplus/wakelock_profiler/Kconfig"
+source "drivers/oplus/power/midas/Kconfig"
 
 config OPLUS_FEATURE_FDLEAK_CHECK
     tristate "fdleak check"
