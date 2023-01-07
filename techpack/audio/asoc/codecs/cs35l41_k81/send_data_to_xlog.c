@@ -26,7 +26,9 @@ int xlog_send_int(int dc_current_cnt, char *reason)
 	if (ret < 0) {
 		return ret;
 	}
+#ifdef CONFIG_XLOGCHAR
 	xlogchar_kwrite(msg, sizeof(msg));
+#endif
 	pr_info("%s: send msg: %s", __func__, msg);
 	return ret;
 }
