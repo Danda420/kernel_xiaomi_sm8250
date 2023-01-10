@@ -1,10 +1,12 @@
 #!/bin/bash
+DEVICE=apollo
 cd ..
 MAIN=$PWD
-cd kernel_xiaomi_sm8250
+cd kernel_xiaomi_${DEVICE}
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
 CLANG_DIR=$MAIN/zyc-clang
+DEFCONFIG=vendor/${DEVICE}_defconfig
 KERNELVER=$(make kernelversion)
 
 if [[ -z "${JTHREAD}" ]]; then
@@ -17,7 +19,7 @@ mkdir -p out
 clear
 BUILD_START=$(date +"%s")
 
-make O=out ARCH=arm64 apollo_defconfig
+make O=out ARCH=arm64 $DEFCONFIG
 
 PATH="$CLANG_DIR/bin:${PATH}" \
 make 				O=out \
