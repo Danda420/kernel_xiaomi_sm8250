@@ -15,6 +15,7 @@ if [[ -z "${JTHREAD}" ]]; then
 fi
 
 echo "cleaning..."
+make clean && make mrproper
 mkdir -p out
 clear
 BUILD_START=$(date +"%s")
@@ -29,29 +30,33 @@ make 				O=out \
 				CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
 				-j${JTHREAD}
 
-mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $ANYKERNEL_DIR/
-mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
-cd $ANYKERNEL_DIR
-echo ""
-echo "zipping"
-DATE_CLOCK=$(date +'%H%M-%d%m%Y')
-ZIPNAME=$KERNELVER-Oxygen+-$DATE_CLOCK.zip
-zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
-mv $ZIPNAME $KERNEL_DIR/
+if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
+
+	mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $ANYKERNEL_DIR/
+	mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
+	cd $ANYKERNEL_DIR
+	echo ""
+	echo "zipping"
+	DATE_CLOCK=$(date +'%H%M-%d%m%Y')
+	ZIPNAME=$KERNELVER-Oxygen+-$DATE_CLOCK.zip
+	zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
+	mv $ZIPNAME $KERNEL_DIR/
+	echo ""
+
+	echo "Cleaning AnyKernel3 dir"
+	echo ""
+	rm -rf $ANYKERNEL_DIR/*.zip
+	rm -rf $ANYKERNEL_DIR/Image.gz-dtb
+	rm -rf $ANYKERNEL_DIR/dtbo.img
+	echo "****** build done! ******"
+	echo ""
+	echo "Your kernel zip name is $ZIPNAME"
+	echo ""
+	BUILD_END=$(date +"%s")
+	DIFF=$(($BUILD_END - $BUILD_START))
+	echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
+else
+	echo " Kernel build failed! abort zipping..."
+fi
+
 rm -rf $KERNEL_DIR/out/
-echo ""
-
-echo "Cleaning AnyKernel3 dir"
-echo ""
-rm -rf $ANYKERNEL_DIR/*.zip
-rm -rf $ANYKERNEL_DIR/Image.gz-dtb
-rm -rf $ANYKERNEL_DIR/dtbo.img
-
-echo "****** build done! ******"
-echo ""
-echo "Your kernel zip name is $ZIPNAME"
-echo ""
-BUILD_END=$(date +"%s")
-DIFF=$(($BUILD_END - $BUILD_START))
-echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
-
