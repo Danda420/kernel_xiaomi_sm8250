@@ -6,9 +6,6 @@
 #ifndef __DRIVER_CPUIDLE_H
 #define __DRIVER_CPUIDLE_H
 
-#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
-#include "../../drivers/oplus/game_opt/game_ctrl.h"
-#endif
 /* For internal use only */
 extern struct cpuidle_governor *cpuidle_curr_governor;
 extern struct list_head cpuidle_governors;

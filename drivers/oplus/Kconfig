@@ -1,10 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (C) 2018-2020 Oplus. All rights reserved.
-config OPLUS_FEATURE_DUMP_DEVICE_INFO
-  bool "config dump device info"
-  default n
-  help
-	define this config to  dump device info.
 
 config OPLUS_FEATURE_OPROJECT
   tristate "config oplus project info for kernel"
@@ -12,28 +7,8 @@ config OPLUS_FEATURE_OPROJECT
   help
     define this config to define oplus project
 
-config OPLUS_FEATURE_SELINUX_CONTROL_LOG
-  bool "config control selinux log"
-  default y
-  help
-	define this config to control selinux log.
-
-source "drivers/oplus/game_opt/Kconfig"
-source "drivers/oplus/oplus_pmic_monitor/Kconfig"
-source "drivers/oplus/oplus_performance/oplus_mm/process_reclaim/Kconfig"
 source "drivers/oplus/oplus_performance/oplus_mm/zram_opt/Kconfig"
-source "drivers/oplus/oplus_performance/healthinfo/mm/Kconfig"
-source "drivers/oplus/oplus_performance/healthinfo/fs/Kconfig"
 source "drivers/oplus/network/Kconfig"
-source "drivers/oplus/wakelock_profiler/Kconfig"
-source "drivers/oplus/power/midas/Kconfig"
-
-config OPLUS_FEATURE_FDLEAK_CHECK
-    tristate "fdleak check"
-    default n
-    depends on OPLUS_SYSTEM_KERNEL
-    help
-      general utility to detect fdleak for userspace key process.
 
 config COLOR_CTRL_V2
 	bool "oplus color ctrl device"
@@ -43,12 +18,6 @@ config COLOR_CTRL_V2
 	  to your system.
 
 	  If unsure, say N.
-
-config OPLUS_ION_BOOSTPOOL
-	bool "Support ION Boost pool"
-	default n
-	help
-	  This driver supports ION boost pool.
 	  
 #Add for NandSwap
 source "drivers/oplus/oplus_performance/oplus_nandswap/Kconfig"

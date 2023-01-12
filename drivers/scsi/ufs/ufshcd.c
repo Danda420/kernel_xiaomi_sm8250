@@ -2171,87 +2171,6 @@ out:
 	return count;
 }
 
-#ifdef CONFIG_OPLUS_FEATURE_MIDAS
-/* Add t for ufs transmission_status for midas */
-static ssize_t ufshcd_transmission_status_data_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-
-	return snprintf(buf, PAGE_SIZE,
-					"transmission_status_enable:%u\n"
-					"gear_min_write_sec:%llu\n"
-					"gear_max_write_sec:%llu\n"
-					"gear_min_read_sec:%llu\n"
-					"gear_max_read_sec:%llu\n"
-					"gear_min_write_us:%llu\n"
-					"gear_max_write_us:%llu\n"
-					"gear_min_read_us:%llu\n"
-					"gear_max_read_us:%llu\n"
-					"gear_min_dev_us:%llu\n"
-					"gear_max_dev_us:%llu\n"
-					"gear_min_other_sec:%llu\n"
-					"gear_max_other_sec:%llu\n"
-					"gear_min_other_us:%llu\n"
-					"gear_max_other_us:%llu\n"
-					"scsi_send_count:%llu\n"
-					"dev_cmd_count:%llu\n",
-					hba->ufs_transmission_status.transmission_status_enable,
-					hba->ufs_transmission_status.gear_min_write_sec,
-					hba->ufs_transmission_status.gear_max_write_sec,
-					hba->ufs_transmission_status.gear_min_read_sec,
-					hba->ufs_transmission_status.gear_max_read_sec,
-					hba->ufs_transmission_status.gear_min_write_us,
-					hba->ufs_transmission_status.gear_max_write_us,
-					hba->ufs_transmission_status.gear_min_read_us,
-					hba->ufs_transmission_status.gear_max_read_us,
-					hba->ufs_transmission_status.gear_min_dev_us,
-					hba->ufs_transmission_status.gear_max_dev_us,
-					hba->ufs_transmission_status.gear_min_other_sec,
-					hba->ufs_transmission_status.gear_max_other_sec,
-					hba->ufs_transmission_status.gear_min_other_us,
-					hba->ufs_transmission_status.gear_max_other_us,
-					hba->ufs_transmission_status.scsi_send_count,
-					hba->ufs_transmission_status.dev_cmd_count);
-}
-
-static ssize_t ufshcd_transmission_status_data_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	u32 value;
-
-	if (kstrtou32(buf, 0, &value))
-		return -EINVAL;
-
-	value = !!value;
-
-	if (value) {
-		hba->ufs_transmission_status.transmission_status_enable = 1;
-	} else {
-		hba->ufs_transmission_status.transmission_status_enable = 0;
-		memset(&hba->ufs_transmission_status, 0, sizeof(struct ufs_transmission_status_t));
-	}
-
-	return count;
-}
-
-static void ufshcd_transmission_status_init_sysfs(struct ufs_hba *hba)
-{
-	hba->ufs_transmission_status_attr.show = ufshcd_transmission_status_data_show;
-	hba->ufs_transmission_status_attr.store = ufshcd_transmission_status_data_store;
-	sysfs_attr_init(&hba->ufs_transmission_status_attr.attr);
-	hba->ufs_transmission_status_attr.attr.name = "ufs_transmission_status";
-	hba->ufs_transmission_status_attr.attr.mode = 0644;
-	if (device_create_file(hba->dev, &hba->ufs_transmission_status_attr))
-		dev_err(hba->dev, "Failed to create sysfs for ufs_transmission_status_attr\n");
-
-	/*init the struct ufs_transmission_status*/
-	memset(&hba->ufs_transmission_status, 0, sizeof(struct ufs_transmission_status_t));
-	hba->ufs_transmission_status.transmission_status_enable = 1;
-}
-#endif /*CONFIG_OPLUS_FEATURE_MIDAS*/
-
 static void ufshcd_clkscaling_init_sysfs(struct ufs_hba *hba)
 {
 	hba->clk_scaling.enable_attr.show = ufshcd_clkscale_enable_show;
@@ -3270,16 +3189,6 @@ int ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	/* Make sure that doorbell is committed immediately */
 	wmb();
 	ufshcd_update_tag_stats(hba, task_tag);
-#ifdef CONFIG_OPLUS_FEATURE_MIDAS
-/* Add t for ufs transmission_status for midas */
-	if (hba->ufs_transmission_status.transmission_status_enable) {
-		if(hba->lrb[task_tag].cmd) {
-			hba->ufs_transmission_status.scsi_send_count++;
-		} else {
-			hba->ufs_transmission_status.dev_cmd_count++;
-		}
-	}
-#endif
 	return 0;
 }
 
@@ -6861,62 +6770,6 @@ static irqreturn_t ufshcd_uic_cmd_compl(struct ufs_hba *hba, u32 intr_status)
 	return retval;
 }
 
-#ifdef CONFIG_OPLUS_FEATURE_MIDAS
-/* Add t for ufs transmission_status for midas */
-static void ufshcd_lrb_scsicmd_time_statistics(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
-{
-	if (lrbp->cmd->cmnd[0] == WRITE_10 || lrbp->cmd->cmnd[0] == WRITE_16) {
-		if (hba->pwr_info.gear_tx == 1) {
-			hba->ufs_transmission_status.gear_min_write_sec += blk_rq_sectors(lrbp->cmd->request);
-			hba->ufs_transmission_status.gear_min_write_us +=
-				ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-		}
-
-		if (hba->pwr_info.gear_tx == 3 || hba->pwr_info.gear_tx == 4) {
-			hba->ufs_transmission_status.gear_max_write_sec += blk_rq_sectors(lrbp->cmd->request);
-			hba->ufs_transmission_status.gear_max_write_us +=
-				ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-		}
-	} else if (lrbp->cmd->cmnd[0] == READ_10 || lrbp->cmd->cmnd[0] == READ_16) {
-		if (hba->pwr_info.gear_rx == 1) {
-			hba->ufs_transmission_status.gear_min_read_sec += blk_rq_sectors(lrbp->cmd->request);
-			hba->ufs_transmission_status.gear_min_read_us +=
-				ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-		}
-
-		if (hba->pwr_info.gear_rx == 3 || hba->pwr_info.gear_rx == 4) {
-			hba->ufs_transmission_status.gear_max_read_sec += blk_rq_sectors(lrbp->cmd->request);
-			hba->ufs_transmission_status.gear_max_read_us +=
-				ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-		}
-	} else {
-		if (hba->pwr_info.gear_rx == 1) {
-			hba->ufs_transmission_status.gear_min_other_sec += blk_rq_sectors(lrbp->cmd->request);
-			hba->ufs_transmission_status.gear_min_other_us += ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-		}
-
-		if (hba->pwr_info.gear_rx == 3 || hba->pwr_info.gear_rx == 4) {
-			hba->ufs_transmission_status.gear_max_other_sec += blk_rq_sectors(lrbp->cmd->request);
-			hba->ufs_transmission_status.gear_max_other_us += ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-		}
-	}
-
-	return;
-}
-
-static void ufshcd_lrb_devcmd_time_statistics(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
-{
-	if (hba->pwr_info.gear_tx == 1) {
-		hba->ufs_transmission_status.gear_min_dev_us +=
-			ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-	}
-
-	if (hba->pwr_info.gear_tx == 3 || hba->pwr_info.gear_tx == 4) {
-		hba->ufs_transmission_status.gear_max_dev_us +=
-			ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
-	}
-}
-#endif /*CONFIG_OPLUS_FEATURE_MIDAS*/
 /**
  * __ufshcd_transfer_req_compl - handle SCSI and query command completion
  * @hba: per adapter instance
@@ -6948,12 +6801,6 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 			scsi_dma_unmap(cmd);
 			cmd->result = result;
 			lrbp->compl_time_stamp = ktime_get();
-#ifdef CONFIG_OPLUS_FEATURE_MIDAS
-/* Add t for ufs transmission_status for midas */
-			if (hba->ufs_transmission_status.transmission_status_enable) {
-				ufshcd_lrb_scsicmd_time_statistics(hba, lrbp);
-			}
-#endif
 			update_req_stats(hba, lrbp);
 			ufshcd_complete_lrbp_crypto(hba, cmd, lrbp);
 			/* Mark completed command as NULL in LRB */
@@ -6990,12 +6837,6 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 		} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
 			lrbp->command_type == UTP_CMD_TYPE_UFS_STORAGE) {
 			lrbp->compl_time_stamp = ktime_get();
-#ifdef CONFIG_OPLUS_FEATURE_MIDAS
-/* Add t for ufs transmission_status for midas */
-			if (hba->ufs_transmission_status.transmission_status_enable) {
-				ufshcd_lrb_devcmd_time_statistics(hba, lrbp);
-			}
-#endif
 			if (hba->dev_cmd.complete) {
 				ufshcd_cond_add_cmd_trace(hba, index,
 						"dev_cmd_cmpl");
@@ -11926,11 +11767,6 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 #if defined(CONFIG_UFSFEATURE)
 	ufsf_hpb_set_init_state(hba->ufsf);
 	ufsf_tw_set_init_state(hba->ufsf);
-#endif
-
-#ifdef CONFIG_OPLUS_FEATURE_MIDAS
-/* Add t for ufs transmission_status for midas */
-	ufshcd_transmission_status_init_sysfs(hba);
 #endif
 
 #if defined(CONFIG_UFSFEATURE_31)

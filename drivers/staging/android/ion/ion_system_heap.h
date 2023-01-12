@@ -38,9 +38,6 @@ struct ion_system_heap {
 	struct ion_page_pool *secure_pools[VMID_LAST][MAX_ORDER];
 	/* Prevents unnecessary page splitting */
 	struct mutex split_page_mutex;
-#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
-	struct ion_boost_pool *uncached_boost_pool, *cam_pool;
-#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 };
 
 struct page_info {

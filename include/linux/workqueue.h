@@ -501,11 +501,6 @@ extern __printf(1, 2) void set_worker_desc(const char *fmt, ...);
 extern void print_worker_info(const char *log_lvl, struct task_struct *task);
 extern void show_workqueue_state(void);
 extern void wq_worker_comm(char *buf, size_t size, struct task_struct *task);
-#ifdef CONFIG_OPLUS_FEATURE_MIDAS
-extern void get_worker_info(struct task_struct *task, char *buf);
-#else
-static inline void get_worker_info(struct task_struct *task, char *buf) { }
-#endif
 /**
  * queue_work - queue work on a workqueue
  * @wq: workqueue to use
