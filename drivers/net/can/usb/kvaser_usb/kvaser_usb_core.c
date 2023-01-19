@@ -477,6 +477,93 @@ static int kvaser_usb_close(struct net_device *netdev)
 	return 0;
 }
 
+static int kvaser_usb_set_bittiming(struct net_device *netdev)
+{
+	struct kvaser_usb_net_priv *priv = netdev_priv(netdev);
+	struct kvaser_usb *dev = priv->dev;
+	const struct kvaser_usb_dev_ops *ops = dev->driver_info->ops;
+	struct can_bittiming *bt = &priv->can.bittiming;
+
+	struct kvaser_usb_busparams busparams;
+	int tseg1 = bt->prop_seg + bt->phase_seg1;
+	int tseg2 = bt->phase_seg2;
+	int sjw = bt->sjw;
+	int err = -EOPNOTSUPP;
+
+	busparams.bitrate = cpu_to_le32(bt->bitrate);
+	busparams.sjw = (u8)sjw;
+	busparams.tseg1 = (u8)tseg1;
+	busparams.tseg2 = (u8)tseg2;
+	if (priv->can.ctrlmode & CAN_CTRLMODE_3_SAMPLES)
+		busparams.nsamples = 3;
+	else
+		busparams.nsamples = 1;
+
+	err = ops->dev_set_bittiming(netdev, &busparams);
+	if (err)
+		return err;
+
+	err = kvaser_usb_setup_rx_urbs(priv->dev);
+	if (err)
+		return err;
+
+	err = ops->dev_get_busparams(priv);
+	if (err) {
+		/* Treat EOPNOTSUPP as success */
+		if (err == -EOPNOTSUPP)
+			err = 0;
+		return err;
+	}
+
+	if (memcmp(&busparams, &priv->busparams_nominal,
+		   sizeof(priv->busparams_nominal)) != 0)
+		err = -EINVAL;
+
+	return err;
+}
+
+static int kvaser_usb_set_data_bittiming(struct net_device *netdev)
+{
+	struct kvaser_usb_net_priv *priv = netdev_priv(netdev);
+	struct kvaser_usb *dev = priv->dev;
+	const struct kvaser_usb_dev_ops *ops = dev->driver_info->ops;
+	struct can_bittiming *dbt = &priv->can.data_bittiming;
+
+	struct kvaser_usb_busparams busparams;
+	int tseg1 = dbt->prop_seg + dbt->phase_seg1;
+	int tseg2 = dbt->phase_seg2;
+	int sjw = dbt->sjw;
+	int err;
+
+	if (!ops->dev_set_data_bittiming ||
+	    !ops->dev_get_data_busparams)
+		return -EOPNOTSUPP;
+
+	busparams.bitrate = cpu_to_le32(dbt->bitrate);
+	busparams.sjw = (u8)sjw;
+	busparams.tseg1 = (u8)tseg1;
+	busparams.tseg2 = (u8)tseg2;
+	busparams.nsamples = 1;
+
+	err = ops->dev_set_data_bittiming(netdev, &busparams);
+	if (err)
+		return err;
+
+	err = kvaser_usb_setup_rx_urbs(priv->dev);
+	if (err)
+		return err;
+
+	err = ops->dev_get_data_busparams(priv);
+	if (err)
+		return err;
+
+	if (memcmp(&busparams, &priv->busparams_data,
+		   sizeof(priv->busparams_data)) != 0)
+		err = -EINVAL;
+
+	return err;
+}
+
 static void kvaser_usb_write_bulk_callback(struct urb *urb)
 {
 	struct kvaser_usb_tx_urb_context *context = urb->context;
@@ -611,6 +698,7 @@ static const struct net_device_ops kvaser_usb_netdev_ops = {
 
 static void kvaser_usb_remove_interfaces(struct kvaser_usb *dev)
 {
+	const struct kvaser_usb_dev_ops *ops = dev->driver_info->ops;
 	int i;
 
 	for (i = 0; i < dev->nchannels; i++) {
@@ -625,6 +713,9 @@ static void kvaser_usb_remove_interfaces(struct kvaser_usb *dev)
 	for (i = 0; i < dev->nchannels; i++) {
 		if (!dev->nets[i])
 			continue;
+
+		if (ops->dev_remove_channel)
+			ops->dev_remove_channel(dev->nets[i]);
 
 		free_candev(dev->nets[i]->netdev);
 	}
@@ -657,6 +748,7 @@ static int kvaser_usb_init_one(struct kvaser_usb *dev,
 	init_completion(&priv->start_comp);
 	init_completion(&priv->stop_comp);
 	init_completion(&priv->flush_comp);
+	init_completion(&priv->get_busparams_comp);
 	priv->can.ctrlmode_supported = 0;
 
 	priv->dev = dev;
@@ -694,17 +786,26 @@ static int kvaser_usb_init_one(struct kvaser_usb *dev,
 
 	dev->nets[channel] = priv;
 
+	if (ops->dev_init_channel) {
+		err = ops->dev_init_channel(priv);
+		if (err)
+			goto err;
+	}
+
 	err = register_candev(netdev);
 	if (err) {
 		dev_err(&dev->intf->dev, "Failed to register CAN device\n");
-		free_candev(netdev);
-		dev->nets[channel] = NULL;
-		return err;
+		goto err;
 	}
 
 	netdev_dbg(netdev, "device registered\n");
 
 	return 0;
+
+err:
+	free_candev(netdev);
+	dev->nets[channel] = NULL;
+	return err;
 }
 
 static int kvaser_usb_probe(struct usb_interface *intf,
