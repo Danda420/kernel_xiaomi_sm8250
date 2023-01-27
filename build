@@ -2,7 +2,7 @@
 DEVICE=apollo
 cd ..
 MAIN=$PWD
-cd kernel_xiaomi_${DEVICE}
+cd kernel_xiaomi_sm8250-apollo
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
 CLANG_DIR=$MAIN/zyc-clang
@@ -19,6 +19,7 @@ make clean && make mrproper
 mkdir -p out
 clear
 BUILD_START=$(date +"%s")
+DATE_CLOCK=$(date +'%H%M-%d%m%Y')
 
 make O=out ARCH=arm64 $DEFCONFIG
 
@@ -37,7 +38,6 @@ if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/ou
 	cd $ANYKERNEL_DIR
 	echo ""
 	echo "zipping"
-	DATE_CLOCK=$(date +'%H%M-%d%m%Y')
 	ZIPNAME=$KERNELVER-Oxygen+-$DATE_CLOCK.zip
 	zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
 	mv $ZIPNAME $KERNEL_DIR/
