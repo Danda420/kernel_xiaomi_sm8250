@@ -5,7 +5,7 @@ MAIN=$PWD
 cd kernel_xiaomi_sm8250-apollo
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
-CLANG_DIR=$MAIN/zyc-clang
+CLANG_DIR=$MAIN/weebx-clang
 DEFCONFIG=vendor/${DEVICE}_defconfig
 KERNELVER=$(make kernelversion)
 
@@ -15,7 +15,7 @@ if [[ -z "${JTHREAD}" ]]; then
 fi
 
 echo "cleaning..."
-make clean && make mrproper
+rm -rf out/
 mkdir -p out
 clear
 BUILD_START=$(date +"%s")
