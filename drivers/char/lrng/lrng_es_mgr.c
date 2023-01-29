@@ -360,8 +360,6 @@ int __init lrng_rand_initialize(void)
 
 	return 0;
 }
-early_initcall(rand_initialize);
-
 #ifndef CONFIG_LRNG_RANDOM_IF
 early_initcall(lrng_rand_initialize);
 #endif
