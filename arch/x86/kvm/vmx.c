@@ -11032,6 +11032,8 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	/* Save this for below */
 	spec_ctrl = vmx_spec_ctrl_restore_host(vmx);
 	
+	/* Eliminate branch target predictions from guest mode */
+	vmexit_fill_RSB();
 
  	vmx_enable_fb_clear(vmx);
  
