@@ -15,7 +15,7 @@ if [[ -z "${JTHREAD}" ]]; then
 fi
 
 echo "cleaning..."
-rm -rf $KERNEL_DIR/out/
+rm -rf out
 mkdir -p out
 clear
 BUILD_START=$(date +"%s")
@@ -38,6 +38,13 @@ if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/ou
 	cd $ANYKERNEL_DIR
 	echo ""
 	echo "zipping"
+	if [[ $DEVICE == apollo ]]; then
+		cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
+		cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
+	else
+		rm -rf $ANYKERNEL_DIR/ramdisk/*
+		cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
+	fi
 	ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-$DATE_CLOCK.zip
 	zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
 	mv $ZIPNAME $KERNEL_DIR/
@@ -59,4 +66,4 @@ else
 	echo " Kernel build failed! abort zipping..."
 fi
 
-rm -rf $KERNEL_DIR/out/
+rm -rf out

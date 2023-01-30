@@ -57,7 +57,7 @@ enum {
 	ADC_MAX_NUM,
 };
 
-static float sc8551_adc_lsb[] = {
+static long sc8551_adc_lsb[] = {
 	[ADC_IBUS]	= SC8551_IBUS_ADC_LSB,
 	[ADC_VBUS]	= SC8551_VBUS_ADC_LSB,
 	[ADC_VAC]	= SC8551_VAC_ADC_LSB,
