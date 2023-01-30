@@ -416,10 +416,6 @@ static int kvaser_usb_open(struct net_device *netdev)
 	if (err)
 		return err;
 
-	err = kvaser_usb_setup_rx_urbs(dev);
-	if (err)
-		goto error;
-
 	err = ops->dev_set_opt_mode(priv);
 	if (err)
 		goto error;
@@ -796,7 +792,7 @@ static int kvaser_usb_init_one(struct kvaser_usb *dev, int channel)
 	priv->can.state = CAN_STATE_STOPPED;
 	priv->can.clock.freq = dev->cfg->clock.freq;
 	priv->can.bittiming_const = dev->cfg->bittiming_const;
-	priv->can.do_set_bittiming = ops->dev_set_bittiming;
+	priv->can.do_set_bittiming = kvaser_usb_set_bittiming;
 	priv->can.do_set_mode = ops->dev_set_mode;
 	if ((driver_info->quirks & KVASER_USB_QUIRK_HAS_TXRX_ERRORS) ||
 	    (priv->dev->card_data.capabilities & KVASER_USB_CAP_BERR_CAP))
@@ -808,7 +804,7 @@ static int kvaser_usb_init_one(struct kvaser_usb *dev, int channel)
 
 	if (priv->can.ctrlmode_supported & CAN_CTRLMODE_FD) {
 		priv->can.data_bittiming_const = dev->cfg->data_bittiming_const;
-		priv->can.do_set_data_bittiming = ops->dev_set_data_bittiming;
+		priv->can.do_set_data_bittiming = kvaser_usb_set_data_bittiming;
 	}
 
 	netdev->flags |= IFF_ECHO;

@@ -2,7 +2,7 @@
 DEVICE=apollo
 cd ..
 MAIN=$PWD
-cd kernel_xiaomi_sm8250-apollo
+cd kernel_xiaomi_sm8250
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
 CLANG_DIR=$MAIN/weebx-clang
@@ -15,7 +15,7 @@ if [[ -z "${JTHREAD}" ]]; then
 fi
 
 echo "cleaning..."
-rm -rf out/
+rm -rf $KERNEL_DIR/out/
 mkdir -p out
 clear
 BUILD_START=$(date +"%s")

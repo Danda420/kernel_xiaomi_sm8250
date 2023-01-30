@@ -251,7 +251,7 @@ void ext4_es_find_delayed_extent_range(struct inode *inode,
 
 	BUG_ON(es == NULL);
 	BUG_ON(end < lblk);
-	trace_ext4_es_find_delayed_extent_range_enter(inode, lblk);
+	trace_ext4_es_find_extent_range_enter(inode, lblk);
 
 	read_lock(&EXT4_I(inode)->i_es_lock);
 	tree = &EXT4_I(inode)->i_es_tree;
@@ -292,7 +292,7 @@ out:
 
 	read_unlock(&EXT4_I(inode)->i_es_lock);
 
-	trace_ext4_es_find_delayed_extent_range_exit(inode, es);
+	trace_ext4_es_find_extent_range_exit(inode, es);
 }
 
 static void ext4_es_list_add(struct inode *inode)
