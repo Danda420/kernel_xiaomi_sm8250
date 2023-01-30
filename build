@@ -38,7 +38,7 @@ if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/ou
 	cd $ANYKERNEL_DIR
 	echo ""
 	echo "zipping"
-	ZIPNAME=$KERNELVER-Oxygen+-$DATE_CLOCK.zip
+	ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-$DATE_CLOCK.zip
 	zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
 	mv $ZIPNAME $KERNEL_DIR/
 	echo ""
