@@ -1066,14 +1066,9 @@ static int pd_eval_src_caps(struct usbpd *pd)
 	/* Select thr first PDO for zimi adapter*/
 	if (pd->batt_2s && pd->adapter_id == 0xA819)
 		pd_select_pdo(pd, 2, 0, 0);
-	else if (pd->request_reject == 1) {
-		if (pd->rdo == 0) {
-			usbpd_err(&pd->dev, "Invalid rdo, first pdo %08x\n", first_pdo);
-			pd_select_pdo(pd, 1, 0, 0);
-		}
-		usbpd_err(&pd->dev, "request reject setted!\n");
-		pd_select_pdo(pd, 1, 0, 0);
-	} else
+	else if (pd->request_reject == 1)
+		;
+	else
 		pd_select_pdo(pd, 1, 0, 0);
 
 	return 0;
@@ -5600,6 +5595,9 @@ static void usbpd_pdo_workfunc(struct work_struct *w)
 					usbpd_info(&pd->dev, "weak pps detect\n");
 				}
 			}
+			pd->pps_found = true;
+			pd->pps_insert = true;
+		}
 		usbpd_info(&pd->dev, "%s max_volt:%d,min_volt:%d,max_curr:%d\n",
 				(PD_SRC_PDO_TYPE(pdo) == PD_SRC_PDO_TYPE_AUGMENTED) ? "PPS" : "PD2.0",
 				max_volt, min_volt, max_curr);
@@ -5970,3 +5968,4 @@ module_exit(usbpd_exit);
 
 MODULE_DESCRIPTION("USB Power Delivery Policy Engine");
 MODULE_LICENSE("GPL v2");
+
