@@ -488,8 +488,6 @@ And public attribution of xiaomi platforms(like L3A and so and)
 	status = "disabled";
 };
 
-
-/*Security : To extend TA memory*/
 &reserved_memory {
 	removed_mem: removed_region@80b00000 {
 		reg = <0x0 0x80b00000 0x0 0x5700000>;
@@ -497,7 +495,6 @@ And public attribution of xiaomi platforms(like L3A and so and)
 };
 
 &soc {
-	/*Security : To extend TA memory*/
 	qcom_seecom {
 		compatible = "qcom,qseecom";
 		reg = <0x82400000 0x3E00000>;

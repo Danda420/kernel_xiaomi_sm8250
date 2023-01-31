@@ -73,6 +73,10 @@ struct fts_ts_data *fts_data;
 static int fts_ts_suspend(struct device *dev);
 static int fts_ts_resume(struct device *dev);
 
+#define LPM_EVENT_INPUT 0x1
+extern void lpm_disable_for_dev(bool on, char event_dev);
+extern void touch_irq_boost(void);
+
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 static void fts_read_palm_data(u8 reg_value);
 static int fts_palm_sensor_cmd(int value);
@@ -150,6 +154,9 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	/* recover TP palm mode state */
 	fts_palm_mode_recovery(ts_data);
 #endif
+	/* set touch in charge mode or not */
+	ts_data->charger_mode = false;
+	queue_work(ts_data->ts_workqueue, &ts_data->power_supply_work);
 	FTS_FUNC_EXIT();
 }
 
@@ -411,6 +418,7 @@ void fts_release_all_finger(void)
 #endif
 	input_report_key(input_dev, BTN_TOUCH, 0);
 	input_sync(input_dev);
+	lpm_disable_for_dev(false, LPM_EVENT_INPUT);
 
 	fts_data->touchs = 0;
 	fts_data->key_state = 0;
@@ -531,6 +539,7 @@ static int fts_input_report_b(struct fts_ts_data *data)
 				FTS_DEBUG("[B]Points All Up!");
 			}
 			input_report_key(data->input_dev, BTN_TOUCH, 0);
+			lpm_disable_for_dev(false, LPM_EVENT_INPUT);
 		} else {
 			input_report_key(data->input_dev, BTN_TOUCH, 1);
 		}
@@ -742,6 +751,7 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 	int ret = 0;
 	struct fts_ts_data *ts_data = fts_data;
 
+	touch_irq_boost();
 	if ((ts_data->suspended) && (ts_data->pm_suspend)) {
 		ret = wait_for_completion_timeout(
 				  &ts_data->pm_completion,
@@ -751,9 +761,12 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 			return IRQ_HANDLED;
 		}
 	}
+#else
+	touch_irq_boost();
 #endif
 
 	pm_stay_awake(fts_data->dev);
+	lpm_disable_for_dev(true, LPM_EVENT_INPUT);
 	fts_irq_read_report();
 	pm_relax(fts_data->dev);
 	return IRQ_HANDLED;
@@ -1510,7 +1523,7 @@ static int fts_power_supply_event(struct notifier_block *nb,
 static void fts_power_supply_work(struct work_struct *work)
 {
 	struct fts_ts_data *ts_data = container_of(work, struct fts_ts_data, power_supply_work);
-	int charger_mode;
+	bool charger_mode;
 	int ret;
 
 	if (ts_data == NULL)
@@ -1524,7 +1537,7 @@ static void fts_power_supply_work(struct work_struct *work)
 	pm_stay_awake(ts_data->dev);
 	mutex_lock(&ts_data->power_supply_lock);
 	charger_mode = !!power_supply_is_system_supplied();
-	if (charger_mode != ts_data->charger_mode || ts_data->charger_mode < 0) {
+	if (charger_mode != ts_data->charger_mode) {
 		ts_data->charger_mode = charger_mode;
 		FTS_INFO("%s %d\n", __func__, charger_mode);
 		if (charger_mode) {
@@ -1706,7 +1719,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	register_early_suspend(&ts_data->early_suspend);
 #endif
 
-	ts_data->charger_mode = -1;
+	ts_data->charger_mode = false;
 	mutex_init(&ts_data->power_supply_lock);
 	INIT_WORK(&ts_data->power_supply_work, fts_power_supply_work);
 	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
@@ -2125,7 +2138,7 @@ static void fts_restore_mode_value(int mode, int value_type)
 		xiaomi_touch_interfaces.touch_mode[mode][value_type];
 }
 
-static void fts_restore_normal_mode()
+static void fts_restore_normal_mode(void)
 {
 	int i;
 	for (i = 0; i < Touch_Report_Rate; i++) {

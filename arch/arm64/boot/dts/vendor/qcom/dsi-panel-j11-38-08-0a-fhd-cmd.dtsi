@@ -23,8 +23,8 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-reset-sequence = <0 1>, <1 10>;
-		qcom,mdss-pan-physical-width-dimension = <695>;
-		qcom,mdss-pan-physical-height-dimension = <1545>;
+		qcom,mdss-pan-physical-width-dimension = <70>;
+		qcom,mdss-pan-physical-height-dimension = <155>;
 
 		qcom,mdss-dsi-te-pin-select = <1>;
 		qcom,mdss-dsi-wr-mem-start = <0x2c>;
@@ -126,7 +126,6 @@
 	mi,mdss-dsi-panel-dc-threshold = <470>;
 	mi,mdss-dsi-panel-dc-type = <2>; /* differ to cmi */
 
-	mi,mdss-dsi-panel-fod-dimlayer-enabled;
 	mi,mdss-panel-fod-hbm-on-need-prepare;
 	mi,mdss-panel-delay-before-fod-hbm-on;
 	mi,mdss-panel-delay-before-fod-hbm-off;
@@ -192,24 +191,17 @@
 
 			mi,mdss-dsi-hbm-fod-on-command = [
 				39 00 00 00 00 00 03 F0 5A 5A
-				/* elvss dimming off */
-				39 00 00 00 00 00 02 B0 07
-				39 00 00 00 00 00 02 B7 51
-				39 01 00 00 00 00 03 F0 A5 A5
-				/* HBM on */
-				39 01 00 00 01 00 02 53 E0
-				/* HBM ON 800nit */
-				39 01 00 00 01 00 03 51 03 FF];
+				39 00 00 00 00 00 02 B0 03
+				39 00 00 00 00 00 02 B7 C9
+				39 00 00 00 00 00 03 F0 A5 A5
+				39 01 00 00 10 00 02 53 E0];
 			mi,mdss-dsi-hbm-fod-on-command-state = "dsi_hs_mode";
 			mi,mdss-dsi-hbm-fod-off-command = [
-				15 01 00 00 00 00 02 53 20
-				/* parameter will be updated base on last brightness */
-				39 01 00 00 00 00 03 51 03 FF
-				39 00 00 00 00 00 03 F0 5A 5A
-				/* elvss dimming on */
-				39 00 00 00 00 00 02 B0 07
-				39 00 00 00 00 00 02 B7 D1
-				39 01 00 00 00 00 03 F0 A5 A5];
+                                39 00 00 00 00 00 03 F0 5A 5A
+				39 00 00 00 00 00 02 B0 03
+				39 00 00 00 00 00 02 B7 C9
+				39 00 00 00 00 00 03 F0 A5 A5
+				39 01 00 00 10 00 02 53 20];
 			mi,mdss-dsi-hbm-fod-off-command-state = "dsi_hs_mode";
 
 			mi,mdss-dsi-hbm-off-command = [

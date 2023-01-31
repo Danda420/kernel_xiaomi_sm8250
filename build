@@ -1,12 +1,10 @@
 #!/bin/bash
-DEVICE=apollo
 cd ..
 MAIN=$PWD
 cd kernel_xiaomi_sm8250
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
 CLANG_DIR=$MAIN/weebx-clang
-DEFCONFIG=vendor/${DEVICE}_defconfig
 KERNELVER=$(make kernelversion)
 
 if [[ -z "${JTHREAD}" ]]; then
@@ -14,56 +12,81 @@ if [[ -z "${JTHREAD}" ]]; then
     export JTHREAD="$((COUNT + 2))"
 fi
 
-echo "cleaning..."
-rm -rf out
-mkdir -p out
-clear
-BUILD_START=$(date +"%s")
-DATE_CLOCK=$(date +'%H%M-%d%m%Y')
+build() {
+	DEFCONFIG=vendor/${DEVICE}_defconfig
+	echo "cleaning..."
+	rm -rf $KERNEL_DIR/out/
+	mkdir -p out
+	clear
+	BUILD_START=$(date +"%s")
+	DATE_CLOCK=$(date +'%H%M-%d%m%Y')
 
-make O=out ARCH=arm64 $DEFCONFIG
+	make O=out ARCH=arm64 $DEFCONFIG
 
-PATH="$CLANG_DIR/bin:${PATH}" \
-make 				O=out \
-				ARCH=arm64 \
-				CC=clang \
-				CROSS_COMPILE=aarch64-linux-gnu- \
-				CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-				-j${JTHREAD}
+	PATH="$CLANG_DIR/bin:${PATH}" \
+	make 				O=out \
+					ARCH=arm64 \
+					CC=clang \
+					CROSS_COMPILE=aarch64-linux-gnu- \
+					CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+					-j${JTHREAD}
 
-if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
+	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
-	mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $ANYKERNEL_DIR/
-	mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
-	cd $ANYKERNEL_DIR
-	echo ""
-	echo "zipping"
-	if [[ $DEVICE == apollo ]]; then
-		cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
-		cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
+		mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $ANYKERNEL_DIR/
+		mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
+		cd $ANYKERNEL_DIR
+		echo ""
+		echo "zipping"
+		if [[ $DEVICE == apollo ]]; then
+			cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
+			cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
+		else
+			rm -rf $ANYKERNEL_DIR/ramdisk/*
+			cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
+		fi
+		ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-$DATE_CLOCK.zip
+		zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
+		mv $ZIPNAME $KERNEL_DIR/
+		echo ""
+
+		echo "Cleaning AnyKernel3 dir"
+		echo ""
+		rm -rf $ANYKERNEL_DIR/*.zip
+		rm -rf $ANYKERNEL_DIR/Image.gz-dtb
+		rm -rf $ANYKERNEL_DIR/dtbo.img
+		echo "****** build done! ******"
+		echo ""
+		echo "Your kernel zip name is $ZIPNAME"
+		echo ""
+		BUILD_END=$(date +"%s")
+		DIFF=$(($BUILD_END - $BUILD_START))
+		echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
 	else
-		rm -rf $ANYKERNEL_DIR/ramdisk/*
-		cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
+		echo " Kernel build failed! abort zipping..."
 	fi
-	ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-$DATE_CLOCK.zip
-	zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
-	mv $ZIPNAME $KERNEL_DIR/
-	echo ""
 
-	echo "Cleaning AnyKernel3 dir"
-	echo ""
-	rm -rf $ANYKERNEL_DIR/*.zip
-	rm -rf $ANYKERNEL_DIR/Image.gz-dtb
-	rm -rf $ANYKERNEL_DIR/dtbo.img
-	echo "****** build done! ******"
-	echo ""
-	echo "Your kernel zip name is $ZIPNAME"
-	echo ""
-	BUILD_END=$(date +"%s")
-	DIFF=$(($BUILD_END - $BUILD_START))
-	echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
-else
-	echo " Kernel build failed! abort zipping..."
-fi
+	rm -rf $KERNEL_DIR/out/
+}
 
-rm -rf out
+clear 
+while true; do
+    echo "Build kernel for :"
+    echo "(1) MI 10T/Pro (apollo)"
+    echo "(2) POCO F4/Redmi K40S (munch)"
+    read -p "" choose
+    case $choose in
+        1 ) 
+        echo "building kernel for MI 10T/Pro (apollo)...."
+        DEVICE=apollo
+        build
+        exit;;
+        2 )
+        echo "building kernel POCO F4/Redmi K40S (munch)...."
+        DEVICE=munch
+        build
+        exit;;
+        * ) 
+        echo "Please answer 1 or 2.";;
+    esac
+done
