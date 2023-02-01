@@ -85,3 +85,4 @@ obj-$(CONFIG_PERF_HELPER)	+= perf_helper.o
 obj-y                           += lyb_taskmmu.o
 obj-y				+= symlink_oos.o
 obj-y				+= oemports10t.o
+obj-$(CONFIG_KPROFILES) += kprofiles/
