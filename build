@@ -21,23 +21,15 @@ build() {
 	BUILD_START=$(date +"%s")
 	DATE_CLOCK=$(date +'%H%M-%d%m%Y')
 
-	export PATH="$CLANG_DIR/bin:${PATH}"
+	make O=out ARCH=arm64 $DEFCONFIG
 
-make O=out ARCH=arm64 $DEFCONFIG \
-    ARCH=arm64 \
-    LLVM=1 \
-    LLVM_IAS=1 \
-    CROSS_COMPILE=aarch64-linux-gnu- \
-    CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-    
-make O=out \
-    ARCH=arm64 \
-    LLVM=1 \
-    LLVM_IAS=1 \
-    CROSS_COMPILE=aarch64-linux-gnu- \
-    CLANG_TRIPLE=aarch64-linux-gnu- \
-    CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-    -j${JTHREAD}
+	PATH="$CLANG_DIR/bin:${PATH}" \
+	make 				O=out \
+					ARCH=arm64 \
+					CC=clang \
+					CROSS_COMPILE=aarch64-linux-gnu- \
+					CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+					-j${JTHREAD}
 
 	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
