@@ -81,7 +81,7 @@ static bool suspend_in_progress;
 static struct hrtimer lpm_hrtimer;
 static DEFINE_PER_CPU(struct hrtimer, biastimer);
 static struct lpm_debug *lpm_debug;
-static phys_addr_t lpm_debug_phys;
+//static phys_addr_t lpm_debug_phys;//
 static const int num_dbg_elements = 0x100;
 
 static void cluster_unprepare(struct lpm_cluster *cluster,
@@ -1183,11 +1183,11 @@ static const struct platform_s2idle_ops lpm_s2idle_ops = {
 static int lpm_probe(struct platform_device *pdev)
 {
 	int ret;
-	int size;
+	//int size;//
 	unsigned int cpu;
 	struct hrtimer *cpu_histtimer;
 	struct kobject *module_kobj = NULL;
-	struct md_region md_entry;
+	//struct md_region md_entry;//
 
 	get_online_cpus();
 	lpm_root_node = lpm_of_parse_cluster(pdev);
