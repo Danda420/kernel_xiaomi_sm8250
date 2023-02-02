@@ -340,6 +340,7 @@ static int lpm_starting_cpu(unsigned int cpu)
 	return 0;
 }
 
+/*
 static void calculate_next_wakeup(uint32_t *next_wakeup_us,
 				  uint32_t next_event_us,
 				  uint32_t lvl_latency_us,
@@ -353,7 +354,8 @@ static void calculate_next_wakeup(uint32_t *next_wakeup_us,
 
 	if (next_event_us < sleep_us)
 		*next_wakeup_us = next_event_us - lvl_latency_us;
-}
+} 
+*/
 
 static unsigned int get_next_online_cpu(bool from_idle)
 {
@@ -735,18 +737,6 @@ exit:
 	end_time = ktime_to_ns(ktime_get());
 	lpm_stats_cpu_exit(idx, end_time, success);
 
-	dev->last_residency = ktime_us_delta(ktime_get(), start);
-	update_history(dev, idx);
-	RCU_NONIDLE(trace_cpu_idle_exit(idx, success));
-	if (lpm_prediction && cpu->lpm_prediction) {
-		histtimer_cancel();
-		clusttimer_cancel();
-	}
-	if (cpu->bias) {
-		biastimer_cancel();
-		cpu->bias = 0;
-	}
-	local_irq_enable();
 	return idx;
 }
 
@@ -1031,7 +1021,7 @@ static int lpm_probe(struct platform_device *pdev)
 {
 	int ret;
 	//int size;//
-	unsigned int cpu;
+	//unsigned int cpu;//
 	struct kobject *module_kobj = NULL;
 	//struct md_region md_entry;//
 
