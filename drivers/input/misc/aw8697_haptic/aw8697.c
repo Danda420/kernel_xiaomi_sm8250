@@ -69,6 +69,9 @@
 
 #define AW8697_MAX_BST_VO 0x1f
 
+static int haptic_gain = 80;
+module_param(haptic_gain, int, 0644);
+
 #define OSC_CALIBRATION_T_LENGTH 5100000
 #define PM_QOS_VALUE_VB 400
 struct pm_qos_request pm_qos_req_vb;
@@ -1230,15 +1233,35 @@ static int aw869xx_haptic_set_bst_peak_cur(struct aw8697 *aw8697)
 	return 0;
 }
 
-
-
-static unsigned char aw8697_haptic_set_level(struct aw8697 *aw8697, int gain)
+static unsigned char haptic_set_level(int gain)
 {
-    int val = 80;
+    int val = 128;
+    int max_val = 160;
 
-    val = aw8697->level_vib * gain / 3;
-    if (val > 255)
-        val = 255;
+    /*
+    * Max level default is 255
+    * Guard max level of haptic
+    */
+    if (max_val > 255)
+        max_val = 255;
+
+    // Set gain to use max_val
+    if (gain < max_val || gain > max_val)
+        gain = max_val;
+
+    // haptic_gain in percent
+    if (haptic_gain > 100 )
+        haptic_gain = 100;
+    if (haptic_gain < 20 )
+        haptic_gain = 20;
+
+    val = haptic_gain * gain / 100;
+
+    if (val > max_val)
+        val = max_val;
+    // don't change value on min level
+    if (val < 30)
+        val = 30;
 
     return val;
 }
@@ -1246,9 +1269,9 @@ static unsigned char aw8697_haptic_set_level(struct aw8697 *aw8697, int gain)
 static int aw8697_haptic_set_gain(struct aw8697 *aw8697, unsigned char gain)
 {
 	if (aw8697->chip_version == AW8697_CHIP_9X) {
-		aw8697_i2c_write(aw8697, AW8697_REG_DATDBG, aw8697_haptic_set_level(aw8697, gain));
+		aw8697_i2c_write(aw8697, AW8697_REG_DATDBG, haptic_set_level(gain));
 	} else {
-		aw8697_i2c_write(aw8697, AW869XX_REG_PLAYCFG2, aw8697_haptic_set_level(aw8697, gain));
+		aw8697_i2c_write(aw8697, AW869XX_REG_PLAYCFG2, haptic_set_level(gain));
 	}
 	return 0;
 }
@@ -3608,7 +3631,6 @@ static int aw8697_haptic_init(struct aw8697 *aw8697)
 	mutex_lock(&aw8697->lock);
 
 	aw8697->activate_mode = aw8697->info.mode;
-    aw8697->level_vib = 3;
 	aw8697->osc_cali_run = 0;
 	aw8697_haptic_play_mode(aw8697, AW8697_HAPTIC_STANDBY_MODE);
 	aw8697_haptic_set_pwm(aw8697, AW8697_PWM_24K);
@@ -5424,48 +5446,6 @@ static ssize_t gain_store(struct device *dev,
 	return count;
 }
 
-static ssize_t aw8697_level_show(struct device *dev,
-        struct device_attribute *attr, char *buf)
-{
-#ifdef TIMED_OUTPUT
-    struct timed_output_dev *to_dev = dev_get_drvdata(dev);
-    struct aw8697 *aw8697 = container_of(to_dev, struct aw8697, to_dev);
-#else
-    struct led_classdev *cdev = dev_get_drvdata(dev);
-    struct aw8697 *aw8697 = container_of(cdev, struct aw8697, cdev);
-#endif
-
-    return snprintf(buf, PAGE_SIZE, "%d\n", aw8697->level_vib);
-}
-
-static ssize_t aw8697_level_store(struct device *dev,
-        struct device_attribute *attr, const char *buf, size_t count)
-{
-#ifdef TIMED_OUTPUT
-    struct timed_output_dev *to_dev = dev_get_drvdata(dev);
-    struct aw8697 *aw8697 = container_of(to_dev, struct aw8697, to_dev);
-#else
-    struct led_classdev *cdev = dev_get_drvdata(dev);
-    struct aw8697 *aw8697 = container_of(cdev, struct aw8697, cdev);
-#endif
-    unsigned int val = 0;
-    int rc = 0;
-
-    rc = kstrtouint(buf, 0, &val);
-    if (rc < 0)
-        return rc;
-
-    if (val < 0 || val > 10)
-        val = 3;
-
-    pr_info("%s: value=%d\n", __FUNCTION__, val);
-    mutex_lock(&aw8697->lock);
-    aw8697->level_vib = val;
-    aw8697_haptic_set_gain(aw8697, aw8697->gain);
-    mutex_unlock(&aw8697->lock);
-    return count;
-}
-
 static ssize_t seq_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
 {
@@ -6446,7 +6426,6 @@ static DEVICE_ATTR_RW(f0_save);
 static DEVICE_ATTR_RW(osc_save);
 static DEVICE_ATTR_RO(f0_value);
 static DEVICE_ATTR_RW(custom_wave);
-static DEVICE_ATTR(level, S_IWUSR | S_IRUGO, aw8697_level_show, aw8697_level_store);
 
 #ifdef SUPPORT_RELOAD_FW
 static DEVICE_ATTR_RW(vov);
@@ -6476,7 +6455,6 @@ static struct attribute *aw8697_vibrator_attributes[] = {
 	&dev_attr_index.attr,
 	&dev_attr_vmax.attr,
 	&dev_attr_gain.attr,
-    &dev_attr_level.attr,
 	&dev_attr_seq.attr,
 	&dev_attr_loop.attr,
 	&dev_attr_rtp.attr,
