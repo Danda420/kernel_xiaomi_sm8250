@@ -19,6 +19,7 @@ on property:persist.spectrum.profile=default
    write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2419200
    write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2419200
    write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2841600
+   write /sys/module/kprofiles/parameters/kp_mode 1
    
 #balance
 on property:persist.spectrum.profile=0
@@ -36,6 +37,7 @@ on property:persist.spectrum.profile=0
    chmod 660 /sys/class/thermal/thermal_message/sconfig
    write /sys/class/thermal/thermal_message/sconfig 10
    chmod 444 /sys/class/thermal/thermal_message/sconfig
+   write /sys/module/kprofiles/parameters/kp_mode 2
    
 #perf
 on property:persist.spectrum.profile=1
@@ -53,6 +55,7 @@ on property:persist.spectrum.profile=1
    chmod 660 /sys/class/thermal/thermal_message/sconfig
    write /sys/class/thermal/thermal_message/sconfig 16
    chmod 444 /sys/class/thermal/thermal_message/sconfig
+   write /sys/module/kprofiles/parameters/kp_mode 3
    
    
 #batt
@@ -71,6 +74,7 @@ on property:persist.spectrum.profile=2
    chmod 660 /sys/class/thermal/thermal_message/sconfig
    write /sys/class/thermal/thermal_message/sconfig 2
    chmod 444 /sys/class/thermal/thermal_message/sconfig
+   write /sys/module/kprofiles/parameters/kp_mode 1
    
 
 #game
@@ -89,3 +93,4 @@ on property:persist.spectrum.profile=3
    chmod 660 /sys/class/thermal/thermal_message/sconfig
    write /sys/class/thermal/thermal_message/sconfig 13
    chmod 444 /sys/class/thermal/thermal_message/sconfig
+   write /sys/module/kprofiles/parameters/kp_mode 3
