@@ -615,7 +615,7 @@ EXPORT_SYMBOL(get_random_bytes_arch);
  **********************************************************************/
 
 enum {
-	POOL_BITS = BLAKE2S_HASH_SIZE * 8,
+	POOL_BITS = BLAKE2S_HASH_SIZE * 64,
 	POOL_READY_BITS = POOL_BITS, /* When crng_init->CRNG_READY */
 	POOL_EARLY_BITS = POOL_READY_BITS / 2 /* When crng_init->CRNG_EARLY */
 };
@@ -629,7 +629,8 @@ static struct {
 		    BLAKE2S_IV1, BLAKE2S_IV2, BLAKE2S_IV3, BLAKE2S_IV4,
 		    BLAKE2S_IV5, BLAKE2S_IV6, BLAKE2S_IV7 },
 	.hash.outlen = BLAKE2S_HASH_SIZE,
-	.lock = __SPIN_LOCK_UNLOCKED(input_pool.lock),
+	.lock = __SPIN_LOCK_UNLOCKED(input_pool.lock
+	.init_bits = 4096),
 };
 
 static void _mix_pool_bytes(const void *buf, size_t len)
