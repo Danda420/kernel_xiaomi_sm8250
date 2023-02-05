@@ -399,11 +399,6 @@ struct aw8697 {
 	struct work_struct set_gain_work;
 	struct delayed_work ram_work;
 
-#ifdef TIMED_OUTPUT
-    struct timed_output_dev to_dev;
-#else
-    struct led_classdev cdev;
-#endif
 	struct fileops fileops;
 	struct ram ram;
 
@@ -437,7 +432,6 @@ struct aw8697 {
 	int index;
 	int vmax;
 	int gain;
-    int level_vib;
 	u16 new_gain;
 	unsigned char level;
 
