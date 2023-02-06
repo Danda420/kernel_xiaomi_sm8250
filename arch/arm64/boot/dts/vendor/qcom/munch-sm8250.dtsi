@@ -653,12 +653,14 @@ And public attribution of xiaomi platforms(like L11R and so and)
 		mi,pd-bus-volt-max = <12000>;
 		mi,pd-bus-curr-max = <6200>;
 		mi,pd-non-ffc-bat-volt-max = <4450>;
-		mi,pd-bus-curr-compensate  = <0>;
+		mi,pd-bus-curr-compensate  = <150>;
 		mi,step-charge-high-vol-curr-max = <4400>;
 		mi,cell-vol-high-threshold-mv = <4500>;
 		mi,cell-vol-max-threshold-mv = <4480>;
 		mi,pd-battery-warm-th = <480>;
+		mi,use-qcom-gauge;
 		mi,cp-sec-enable;
+		mi,pd-power-max = <67>; /*charge power max : 67W */
 	};
 
 /*
@@ -836,6 +838,7 @@ And public attribution of xiaomi platforms(like L11R and so and)
 
 &pm8150b_pdphy {
 	mi,non-qcom-pps-ctrl;
+	mi,pd-power-max = <67>; /*charge power max : 67W */
 };
 
 &smb1390 {
