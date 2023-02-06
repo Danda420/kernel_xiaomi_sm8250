@@ -2,6 +2,9 @@ on property:sys.boot_completed=1
    exec u:r:init:s0 root root -- /init.oxygen.sh
    exec u:r:su:s0 root root -- /init.oxygen.sh
  
+   chmod 664 /sys/module/kprofiles/parameters/auto_kprofiles
+   write /sys/module/kprofiles/parameters/auto_kprofiles Y
+   chmod 664 /sys/module/kprofiles/parameters/kp_mode
    setprop spectrum.support 1
    setprop persist.spectrum.profile default
          setprop persist.spectrum.kernel Oxygen+
