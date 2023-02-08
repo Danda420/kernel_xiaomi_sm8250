@@ -14,7 +14,11 @@ config FS_IOMAP
 	bool
 
 source "fs/ext2/Kconfig"
+#ifdef CONFIG_OPLUS_FEATURE_OEXT4
+source "fs/oext4/Kconfig"
+#else
 source "fs/ext4/Kconfig"
+#endif
 source "fs/jbd2/Kconfig"
 
 config FS_MBCACHE

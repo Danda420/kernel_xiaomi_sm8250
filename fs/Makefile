@@ -67,7 +67,11 @@ obj-$(CONFIG_DLM)		+= dlm/
 # Do not add any filesystems before this line
 obj-$(CONFIG_FSCACHE)		+= fscache/
 obj-$(CONFIG_REISERFS_FS)	+= reiserfs/
+ifeq ($(CONFIG_OPLUS_FEATURE_OEXT4),y)
+obj-$(CONFIG_EXT4_FS)		+= oext4/
+else
 obj-$(CONFIG_EXT4_FS)		+= ext4/
+endif
 # We place ext4 before ext2 so that clean ext3 root fs's do NOT mount using the
 # ext2 driver, which doesn't know about journalling!  Explicitly request ext2
 # by giving the rootfstype= parameter.
