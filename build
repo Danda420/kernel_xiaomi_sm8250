@@ -22,17 +22,18 @@ build() {
 	DATE_CLOCK=$(date +'%H%M-%d%m%Y')
 	export USE_CCACHE=1
 	export CCACHE_EXEC=/usr/bin/ccache
-	ccache -M 20G
+	ccache -M 10G
 	ccache -o compression=true
 
 	make O=out ARCH=arm64 $DEFCONFIG
 
-	PATH="$CLANG_DIR/bin:${PATH}" \
-	make -j$(nproc --all) CC="ccache clang"	O=out \
-						ARCH=arm64 \
-						CC=clang \
-						CROSS_COMPILE=aarch64-linux-gnu- \
-						CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+	export PATH="$CLANG_DIR/bin:${PATH}"
+	make 				O=out \
+					ARCH=arm64 \
+					CC="ccache clang" \
+					CROSS_COMPILE=aarch64-linux-gnu- \
+					CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+					-j${JTHREAD}
 
 	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
@@ -42,8 +43,10 @@ build() {
 		echo ""
 		echo "zipping"
 		if [[ $DEVICE == apollo ]]; then
-			mkdir $ANYKERNEL_DIR/ramdisk
-			cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
+			if [[ -d $ANYKERNELDIR/ramdisk ]]; then
+				mkdir $ANYKERNEL_DIR/ramdisk
+				cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
+			fi
 			cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
 		else
 			rm -rf $ANYKERNEL_DIR/ramdisk
@@ -94,3 +97,4 @@ while true; do
         echo "Please answer 1 or 2.";;
     esac
 done
+
