@@ -550,8 +550,12 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 		is_zygote_pid(task->parent->pid)) {
 		if (kp_active_mode() == 3 || kp_active_mode() == 0) {
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500);
+			pr_info("kprofiles:  Boosted cgroup at 500ms");
 		} else if (kp_active_mode() == 2) {
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 250);
+			pr_info("kprofiles:  Boosted cgroup at 250ms");
+		} else {
+			pr_info("kprofiles: Skipped cgroup boost");
 		}
 	}
 

@@ -2383,8 +2383,12 @@ long _do_fork(unsigned long clone_flags,
 	   */
 	  if (kp_active_mode() == 3 || kp_active_mode() == 0) {
 	    devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+		pr_info("kprofiles: Boosted fork at 100ms");
 	  } else if (kp_active_mode() == 2) {
 	    devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+		pr_info("kprofiles: Boosted fork at 50ms");
+	  } else {
+		pr_info("kprofiles: Skipped fork boost");
 	  }
 	}
 
