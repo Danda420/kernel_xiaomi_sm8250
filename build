@@ -25,15 +25,23 @@ build() {
 	ccache -M 10G
 	ccache -o compression=true
 
-	make O=out ARCH=arm64 $DEFCONFIG
-
 	export PATH="$CLANG_DIR/bin:${PATH}"
-	make 				O=out \
-					ARCH=arm64 \
-					CC="ccache clang" \
-					CROSS_COMPILE=aarch64-linux-gnu- \
-					CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-					-j${JTHREAD}
+	
+	make O=out ARCH=arm64 $DEFCONFIG \
+		ARCH=arm64 \
+		LLVM=1 \
+		LLVM_IAS=1 \
+		CROSS_COMPILE=aarch64-linux-gnu- \
+		CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+		    
+	make O=out \
+		ARCH=arm64 \
+		LLVM=1 \
+		LLVM_IAS=1 \
+		CROSS_COMPILE=aarch64-linux-gnu- \
+		CLANG_TRIPLE=aarch64-linux-gnu- \
+		CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+		-j${JTHREAD} CC="ccache clang"
 
 	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
