@@ -6,6 +6,7 @@ KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
 CLANG_DIR=$MAIN/weebx-clang
 KERNELVER=$(make kernelversion)
+compiler_name=""
 
 if [[ -z "${JTHREAD}" ]]; then
     COUNT="$(grep -c '^processor' /proc/cpuinfo)"
@@ -27,6 +28,16 @@ build() {
 
 	export PATH="$CLANG_DIR/bin:${PATH}"
 	
+	# Custom version info compiler
+	get_compiler_info="$($CLANG_DIR/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
+	get_name=${get_compiler_info%% *}
+	if [[ -z $compiler_name ]]; then
+	   set_compiler=$get_compiler_info
+	else
+	   set_compiler=$(echo $get_compiler_info | sed "s/$get_name/$compiler_name/g")
+	fi;
+	export KBUILD_COMPILER_STRING="$set_compiler"
+
 	make O=out ARCH=arm64 $DEFCONFIG \
 		ARCH=arm64 \
 		LLVM=1 \
