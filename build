@@ -51,7 +51,7 @@ build() {
 		echo ""
 		echo "zipping"
 		if [[ $DEVICE == apollo ]]; then
-			if [[ -d $ANYKERNELDIR/ramdisk ]]; then
+			if [[ ! -d $ANYKERNEL_DIR/ramdisk ]]; then
 				mkdir $ANYKERNEL_DIR/ramdisk
 				cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
 			fi
