@@ -53,31 +53,14 @@ static struct df_boost_drv df_boost_drv_g __read_mostly = {
 		       CONFIG_DEVFREQ_MSM_CPUBW_BOOST_FREQ)
 };
 
-extern int kp_active_mode(void);
-
 static void __devfreq_boost_kick(struct boost_dev *b)
 {
-	unsigned int period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS;
-
-	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1) {
-		pr_info("kprofiles: Skipped devfreq boost");
+	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
 		return;
-	}
 
-	switch (kp_active_mode()) {
-	case 2:
-		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 1.5;
-		pr_info("kprofiles: Boosted devfreq at 1.5x");
-		break;
-	case 3:
-		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 2;
-		pr_info("kprofiles: Boosted devfreq at 2x");
-		break;
-	}
-	
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
-		msecs_to_jiffies(period)))
+		msecs_to_jiffies(CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS)))
 		wake_up(&b->boost_waitq);
 }
 
@@ -94,7 +77,7 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 	unsigned long boost_jiffies = msecs_to_jiffies(duration_ms);
 	unsigned long curr_expires, new_expires;
 
-	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
+	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
 		return;
 
 	do {
@@ -350,3 +333,4 @@ stop_kthreads:
 	return ret;
 }
 late_initcall(devfreq_boost_init);
+
