@@ -57,6 +57,9 @@ struct tick_sched {
 	ktime_t				last_tick;
 	ktime_t				next_tick;
 	unsigned long			idle_jiffies;
+
+	/* Idle entry */
+	seqcount_t			idle_sleeptime_seq;
 	unsigned long			idle_calls;
 	unsigned long			idle_sleeps;
 	ktime_t				idle_entrytime;
