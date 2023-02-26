@@ -23,6 +23,7 @@ struct allowedips_node {
 	u8 cidr, bit_at_a, bit_at_b, bitlen;
 
 	/* Keep rarely used list at bottom to be beyond cache line. */
+	struct allowedips_node *__rcu *parent_bit;
 	union {
 		struct list_head peer_list;
 		struct rcu_head rcu;
@@ -55,5 +56,8 @@ struct wg_peer *wg_allowedips_lookup_src(struct allowedips *table,
 #ifdef DEBUG
 bool wg_allowedips_selftest(void);
 #endif
+
+int wg_allowedips_slab_init(void);
+void wg_allowedips_slab_uninit(void);
 
 #endif /* _WG_ALLOWEDIPS_H */

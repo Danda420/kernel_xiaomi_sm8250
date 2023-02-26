@@ -6,6 +6,8 @@
 #include "allowedips.h"
 #include "peer.h"
 
+static struct kmem_cache *node_cache;
+
 static void swap_endian(u8 *dst, const u8 *src, u8 bits)
 {
 	if (bits == 32) {
@@ -39,7 +41,12 @@ static void push_rcu(struct allowedips_node **stack,
 		stack[(*len)++] = rcu_dereference_raw(p);
 	}
 }
-
+/*
+static void node_free_rcu(struct rcu_head *rcu)
+{
+	kmem_cache_free(node_cache, container_of(rcu, struct allowedips_node, rcu));
+}
+*/
 static void root_free_rcu(struct rcu_head *rcu)
 {
 	struct allowedips_node *node, *stack[128] = {
@@ -49,7 +56,7 @@ static void root_free_rcu(struct rcu_head *rcu)
 	while (len > 0 && (node = stack[--len])) {
 		push_rcu(stack, node->bit[0], &len);
 		push_rcu(stack, node->bit[1], &len);
-		kfree(node);
+		kmem_cache_free(node_cache, node);
 	}
 }
 
@@ -218,7 +225,7 @@ static int add(struct allowedips_node __rcu **trie, u8 bits, const u8 *key,
 		return -EINVAL;
 
 	if (!rcu_access_pointer(*trie)) {
-		node = kzalloc(sizeof(*node), GFP_KERNEL);
+		node = kmem_cache_zalloc(node_cache, GFP_KERNEL);
 		if (unlikely(!node))
 			return -ENOMEM;
 		RCU_INIT_POINTER(node->peer, peer);
@@ -233,7 +240,7 @@ static int add(struct allowedips_node __rcu **trie, u8 bits, const u8 *key,
 		return 0;
 	}
 
-	newnode = kzalloc(sizeof(*newnode), GFP_KERNEL);
+	newnode = kmem_cache_zalloc(node_cache, GFP_KERNEL);
 	if (unlikely(!newnode))
 		return -ENOMEM;
 	RCU_INIT_POINTER(newnode->peer, peer);
@@ -261,10 +268,10 @@ static int add(struct allowedips_node __rcu **trie, u8 bits, const u8 *key,
 			rcu_assign_pointer(CHOOSE_NODE(parent, newnode->bits),
 					   newnode);
 	} else {
-		node = kzalloc(sizeof(*node), GFP_KERNEL);
+		node = kmem_cache_zalloc(node_cache, GFP_KERNEL);
 		if (unlikely(!node)) {
 			list_del(&newnode->peer_list);
-			kfree(newnode);
+			kmem_cache_free(node_cache, newnode);
 			return -ENOMEM;
 		}
 		INIT_LIST_HEAD(&node->peer_list);
@@ -372,6 +379,18 @@ struct wg_peer *wg_allowedips_lookup_src(struct allowedips *table,
 	else if (skb->protocol == htons(ETH_P_IPV6))
 		return lookup(table->root6, 128, &ipv6_hdr(skb)->saddr);
 	return NULL;
+}
+
+int __init wg_allowedips_slab_init(void)
+{
+	node_cache = KMEM_CACHE(allowedips_node, 0);
+	return node_cache ? 0 : -ENOMEM;
+}
+
+void wg_allowedips_slab_uninit(void)
+{
+	rcu_barrier();
+	kmem_cache_destroy(node_cache);
 }
 
 #include "selftest/allowedips.c"
