@@ -49,6 +49,9 @@
 static struct system_pm_ops *sys_pm_ops;
 struct lpm_cluster *lpm_root_node;
 
+static uint32_t bias_hyst;
+module_param_named(bias_hyst, bias_hyst, uint, 0664);
+
 static DEFINE_PER_CPU(struct lpm_cpu*, cpu_lpm);
 static bool suspend_in_progress;
 
@@ -67,157 +70,23 @@ module_param_named(print_parsed_dt, print_parsed_dt, bool, 0664);
  *
  * Returns an s32 latency value
  */
-s32 msm_cpuidle_get_deep_idle_latency(void)
+/**
+ * msm_cpuidle_get_deep_idle_latency - Get deep idle latency value
+ *
+ * Returns an s32 latency value
+ */
+inline s32 msm_cpuidle_get_deep_idle_latency(void)
 {
-	return 10;
+	return 100;
 }
 EXPORT_SYMBOL(msm_cpuidle_get_deep_idle_latency);
-
 uint32_t register_system_pm_ops(struct system_pm_ops *pm_ops)
 {
 	if (sys_pm_ops)
 		return -EUSERS;
-
 	sys_pm_ops = pm_ops;
-
 	return 0;
 }
-
-static uint32_t least_cluster_latency(struct lpm_cluster *cluster,
-					struct latency_level *lat_level)
-{
-	struct list_head *list;
-	struct lpm_cluster_level *level;
-	struct lpm_cluster *n;
-	struct power_params *pwr_params;
-	uint32_t latency = 0;
-	int i;
-
-	if (list_empty(&cluster->list)) {
-		for (i = 0; i < cluster->nlevels; i++) {
-			level = &cluster->levels[i];
-			pwr_params = &level->pwr;
-			if (lat_level->reset_level == level->reset_level) {
-				if ((latency > pwr_params->exit_latency)
-						|| (!latency))
-					latency = pwr_params->exit_latency;
-				break;
-			}
-		}
-	} else {
-		list_for_each(list, &cluster->parent->child) {
-			n = list_entry(list, typeof(*n), list);
-			if (lat_level->level_name) {
-				if (strcmp(lat_level->level_name,
-						 n->cluster_name))
-					continue;
-			}
-			for (i = 0; i < n->nlevels; i++) {
-				level = &n->levels[i];
-				pwr_params = &level->pwr;
-				if (lat_level->reset_level ==
-						level->reset_level) {
-					if ((latency > pwr_params->exit_latency)
-								|| (!latency))
-						latency =
-						pwr_params->exit_latency;
-					break;
-				}
-			}
-		}
-	}
-	return latency;
-}
-
-static uint32_t least_cpu_latency(struct list_head *child,
-				struct latency_level *lat_level)
-{
-	struct list_head *list;
-	struct lpm_cpu_level *level;
-	struct power_params *pwr_params;
-	struct lpm_cpu *cpu;
-	struct lpm_cluster *n;
-	uint32_t lat = 0;
-	int i;
-
-	list_for_each(list, child) {
-		n = list_entry(list, typeof(*n), list);
-		if (lat_level->level_name) {
-			if (strcmp(lat_level->level_name, n->cluster_name))
-				continue;
-		}
-		list_for_each_entry(cpu, &n->cpu, list) {
-			for (i = 0; i < cpu->nlevels; i++) {
-				level = &cpu->levels[i];
-				pwr_params = &level->pwr;
-				if (lat_level->reset_level
-						== level->reset_level) {
-					if ((lat > pwr_params->exit_latency)
-							|| (!lat))
-						lat = pwr_params->exit_latency;
-					break;
-				}
-			}
-		}
-	}
-	return lat;
-}
-
-static struct lpm_cluster *cluster_aff_match(struct lpm_cluster *cluster,
-							int affinity_level)
-{
-	struct lpm_cluster *n;
-
-	if ((cluster->aff_level == affinity_level)
-		|| ((!list_empty(&cluster->cpu)) && (affinity_level == 0)))
-		return cluster;
-	else if (list_empty(&cluster->cpu)) {
-		n =  list_entry(cluster->child.next, typeof(*n), list);
-		return cluster_aff_match(n, affinity_level);
-	} else
-		return NULL;
-}
-
-int lpm_get_latency(struct latency_level *level, uint32_t *latency)
-{
-	struct lpm_cluster *cluster;
-	uint32_t val;
-
-	if (!lpm_root_node) {
-		pr_err("lpm_probe not completed\n");
-		return -EAGAIN;
-	}
-
-	if ((level->affinity_level < 0)
-		|| (level->affinity_level > lpm_root_node->aff_level)
-		|| (level->reset_level < LPM_RESET_LVL_RET)
-		|| (level->reset_level > LPM_RESET_LVL_PC)
-		|| !latency)
-		return -EINVAL;
-
-	cluster = cluster_aff_match(lpm_root_node, level->affinity_level);
-	if (!cluster) {
-		pr_err("No matching cluster found for affinity_level:%d\n",
-							level->affinity_level);
-		return -EINVAL;
-	}
-
-	if (level->affinity_level == 0)
-		val = least_cpu_latency(&cluster->parent->child, level);
-	else
-		val = least_cluster_latency(cluster, level);
-
-	if (!val) {
-		pr_err("No mode with affinity_level:%d reset_level:%d\n",
-				level->affinity_level, level->reset_level);
-		return -EINVAL;
-	}
-
-	*latency = val;
-
-	return 0;
-}
-EXPORT_SYMBOL(lpm_get_latency);
 
 static int lpm_dying_cpu(unsigned int cpu)
 {
@@ -236,6 +105,7 @@ static int lpm_starting_cpu(unsigned int cpu)
 	return 0;
 }
 
+/*
 static void calculate_next_wakeup(uint32_t *next_wakeup_us,
 				  uint32_t next_event_us,
 				  uint32_t lvl_latency_us,
@@ -250,6 +120,7 @@ static void calculate_next_wakeup(uint32_t *next_wakeup_us,
 	if (next_event_us < sleep_us)
 		*next_wakeup_us = next_event_us - lvl_latency_us;
 }
+*/
 
 static unsigned int get_next_online_cpu(bool from_idle)
 {
