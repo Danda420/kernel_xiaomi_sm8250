@@ -38,6 +38,10 @@ build() {
 	fi;
 	export KBUILD_COMPILER_STRING="$set_compiler"
 	
+	echo ""
+	echo "****** Building kernel for $DEVICE ******"
+	echo ""
+	
 	make O=out ARCH=arm64 $DEFCONFIG \
 		ARCH=arm64 \
 		LLVM=1 \
@@ -67,7 +71,10 @@ build() {
 				cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
 			fi
 			cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
-		else
+		elif [[ $DEVICE == alioth ]]; then
+			rm -rf $ANYKERNEL_DIR/ramdisk
+			cp $ANYKERNEL_DIR/oxygen+/alioth $ANYKERNEL_DIR/anykernel.sh
+		elif [[ $DEVICE == munch ]]; then
 			rm -rf $ANYKERNEL_DIR/ramdisk
 			cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
 		fi
@@ -104,17 +111,14 @@ while true; do
     read -p "" choose
     case $choose in
         1 ) 
-        echo "building kernel for MI 10T/Pro (apollo)...."
         DEVICE=apollo
         build
         exit;;
         2 )
-        echo "building kernel for POCO F3 (alioth)...."
         DEVICE=alioth
         build
         exit;;
         3 )
-        echo "building kernel for POCO F4 (munch)...."
         DEVICE=munch
         build
         exit;;
