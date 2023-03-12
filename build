@@ -99,7 +99,8 @@ clear
 while true; do
     echo "Build kernel for :"
     echo "(1) MI 10T/Pro (apollo)"
-    echo "(2) POCO F4/Redmi K40S (munch)"
+    echo "(2) POCO F3 (alioth)"
+    echo "(3) POCO F4 (munch)"
     read -p "" choose
     case $choose in
         1 ) 
@@ -108,7 +109,12 @@ while true; do
         build
         exit;;
         2 )
-        echo "building kernel POCO F4/Redmi K40S (munch)...."
+        echo "building kernel for POCO F3 (alioth)...."
+        DEVICE=alioth
+        build
+        exit;;
+        3 )
+        echo "building kernel for POCO F4 (munch)...."
         DEVICE=munch
         build
         exit;;
