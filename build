@@ -1,7 +1,7 @@
 #!/bin/bash
 cd ..
 MAIN=$PWD
-cd kernel_xiaomi_sm8250-nkn
+cd kernel_xiaomi_sm8250-nkn-ksu
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
 CLANG_DIR=$MAIN/zyc
@@ -78,7 +78,7 @@ build() {
 			rm -rf $ANYKERNEL_DIR/ramdisk
 			cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
 		fi
-		ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-$DATE_CLOCK.zip
+		ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-KernelSU-$DATE_CLOCK.zip
 		zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
 		mv $ZIPNAME $KERNEL_DIR/
 		echo ""
