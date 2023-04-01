@@ -4,7 +4,7 @@ MAIN=$PWD
 cd kernel_xiaomi_sm8250-nkn-ksu
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
-CLANG_DIR=$MAIN/zyc
+CLANG_DIR=$MAIN/clang
 KERNELVER=$(make kernelversion)
 compiler_name="Oxygen"
 
