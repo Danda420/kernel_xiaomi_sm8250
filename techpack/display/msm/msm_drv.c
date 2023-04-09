@@ -49,6 +49,7 @@
 #include "sde_wb.h"
 #include "sde_dbg.h"
 #include "dsi/dsi_panel_mi.h"
+#include "sde/sde_encoder.h"
 
 /*
  * MSM driver version:
@@ -64,7 +65,7 @@
 #define MSM_VERSION_PATCHLEVEL	0
 
 #define IDLE_ENCODER_MASK_DEFAULT	1
-#define IDLE_TIMEOUT_MS_DEFAULT		100
+#define IDLE_TIMEOUT_MS_DEFAULT		100 - IDLE_POWERCOLLAPSE_DURATION
 
 static DEFINE_MUTEX(msm_release_lock);
 
