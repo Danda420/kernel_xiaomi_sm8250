@@ -53,9 +53,9 @@ build() {
 		CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
 		-j${JTHREAD} CC="ccache clang"
 
-	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
+	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
-		mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $ANYKERNEL_DIR/
+		mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz $ANYKERNEL_DIR/
 		mv $KERNEL_DIR/out/arch/arm64/boot/dtb.img $ANYKERNEL_DIR/dtb
 		mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
 		cd $ANYKERNEL_DIR
@@ -74,14 +74,14 @@ build() {
 			rm -rf $ANYKERNEL_DIR/ramdisk
 			cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
 		fi
-		zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtb dtbo.img
+		zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz dtb dtbo.img
 		mv $ZIPNAME $KERNEL_DIR/
 		echo ""
 
 		echo "Cleaning AnyKernel3 dir"
 		echo ""
 		rm -rf $ANYKERNEL_DIR/*.zip
-		rm -rf $ANYKERNEL_DIR/Image.gz-dtb
+		rm -rf $ANYKERNEL_DIR/Image.gz
 		rm -rf $ANYKERNEL_DIR/dtb
 		rm -rf $ANYKERNEL_DIR/dtbo.img
 		echo "****** build done! ******"
