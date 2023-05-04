@@ -5,6 +5,8 @@ cd kernel_xiaomi_sm8250-nkn
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
 CLANG_DIR=$MAIN/clang
+ARM64="aarch64-linux-gnu-"
+ARM32="arm-linux-gnueabi-"
 KERNELVER=$(make kernelversion)
 DATE_CLOCK=$(date +'%H%M-%d%m%Y')
 compiler_name="Oxygen"
@@ -41,16 +43,16 @@ build() {
 		ARCH=arm64 \
 		LLVM=1 \
 		LLVM_IAS=1 \
-		CROSS_COMPILE=aarch64-linux-gnu- \
-		CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+		CROSS_COMPILE="$ARM64" \
+		CROSS_COMPILE_COMPAT="$ARM32"
 		    
 	make O=out \
 		ARCH=arm64 \
 		LLVM=1 \
 		LLVM_IAS=1 \
-		CLANG_TRIPLE=aarch64-linux-gnu- \
-		CROSS_COMPILE=aarch64-linux-gnu- \
-		CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+		CLANG_TRIPLE="$ARM64" \
+		CROSS_COMPILE="$ARM64" \
+		CROSS_COMPILE_COMPAT="$ARM32"
 		-j${JTHREAD} CC="ccache clang"
 
 	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
