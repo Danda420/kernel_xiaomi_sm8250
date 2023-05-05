@@ -6,18 +6,5 @@ config OPLUS_FEATURE_OPROJECT
   default n
   help
     define this config to define oplus project
-
-source "drivers/oplus/oplus_performance/oplus_mm/zram_opt/Kconfig"
-source "drivers/oplus/network/Kconfig"
-
-config COLOR_CTRL_V2
-	bool "oplus color ctrl device"
-	default n
-	help
-	  Say Y here if you have a color ctrl connected
-	  to your system.
-
-	  If unsure, say N.
 	  
-#Add for NandSwap
 source "drivers/oplus/oplus_performance/oplus_nandswap/Kconfig"
