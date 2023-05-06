@@ -102,7 +102,6 @@ build() {
 
 build_non_ksu() {
 	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	sed -i 's/CONFIG_KPROBES=y/# CONFIG_KPROBES is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/CONFIG_OVERLAY_FS_INDEX=y/# CONFIG_OVERLAY_FS_INDEX is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-$DATE_CLOCK.zip
@@ -110,7 +109,6 @@ build_non_ksu() {
 
 build_ksu() {
 	sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	sed -i 's/# CONFIG_KPROBES is not set/CONFIG_KPROBES=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/# CONFIG_OVERLAY_FS_INDEX is not set/CONFIG_OVERLAY_FS_INDEX=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-KernelSU-$DATE_CLOCK.zip
