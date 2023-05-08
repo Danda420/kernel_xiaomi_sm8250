@@ -16,89 +16,174 @@ if [[ -z "${JTHREAD}" ]]; then
     export JTHREAD="$((COUNT + 2))"
 fi
 
-build() {
-	DEFCONFIG=vendor/${DEVICE}_defconfig
-	echo "cleaning..."
-	rm -rf $KERNEL_DIR/out/
-	mkdir -p out
-	clear
-	BUILD_START=$(date +"%s")
-	export USE_CCACHE=1
-	export CCACHE_EXEC=/usr/bin/ccache
-	ccache -M 10G
-	ccache -o compression=true
+if [[ $1 == oc ]]; then
+	build() {
+		DEFCONFIG=vendor/${DEVICE}_defconfig
+		echo "cleaning..."
+		rm -rf $KERNEL_DIR/out/
+		mkdir -p out
+		clear
+		BUILD_START=$(date +"%s")
+		export USE_CCACHE=1
+		export CCACHE_EXEC=/usr/bin/ccache
+		ccache -M 10G
+		ccache -o compression=true
 
-	export PATH="$CLANG_DIR/bin:${PATH}"
-	
-	get_compiler_info="$($CLANG_DIR/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
-	get_name=${get_compiler_info%% *}
-	if [[ -z $compiler_name ]]; then
-	   set_compiler=$get_compiler_info
-	else
-	   set_compiler=$(echo $get_compiler_info | sed "s/$get_name/$compiler_name/g")
-	fi;
-	export KBUILD_COMPILER_STRING="$set_compiler"
-	
-	make O=out ARCH=arm64 $DEFCONFIG \
-		ARCH=arm64 \
-		LLVM=1 \
-		LLVM_IAS=1 \
-		CROSS_COMPILE="$ARM64" \
-		CROSS_COMPILE_COMPAT="$ARM32"
-		    
-	make O=out \
-		ARCH=arm64 \
-		LLVM=1 \
-		LLVM_IAS=1 \
-		CLANG_TRIPLE="$ARM64" \
-		CROSS_COMPILE="$ARM64" \
-		CROSS_COMPILE_COMPAT="$ARM32"
-		-j${JTHREAD} CC="ccache clang"
+		export PATH="$CLANG_DIR/bin:${PATH}"
+		
+		get_compiler_info="$($CLANG_DIR/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
+		get_name=${get_compiler_info%% *}
+		if [[ -z $compiler_name ]]; then
+		   set_compiler=$get_compiler_info
+		else
+		   set_compiler=$(echo $get_compiler_info | sed "s/$get_name/$compiler_name/g")
+		fi;
+		export KBUILD_COMPILER_STRING="$set_compiler"
+		
+		make O=out ARCH=arm64 $DEFCONFIG \
+			ARCH=arm64 \
+			LLVM=1 \
+			LLVM_IAS=1 \
+			CROSS_COMPILE="$ARM64" \
+			CROSS_COMPILE_COMPAT="$ARM32"
+			    
+		make O=out \
+			ARCH=arm64 \
+			LLVM=1 \
+			LLVM_IAS=1 \
+			CLANG_TRIPLE="$ARM64" \
+			CROSS_COMPILE="$ARM64" \
+			CROSS_COMPILE_COMPAT="$ARM32"
+			-j${JTHREAD} CC="ccache clang"
 
-	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
+		if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
-		mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz $ANYKERNEL_DIR/
-		mv $KERNEL_DIR/out/arch/arm64/boot/dtb.img $ANYKERNEL_DIR/dtb
-		mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
-		cd $ANYKERNEL_DIR
-		echo ""
-		echo "zipping"
-		if [[ $DEVICE == apollo ]]; then
-			if [[ ! -d $ANYKERNEL_DIR/ramdisk ]]; then
-				mkdir $ANYKERNEL_DIR/ramdisk
-				cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
+			mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz $ANYKERNEL_DIR/
+			mv $KERNEL_DIR/out/arch/arm64/boot/dtb.img $ANYKERNEL_DIR/dtb
+			mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
+			cd $ANYKERNEL_DIR
+			echo ""
+			echo "zipping"
+			if [[ $DEVICE == apollo ]]; then
+				if [[ ! -d $ANYKERNEL_DIR/ramdisk ]]; then
+					mkdir $ANYKERNEL_DIR/ramdisk
+					cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
+				fi
+				cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
+			elif [[ $DEVICE == alioth ]]; then
+				rm -rf $ANYKERNEL_DIR/ramdisk
+				cp $ANYKERNEL_DIR/oxygen+/alioth $ANYKERNEL_DIR/anykernel.sh
+			elif [[ $DEVICE == munch ]]; then
+				rm -rf $ANYKERNEL_DIR/ramdisk
+				cp $ANYKERNEL_DIR/oxygen+/munch-oc $ANYKERNEL_DIR/anykernel.sh
 			fi
-			cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
-		elif [[ $DEVICE == alioth ]]; then
-			rm -rf $ANYKERNEL_DIR/ramdisk
-			cp $ANYKERNEL_DIR/oxygen+/alioth $ANYKERNEL_DIR/anykernel.sh
-		elif [[ $DEVICE == munch ]]; then
-			rm -rf $ANYKERNEL_DIR/ramdisk
-			cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
+			zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz dtb dtbo.img
+			mv $ZIPNAME $KERNEL_DIR/
+			echo ""
+
+			echo "Cleaning AnyKernel3 dir"
+			echo ""
+			rm -rf $ANYKERNEL_DIR/*.zip
+			rm -rf $ANYKERNEL_DIR/Image.gz
+			rm -rf $ANYKERNEL_DIR/dtb
+			rm -rf $ANYKERNEL_DIR/dtbo.img
+			echo "****** build done! ******"
+			echo ""
+			echo "Your kernel zip name is $ZIPNAME"
+			echo ""
+			BUILD_END=$(date +"%s")
+			DIFF=$(($BUILD_END - $BUILD_START))
+			echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
+		else
+			echo " Kernel build failed! abort zipping..."
 		fi
-		zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz dtb dtbo.img
-		mv $ZIPNAME $KERNEL_DIR/
-		echo ""
 
-		echo "Cleaning AnyKernel3 dir"
-		echo ""
-		rm -rf $ANYKERNEL_DIR/*.zip
-		rm -rf $ANYKERNEL_DIR/Image.gz
-		rm -rf $ANYKERNEL_DIR/dtb
-		rm -rf $ANYKERNEL_DIR/dtbo.img
-		echo "****** build done! ******"
-		echo ""
-		echo "Your kernel zip name is $ZIPNAME"
-		echo ""
-		BUILD_END=$(date +"%s")
-		DIFF=$(($BUILD_END - $BUILD_START))
-		echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
-	else
-		echo " Kernel build failed! abort zipping..."
-	fi
+		rm -rf $KERNEL_DIR/out/
+	}
+else
+	build() {
+		DEFCONFIG=vendor/${DEVICE}_defconfig
+		echo "cleaning..."
+		rm -rf $KERNEL_DIR/out/
+		mkdir -p out
+		clear
+		echo building $1 variant
+		BUILD_START=$(date +"%s")
+		export USE_CCACHE=1
+		export CCACHE_EXEC=/usr/bin/ccache
+		ccache -M 10G
+		ccache -o compression=true
 
-	rm -rf $KERNEL_DIR/out/
-}
+		export PATH="$CLANG_DIR/bin:${PATH}"
+		
+		get_compiler_info="$($CLANG_DIR/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
+		get_name=${get_compiler_info%% *}
+		if [[ -z $compiler_name ]]; then
+		   set_compiler=$get_compiler_info
+		else
+		   set_compiler=$(echo $get_compiler_info | sed "s/$get_name/$compiler_name/g")
+		fi;
+		export KBUILD_COMPILER_STRING="$set_compiler"
+		
+		make O=out ARCH=arm64 $DEFCONFIG \
+			ARCH=arm64 \
+			LLVM=1 \
+			LLVM_IAS=1 \
+			CROSS_COMPILE="$ARM64" \
+			CROSS_COMPILE_COMPAT="$ARM32"
+			    
+		make O=out \
+			ARCH=arm64 \
+			LLVM=1 \
+			LLVM_IAS=1 \
+			CLANG_TRIPLE="$ARM64" \
+			CROSS_COMPILE="$ARM64" \
+			CROSS_COMPILE_COMPAT="$ARM32"
+			-j${JTHREAD} CC="ccache clang"
+
+		if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
+
+			mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $ANYKERNEL_DIR/
+			mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
+			cd $ANYKERNEL_DIR
+			echo ""
+			echo "zipping"
+			if [[ $DEVICE == apollo ]]; then
+				if [[ ! -d $ANYKERNEL_DIR/ramdisk ]]; then
+					mkdir $ANYKERNEL_DIR/ramdisk
+					cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
+				fi
+				cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
+			elif [[ $DEVICE == alioth ]]; then
+				rm -rf $ANYKERNEL_DIR/ramdisk
+				cp $ANYKERNEL_DIR/oxygen+/alioth $ANYKERNEL_DIR/anykernel.sh
+			elif [[ $DEVICE == munch ]]; then
+				rm -rf $ANYKERNEL_DIR/ramdisk
+				cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
+			fi
+			zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
+			mv $ZIPNAME $KERNEL_DIR/
+			echo ""
+
+			echo "Cleaning AnyKernel3 dir"
+			echo ""
+			rm -rf $ANYKERNEL_DIR/*.zip
+			rm -rf $ANYKERNEL_DIR/Image.gz-dtb
+			rm -rf $ANYKERNEL_DIR/dtbo.img
+			echo "****** build done! ******"
+			echo ""
+			echo "Your kernel zip name is $ZIPNAME"
+			echo ""
+			BUILD_END=$(date +"%s")
+			DIFF=$(($BUILD_END - $BUILD_START))
+			echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
+		else
+			echo " Kernel build failed! abort zipping..."
+		fi
+
+		rm -rf $KERNEL_DIR/out/
+	}
+fi
 
 build_non_ksu() {
 	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
