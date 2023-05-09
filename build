@@ -5,8 +5,10 @@ cd kernel_xiaomi_sm8250-nkn
 KERNEL_DIR=$PWD
 ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
 CLANG_DIR=$MAIN/clang
-ARM64="aarch64-linux-gnu-"
-ARM32="arm-linux-gnueabi-"
+ARCH="arm64"
+SUBARCH="arm64"
+COMPILER=clang
+LINKER="lld"
 KERNELVER=$(make kernelversion)
 DATE_CLOCK=$(date +'%H%M-%d%m%Y')
 compiler_name="Oxygen"
@@ -28,8 +30,11 @@ if [[ $1 == oc ]]; then
 		export CCACHE_EXEC=/usr/bin/ccache
 		ccache -M 10G
 		ccache -o compression=true
+		
+		# Speed up build process
+		MAKE="./makeparallel"
 
-		export PATH="$CLANG_DIR/bin:${PATH}"
+		export PATH="${CLANG_DIR}/bin:${PATH}" \
 		
 		get_compiler_info="$($CLANG_DIR/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
 		get_name=${get_compiler_info%% *}
@@ -40,21 +45,31 @@ if [[ $1 == oc ]]; then
 		fi;
 		export KBUILD_COMPILER_STRING="$set_compiler"
 		
-		make O=out ARCH=arm64 $DEFCONFIG \
-			ARCH=arm64 \
+		make O=out ARCH=${ARCH} $DEFCONFIG \
+			ARCH=${ARCH} \
 			LLVM=1 \
 			LLVM_IAS=1 \
-			CROSS_COMPILE="$ARM64" \
-			CROSS_COMPILE_COMPAT="$ARM32"
+			CC=${COMPILER} \
+			CROSS_COMPILE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
+			CROSS_COMPILE_COMPAT=${CLANG_DIR}/bin/arm-linux-gnueabi- \
+			LD_LIBRARY_PATH=${CLANG_DIR}/lib \
 			    
 		make O=out \
-			ARCH=arm64 \
+			ARCH=${ARCH} \
 			LLVM=1 \
 			LLVM_IAS=1 \
-			CLANG_TRIPLE="$ARM64" \
-			CROSS_COMPILE="$ARM64" \
-			CROSS_COMPILE_COMPAT="$ARM32"
-			-j${JTHREAD} CC="ccache clang"
+			CC=${COMPILER} \
+			CLANG_TRIPLE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
+			CROSS_COMPILE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
+			CROSS_COMPILE_COMPAT=${CLANG_DIR}/bin/arm-linux-gnueabi- \
+			LD=ld.${LINKER} \
+			AR=llvm-ar \
+			NM=llvm-nm \
+			OBJCOPY=llvm-objcopy \
+			OBJDUMP=llvm-objdump \
+			STRIP=llvm-strip \
+			ld-name=${LINKER} \
+			-j${JTHREAD} CC="ccache ${COMPILER}"
 
 		if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
