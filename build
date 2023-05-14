@@ -2,16 +2,15 @@
 cd ..
 MAIN=$PWD
 cd kernel_xiaomi_sm8250-nkn
-KERNEL_DIR=$PWD
-ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel3
-CLANG_DIR=$MAIN/clang
-ARCH="arm64"
-SUBARCH="arm64"
-COMPILER=clang
-LINKER="lld"
-KERNELVER=$(make kernelversion)
-DATE_CLOCK=$(date +'%H%M-%d%m%Y')
-compiler_name="Oxygen"
+export KERNEL_DIR="$PWD"
+export ANYKERNEL_DIR="$KERNEL_DIR/AnyKernel3"
+export ARCH="arm64"
+export CLANG_DIR="$MAIN/clang"
+export CC="${CLANG_DIR}/bin/clang"
+export LINKER="lld"
+KERNELVER="$(make kernelversion)"
+DATE_CLOCK="$(date +'%H%M-%d%m%Y')"
+export compiler_name="Oxygen"
 
 if [[ -z "${JTHREAD}" ]]; then
     COUNT="$(grep -c '^processor' /proc/cpuinfo)"
@@ -49,7 +48,7 @@ if [[ $1 == oc ]]; then
 			ARCH=${ARCH} \
 			LLVM=1 \
 			LLVM_IAS=1 \
-			CC=${COMPILER} \
+			CC=${CC} \
 			CROSS_COMPILE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
 			CROSS_COMPILE_COMPAT=${CLANG_DIR}/bin/arm-linux-gnueabi- \
 			LD_LIBRARY_PATH=${CLANG_DIR}/lib \
@@ -58,7 +57,7 @@ if [[ $1 == oc ]]; then
 			ARCH=${ARCH} \
 			LLVM=1 \
 			LLVM_IAS=1 \
-			CC=${COMPILER} \
+			CC=${CC} \
 			CLANG_TRIPLE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
 			CROSS_COMPILE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
 			CROSS_COMPILE_COMPAT=${CLANG_DIR}/bin/arm-linux-gnueabi- \
@@ -69,7 +68,7 @@ if [[ $1 == oc ]]; then
 			OBJDUMP=llvm-objdump \
 			STRIP=llvm-strip \
 			ld-name=${LINKER} \
-			-j${JTHREAD} CC="ccache ${COMPILER}"
+			-j${JTHREAD} CC="ccache ${CC}"
 
 		if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
@@ -263,4 +262,3 @@ while true; do
         echo "Please answer 1, 2 or 3.";;
     esac
 done
-
