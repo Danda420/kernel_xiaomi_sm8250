@@ -2212,7 +2212,7 @@ static inline unsigned long task_util(struct task_struct *p)
  * Return: the (estimated) utilization for the specified CPU
  */
 
-static inline unsigned long cpu_util(int cpu);
+extern unsigned long cpu_util_cfs(int cpu);
 static inline unsigned long __cpu_util(int cpu)
 {
 	struct cfs_rq *cfs_rq;
@@ -2719,18 +2719,6 @@ bool uclamp_boosted(struct task_struct *p);
 
 extern struct cpumask min_cap_cpu_mask;
 #ifdef CONFIG_SMP
-static inline unsigned long cpu_util_cfs(struct rq *rq)
-{
-	unsigned long util = READ_ONCE(rq->cfs.avg.util_avg);
-
-	if (sched_feat(UTIL_EST)) {
-		util = max_t(unsigned long, util,
-			     READ_ONCE(rq->cfs.avg.util_est.enqueued));
-	}
-
-	return util;
-}
-
 unsigned long effective_cpu_util(int cpu, unsigned long util_cfs,
 				 unsigned long *min,
 				 unsigned long *max);
@@ -2752,14 +2740,6 @@ static inline unsigned long cpu_util_dl(struct rq *rq)
 static inline unsigned long cpu_util_rt(struct rq *rq)
 {
 	return READ_ONCE(rq->avg_rt.util_avg);
-}
-#endif
-
-#ifdef CONFIG_SMP
-static inline unsigned long cpu_util(int cpu)
-{
-	return min(__cpu_util(cpu) + cpu_util_rt(cpu_rq(cpu)),
-		   capacity_orig_of(cpu));
 }
 #endif
 
