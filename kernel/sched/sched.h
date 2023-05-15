@@ -2206,6 +2206,8 @@ static inline unsigned long task_util(struct task_struct *p)
  */
 
 extern unsigned long cpu_util_cfs(int cpu);
+extern unsigned long cpu_util_cfs_boost(int cpu);
+
 static inline unsigned long __cpu_util(int cpu)
 {
 	struct cfs_rq *cfs_rq;
