@@ -7436,6 +7436,7 @@ enum fastpaths {
  * @cpu: the CPU to get the utilization for
  * @p: task for which the CPU utilization should be predicted or NULL
  * @dst_cpu: CPU @p migrates to, -1 if @p moves from @cpu or @p == NULL
+ * @boost: 1 to enable boosting, otherwise 0
  *
  * The unit of the return value must be the same as the one of CPU capacity
  * so that CPU utilization can be compared with CPU capacity.
@@ -7453,6 +7454,12 @@ enum fastpaths {
  * be when a long-sleeping task wakes up. The contribution to CPU utilization
  * of such a task would be significantly decayed at this point of time.
  *
+ * Boosted CPU utilization is defined as max(CPU runnable, CPU utilization).
+ * CPU contention for CFS tasks can be detected by CPU runnable > CPU
+ * utilization. Boosting is implemented in cpu_util() so that internal
+ * users (e.g. EAS) can use it next to external users (e.g. schedutil),
+ * latter via cpu_util_cfs_boost().
+ *
  * CPU utilization can be higher than the current CPU capacity
  * (f_curr/f_max * max CPU capacity) or even the max CPU capacity because
  * of rounding errors as well as task migrations or wakeups of new tasks.
@@ -7463,12 +7470,19 @@ enum fastpaths {
  * though since this is useful for predicting the CPU capacity required
  * after task migrations (scheduler-driven DVFS).
  *
- * Return: (Estimated) utilization for the specified CPU.
+ * Return: (Boosted) (estimated) utilization for the specified CPU.
  */
-static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu)
+static unsigned long
+cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost)
 {
 	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
 	unsigned long util = READ_ONCE(cfs_rq->avg.util_avg);
+	unsigned long runnable;
+
+	if (boost) {
+		runnable = READ_ONCE(cfs_rq->avg.runnable_avg);
+		util = max(util, runnable);
+	}
 
 	/*
 	 * If @p migrates from @cpu to another, remove its contribution. Or,
@@ -7485,6 +7499,9 @@ static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu)
 		unsigned long util_est;
 
 		util_est = READ_ONCE(cfs_rq->avg.util_est.enqueued);
+
+		if (boost)
+			util_est = max(util_est, runnable);
 
 		/*
 		 * During wake-up @p isn't enqueued yet and doesn't contribute
@@ -7525,7 +7542,12 @@ static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu)
 
 unsigned long cpu_util_cfs(int cpu)
 {
-	return cpu_util(cpu, NULL, -1);
+	return cpu_util(cpu, NULL, -1, 0);
+}
+
+unsigned long cpu_util_cfs_boost(int cpu)
+{
+	return cpu_util(cpu, NULL, -1, 1);
 }
 
 /*
@@ -7593,7 +7615,7 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 	int cpu;
 
 	for_each_cpu(cpu, pd_cpus) {
-		unsigned long util = cpu_util(cpu, p, -1);
+		unsigned long util = cpu_util(cpu, p, -1, 0);
 
 		busy_time += effective_cpu_util(cpu, util, NULL, NULL);
 	}
@@ -7618,7 +7640,7 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 
 	for_each_cpu(cpu, pd_cpus) {
 		struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
-		unsigned long util = cpu_util(cpu, p, dst_cpu);
+		unsigned long util = cpu_util(cpu, p, dst_cpu, 1);
 		unsigned long cpu_util;
 
 		/*
@@ -7823,7 +7845,7 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
 				continue;
 
-			util = cpu_util(cpu, p, cpu);
+			util = cpu_util(cpu, p, cpu, 0);
 			cpu_cap = capacity_of(cpu);
 
 			/*
