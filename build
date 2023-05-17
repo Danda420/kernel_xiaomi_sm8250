@@ -4,6 +4,10 @@ MAIN=$PWD
 cd kernel_xiaomi_sm8250-nkn
 export KERNEL_DIR="$PWD"
 export ANYKERNEL_DIR="$KERNEL_DIR/AnyKernel3"
+export DTSI_DIR=$KERNEL_DIR/arch/arm64/boot/dts/vendor/qcom
+export APOLLO=$DTSI_DIR/dsi-panel-j3s-37-02-0a-dsc-video.dtsi
+export ALIOTH=$DTSI_DIR/dsi-panel-k11a-38-08-0a-dsc-cmd.dtsi
+export MUNCH=$DTSI_DIR/dsi-panel-l11r-38-08-0a-dsc-cmd.dtsi
 export ARCH="arm64"
 export CLANG_DIR="$MAIN/clang"
 export CC="${CLANG_DIR}/bin/clang"
@@ -18,58 +22,7 @@ if [[ -z "${JTHREAD}" ]]; then
 fi
 
 if [[ $1 == oc ]]; then
-	build() {
-		DEFCONFIG=vendor/${DEVICE}_defconfig
-		echo "cleaning..."
-		rm -rf $KERNEL_DIR/out/
-		mkdir -p out
-		clear
-		BUILD_START=$(date +"%s")
-		export USE_CCACHE=1
-		export CCACHE_EXEC=/usr/bin/ccache
-		ccache -M 10G
-		ccache -o compression=true
-		
-		# Speed up build process
-		MAKE="./makeparallel"
-
-		export PATH="${CLANG_DIR}/bin:${PATH}" \
-		
-		get_compiler_info="$($CLANG_DIR/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
-		get_name=${get_compiler_info%% *}
-		if [[ -z $compiler_name ]]; then
-		   set_compiler=$get_compiler_info
-		else
-		   set_compiler=$(echo $get_compiler_info | sed "s/$get_name/$compiler_name/g")
-		fi;
-		export KBUILD_COMPILER_STRING="$set_compiler"
-		
-		make O=out ARCH=${ARCH} $DEFCONFIG \
-			ARCH=${ARCH} \
-			LLVM=1 \
-			LLVM_IAS=1 \
-			CC=${CC} \
-			CROSS_COMPILE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
-			CROSS_COMPILE_COMPAT=${CLANG_DIR}/bin/arm-linux-gnueabi- \
-			LD_LIBRARY_PATH=${CLANG_DIR}/lib \
-			    
-		make O=out \
-			ARCH=${ARCH} \
-			LLVM=1 \
-			LLVM_IAS=1 \
-			CC=${CC} \
-			CLANG_TRIPLE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
-			CROSS_COMPILE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
-			CROSS_COMPILE_COMPAT=${CLANG_DIR}/bin/arm-linux-gnueabi- \
-			LD=ld.${LINKER} \
-			AR=llvm-ar \
-			NM=llvm-nm \
-			OBJCOPY=llvm-objcopy \
-			OBJDUMP=llvm-objdump \
-			STRIP=llvm-strip \
-			ld-name=${LINKER} \
-			-j${JTHREAD} CC="ccache ${CC}"
-
+	zipkernel() {
 		if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
 			mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz $ANYKERNEL_DIR/
@@ -105,56 +58,12 @@ if [[ $1 == oc ]]; then
 			echo ""
 			echo "Your kernel zip name is $ZIPNAME"
 			echo ""
-			BUILD_END=$(date +"%s")
-			DIFF=$(($BUILD_END - $BUILD_START))
-			echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
-		else
-			echo " Kernel build failed! abort zipping..."
-		fi
-
-		rm -rf $KERNEL_DIR/out/
+			else
+				echo " Kernel build failed! abort zipping..."
+			fi
 	}
 else
-	build() {
-		DEFCONFIG=vendor/${DEVICE}_defconfig
-		echo "cleaning..."
-		rm -rf $KERNEL_DIR/out/
-		mkdir -p out
-		clear
-		echo building $1 variant
-		BUILD_START=$(date +"%s")
-		export USE_CCACHE=1
-		export CCACHE_EXEC=/usr/bin/ccache
-		ccache -M 10G
-		ccache -o compression=true
-
-		export PATH="$CLANG_DIR/bin:${PATH}"
-		
-		get_compiler_info="$($CLANG_DIR/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
-		get_name=${get_compiler_info%% *}
-		if [[ -z $compiler_name ]]; then
-		   set_compiler=$get_compiler_info
-		else
-		   set_compiler=$(echo $get_compiler_info | sed "s/$get_name/$compiler_name/g")
-		fi;
-		export KBUILD_COMPILER_STRING="$set_compiler"
-		
-		make O=out ARCH=arm64 $DEFCONFIG \
-			ARCH=arm64 \
-			LLVM=1 \
-			LLVM_IAS=1 \
-			CROSS_COMPILE="$ARM64" \
-			CROSS_COMPILE_COMPAT="$ARM32"
-			    
-		make O=out \
-			ARCH=arm64 \
-			LLVM=1 \
-			LLVM_IAS=1 \
-			CLANG_TRIPLE="$ARM64" \
-			CROSS_COMPILE="$ARM64" \
-			CROSS_COMPILE_COMPAT="$ARM32"
-			-j${JTHREAD} CC="ccache clang"
-
+	zipkernel() {
 		if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
 			mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $ANYKERNEL_DIR/
@@ -188,16 +97,95 @@ else
 			echo ""
 			echo "Your kernel zip name is $ZIPNAME"
 			echo ""
-			BUILD_END=$(date +"%s")
-			DIFF=$(($BUILD_END - $BUILD_START))
-			echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
-		else
-			echo " Kernel build failed! abort zipping..."
-		fi
-
-		rm -rf $KERNEL_DIR/out/
+			else
+				echo " Kernel build failed! abort zipping..."
+			fi
 	}
 fi
+
+aosp_build() {
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <695>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $APOLLO
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1544>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $APOLLO
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <700>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $ALIOTH
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1540>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $ALIOTH
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <695>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $MUNCH
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1546>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $MUNCH
+}
+
+restore_dtsi_dimension() {
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' $APOLLO
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1544>;/g' $APOLLO
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <700>;/g' $ALIOTH
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1540>;/g' $ALIOTH
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' $MUNCH
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1546>;/g' $MUNCH
+}
+
+if [[ $2 == aosp ]]; then
+	aosp_build
+else
+	restore_dtsi_dimension
+fi
+
+build() {
+	DEFCONFIG=vendor/${DEVICE}_defconfig
+	echo "cleaning..."
+	rm -rf $KERNEL_DIR/out/
+	mkdir -p out
+	clear
+	echo building $1 variant
+	BUILD_START=$(date +"%s")
+	export USE_CCACHE=1
+	export CCACHE_EXEC=/usr/bin/ccache
+	ccache -M 10G
+	ccache -o compression=true
+
+	export PATH="${CLANG_DIR}/bin:${PATH}"
+		
+	get_compiler_info="$($CLANG_DIR/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
+	get_name=${get_compiler_info%% *}
+	if [[ -z $compiler_name ]]; then
+	   set_compiler=$get_compiler_info
+	else
+	   set_compiler=$(echo $get_compiler_info | sed "s/$get_name/$compiler_name/g")
+	fi;
+	export KBUILD_COMPILER_STRING="$set_compiler"
+	
+	make O=out ARCH=${ARCH} $DEFCONFIG \
+			ARCH=${ARCH} \
+			LLVM=1 \
+			LLVM_IAS=1 \
+			CC=${CC} \
+			CROSS_COMPILE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
+			CROSS_COMPILE_COMPAT=${CLANG_DIR}/bin/arm-linux-gnueabi- \
+			LD_LIBRARY_PATH=${CLANG_DIR}/lib \
+			    
+		make O=out \
+			ARCH=${ARCH} \
+			LLVM=1 \
+			LLVM_IAS=1 \
+			CC=${CC} \
+			CLANG_TRIPLE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
+			CROSS_COMPILE=${CLANG_DIR}/bin/aarch64-linux-gnu- \
+			CROSS_COMPILE_COMPAT=${CLANG_DIR}/bin/arm-linux-gnueabi- \
+			LD=ld.${LINKER} \
+			AR=llvm-ar \
+			NM=llvm-nm \
+			OBJCOPY=llvm-objcopy \
+			OBJDUMP=llvm-objdump \
+			STRIP=llvm-strip \
+			ld-name=${LINKER} \
+			-j${JTHREAD} CC="ccache ${CC}"
+
+		zipkernel
+		
+		restore_dtsi_dimension
+		
+		BUILD_END=$(date +"%s")
+		DIFF=$(($BUILD_END - $BUILD_START))
+		echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
+		rm -rf $KERNEL_DIR/out/
+	}
 
 build_non_ksu() {
 	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
