@@ -2,6 +2,7 @@
 #define __KSU_H_KSU
 
 #include "linux/capability.h"
+#include "linux/types.h"
 #include "linux/workqueue.h"
 
 #ifdef CONFIG_GIT_VERSION
@@ -38,6 +39,7 @@
 #define EVENT_POST_FS_DATA 1
 #define EVENT_BOOT_COMPLETED 2
 
+#define KSU_APP_PROFILE_VER 1
 #define KSU_MAX_PACKAGE_NAME 256
 // NGROUPS_MAX for Linux is 65535 generally, but we only supports 32 groups.
 #define KSU_MAX_GROUPS 32
@@ -61,6 +63,9 @@ struct non_root_profile {
 };
 
 struct app_profile {
+	// It may be utilized for backward compatibility, although we have never explicitly made any promises regarding this.
+	u32 version;
+
 	// this is usually the package of the app, but can be other value for special apps
 	char key[KSU_MAX_PACKAGE_NAME];
 	int32_t current_uid;
