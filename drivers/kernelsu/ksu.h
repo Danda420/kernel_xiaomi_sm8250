@@ -41,7 +41,7 @@
 #define KSU_MAX_GROUPS 32
 #define KSU_SELINUX_DOMAIN 64
 
-struct root_identity {
+struct root_profile {
 	int32_t uid;
 	int32_t gid;
 
@@ -52,6 +52,10 @@ struct root_identity {
 	char selinux_domain[KSU_SELINUX_DOMAIN];
 
 	int32_t namespaces;
+};
+
+struct non_root_profile {
+	bool umount_modules;
 };
 
 struct app_profile {
@@ -65,13 +69,14 @@ struct app_profile {
 			bool use_default;
 			char template_name[KSU_MAX_PACKAGE_NAME];
 
-			struct root_identity identity;
-		} root_profile;
+			struct root_profile profile;
+		} rp_config;
 
 		struct {
 			bool use_default;
-			bool umount_modules;
-		} non_root_profile;
+
+			struct non_root_profile profile;
+		} nrp_config;
 	};
 };
 
