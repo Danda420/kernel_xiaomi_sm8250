@@ -838,9 +838,6 @@ static void update_history(struct cpuidle_device *dev, int idx)
 static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int idx)
 {
-	if (need_resched())
-		return idx;
-
 	wfi();
 	return idx;
 }
