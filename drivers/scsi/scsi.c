@@ -788,7 +788,11 @@ MODULE_LICENSE("GPL");
 
 module_param(scsi_logging_level, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(scsi_logging_level, "a bit mask of logging levels");
+#ifdef CONFIG_FORCE_MQ_FRAMEWORK
 bool scsi_use_blk_mq = true;
+#else
+bool scsi_use_blk_mq = false;
+#endif
 EXPORT_SYMBOL_GPL(scsi_use_blk_mq);
 module_param_named(use_blk_mq, scsi_use_blk_mq, bool, S_IWUSR | S_IRUGO);
 

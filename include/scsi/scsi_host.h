@@ -759,7 +759,11 @@ static inline int scsi_host_in_recovery(struct Scsi_Host *shost)
 
 static inline bool shost_use_blk_mq(struct Scsi_Host *shost)
 {
+#ifdef CONFIG_FORCE_MQ_FRAMEWORK
 	return true;
+#else
+	return shost->use_blk_mq;
+#endif
 }
 
 extern int scsi_queue_work(struct Scsi_Host *, struct work_struct *);
