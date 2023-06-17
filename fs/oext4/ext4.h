@@ -48,6 +48,9 @@
 //add for ext4 async discard suppot
 #include "discard.h"
 #endif
+#ifdef CONFIG_FS_HPB
+#include <linux/fs_hpb.h>
+#endif
 #include <linux/compiler.h>
 
 /* Until this gets included into linux/compiler-gcc.h */
@@ -511,7 +514,7 @@ enum {
  *
  * It's not paranoia if the Murphy's Law really *is* out to get you.  :-)
  */
-#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1 << EXT4_INODE_##FLAG))
+#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1U << EXT4_INODE_##FLAG))
 #define CHECK_FLAG_VALUE(FLAG) BUILD_BUG_ON(!TEST_FLAG_VALUE(FLAG))
 
 static inline void ext4_check_flag_values(void)
@@ -1637,6 +1640,10 @@ enum {
 	EXT4_STATE_EXT_PRECACHED,	/* extents have been precached */
 	EXT4_STATE_LUSTRE_EA_INODE,	/* Lustre-style ea_inode */
 	EXT4_STATE_VERITY_IN_PROGRESS,	/* building fs-verity Merkle tree */
+
+#ifdef CONFIG_FS_HPB
+	EXT4_STATE_HPB,			/* HPB I/O */
+#endif
 };
 
 #define EXT4_INODE_BIT_FNS(name, field, offset)				\
