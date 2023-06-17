@@ -4144,9 +4144,7 @@ static struct request *bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 	}
 
 	spin_unlock_irq(&bfqd->lock);
-	bfq_update_dispatch_stats(hctx->queue, rq,
-			idle_timer_disabled ? in_serv_queue : NULL,
-				idle_timer_disabled);
+	bfq_update_dispatch_stats(hctx->queue, rq, idle_timer_disabled);
 
 	return rq;
 }
