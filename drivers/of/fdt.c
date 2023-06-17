@@ -985,23 +985,6 @@ const void * __init of_flat_dt_match_machine(const void *default_match,
 	return best_data;
 }
 
-void __init early_init_dt_check_for_powerup_reason(unsigned long node)
-{
-	unsigned long pu_reason;
-	int len;
-	const __be32 *prop;
-
-	pr_debug("Looking for powerup reason properties...\n");
-
-	prop = of_get_flat_dt_prop(node, "pureason", &len);
-	if (!prop)
-		return;
-	pu_reason = of_read_ulong(prop, len/4);
-	early_init_dt_setup_pureason_arch(pu_reason);
-
-	pr_debug("Powerup reason %d\n", (int)pu_reason);
-}
-
 #ifdef CONFIG_BLK_DEV_INITRD
 #ifndef __early_init_dt_declare_initrd
 static void __early_init_dt_declare_initrd(unsigned long start,
@@ -1247,8 +1230,6 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 
 	pr_debug("Command line is: %s\n", (char*)data);
 
-	early_init_dt_check_for_powerup_reason(node);
-
 	rng_seed = of_get_flat_dt_prop(node, "rng-seed", &l);
 	if (rng_seed && l > 0) {
 		add_bootloader_randomness(rng_seed, l);
@@ -1363,8 +1344,6 @@ bool __init early_init_dt_verify(void *params)
 
 	/* Setup flat device-tree pointer */
 	initial_boot_params = params;
-	of_fdt_crc32 = crc32_be(~0, initial_boot_params,
-				fdt_totalsize(initial_boot_params));
 	return true;
 }
 
@@ -1390,6 +1369,8 @@ bool __init early_init_dt_scan(void *params)
 		return false;
 
 	early_init_dt_scan_nodes();
+	of_fdt_crc32 = crc32_be(~0, initial_boot_params,
+				fdt_totalsize(initial_boot_params));
 	return true;
 }
 
