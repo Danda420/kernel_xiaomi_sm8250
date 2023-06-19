@@ -913,22 +913,23 @@ static int __maybe_unused _get_cpu_power(unsigned long *mW, unsigned long *kHz,
 int dev_pm_opp_of_register_em(struct cpumask *cpus)
 {
 	struct em_data_callback em_cb = EM_DATA_CB(_get_cpu_power);
-	int ret, nr_opp, cpu = cpumask_first(cpus);
+	int nr_opp, cpu = cpumask_first(cpus);
+	int ret = 0;
 	struct device *cpu_dev;
 	struct device_node *np;
 	u32 cap;
 
 	cpu_dev = get_cpu_device(cpu);
 	if (!cpu_dev)
-		return;
+		goto failed;
 
 	nr_opp = dev_pm_opp_get_opp_count(cpu_dev);
 	if (nr_opp <= 0)
-		return;
+		goto failed;
 
 	np = of_node_get(cpu_dev->of_node);
 	if (!np)
-		return;
+		goto failed;
 
 	/*
 	 * Register an EM only if the 'dynamic-power-coefficient' property is
@@ -940,7 +941,7 @@ int dev_pm_opp_of_register_em(struct cpumask *cpus)
 	ret = of_property_read_u32(np, "dynamic-power-coefficient", &cap);
 	of_node_put(np);
 	if (ret || !cap)
-		return;
+		goto failed;
 
 	ret = em_dev_register_perf_domain(cpu_dev, nr_opp, &em_cb, cpus, true);
 	if (ret)

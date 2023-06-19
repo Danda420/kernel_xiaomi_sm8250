@@ -283,7 +283,11 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 	policy->cpuinfo.transition_latency = transition_latency;
 	policy->dvfs_possible_from_any_cpu = true;
 
-	em_register_perf_domain(policy->cpus, nr_opp, &em_cb);
+
+	ret = em_register_perf_domain(policy->cpus, nr_opp, &em_cb);
+	if (ret){
+		dev_err(cpu_dev, "failed to register opp energy model: %d\n", ret);
+	}
 
 	return 0;
 

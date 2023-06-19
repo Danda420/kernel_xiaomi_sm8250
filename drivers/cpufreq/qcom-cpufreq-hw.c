@@ -380,7 +380,10 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 	policy->driver_data = c;
 	policy->dvfs_possible_from_any_cpu = true;
 
-	em_register_perf_domain(policy->cpus, ret, &em_cb);
+	ret = em_register_perf_domain(policy->cpus, ret, &em_cb);
+	if (ret){
+		dev_err(cpu_dev, "failed to register opp energy model: %d\n", ret);
+	}
 
 	if (c->dcvsh_irq > 0 && !c->is_irq_requested) {
 		snprintf(c->dcvsh_irq_name, sizeof(c->dcvsh_irq_name),

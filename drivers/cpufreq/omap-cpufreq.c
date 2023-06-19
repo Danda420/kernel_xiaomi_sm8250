@@ -114,7 +114,6 @@ static inline void freq_table_free(void)
 static int omap_cpu_init(struct cpufreq_policy *policy)
 {
 	int result;
-
 	policy->clk = clk_get(NULL, "cpufreq_ck");
 	if (IS_ERR(policy->clk))
 		return PTR_ERR(policy->clk);
