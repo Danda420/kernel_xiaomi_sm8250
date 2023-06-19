@@ -659,6 +659,7 @@ And public attribution of xiaomi platforms(like L11R and so and)
 		mi,cell-vol-max-threshold-mv = <4480>;
 		mi,pd-battery-warm-th = <480>;
 		mi,cp-sec-enable;
+		mi,pd-power-max = <67>; /*charge power max : 67W */
 	};
 
 /*
@@ -836,6 +837,7 @@ And public attribution of xiaomi platforms(like L11R and so and)
 
 &pm8150b_pdphy {
 	mi,non-qcom-pps-ctrl;
+	mi,pd-power-max = <67>; /*charge power max : 67W */
 };
 
 &smb1390 {
