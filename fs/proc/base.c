@@ -1104,7 +1104,7 @@ static int __set_oom_adj(struct file *file, int oom_adj, bool legacy)
 	if (likely(!legacy) && has_capability_noaudit(current, CAP_SYS_RESOURCE))
 		task->signal->oom_score_adj_min = (short)oom_adj;
 	trace_oom_score_adj_update(task);
-	if (oom_adj >= 700)
+	if (oom_adj >= 100)
 		strncpy(task_comm, task->comm, TASK_COMM_LEN);
 
 	if (mm) {
@@ -1134,10 +1134,21 @@ err_unlock:
 	mutex_unlock(&oom_adj_mutex);
 	put_task_struct(task);
 	/* These apps burn through CPU in the background. Don't let them. */
-	if (!err && oom_adj >= 700) {
-		if (!strcmp(task_comm, "id.GoogleCamera")) {
-			struct task_kill_info *kinfo;
+	if (!err) {
+		struct task_kill_info *kinfo;
+		int task_comm_main = 0;
+		char task_package[TASK_COMM_LEN] = {0};
 
+		if (oom_adj >= 100) {
+			task_comm_main = 1;
+			strncpy(task_package, "com.android.launcher", sizeof(task_package));
+		} else if (oom_adj >= 700) {
+			task_comm_main = 1;
+			strncpy(task_package, "id.GoogleCamera", sizeof(task_package));
+		} else
+			task_comm_main = 0;
+
+		if (task_comm_main > 0 && !strcmp(task_comm, task_package)) {
 			kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
 			if (kinfo) {
 				get_task_struct(task);
