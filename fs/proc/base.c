@@ -95,12 +95,15 @@
 #include <linux/flex_array.h>
 #include <linux/posix-timers.h>
 #include <linux/cpufreq_times.h>
+#include <drm/drm_notifier_mi.h>
 #include <trace/events/oom.h>
 #include "internal.h"
 #include "fd.h"
 
 #include "../../lib/kstrtox.h"
 
+static bool screen_on = false;
+module_param(screen_on, bool, 0644);
 
 struct task_kill_info {
 	struct task_struct *task;
@@ -116,6 +119,36 @@ static void proc_kill_task(struct work_struct *work)
 	put_task_struct(task);
 	kfree(kinfo);
 }
+
+static int task_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct mi_drm_notifier *evdata = data;
+	int *blank;
+
+	if (event != MI_DRM_EVENT_BLANK)
+		return NOTIFY_OK;
+
+	blank = evdata->data;
+	switch (*blank) {
+	case MI_DRM_BLANK_POWERDOWN:
+		if (!screen_on)
+			break;
+		screen_on = false;
+		break;
+	case MI_DRM_BLANK_UNBLANK:
+		if (screen_on)
+			break;
+		screen_on = true;
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block task_notifier_block = {
+	.notifier_call = task_notifier_callback,
+};
 
 /* NOTE:
  *	Implementing inode permission operations in /proc is almost
@@ -1139,7 +1172,7 @@ err_unlock:
 		int task_comm_main = 0;
 		char task_package[TASK_COMM_LEN] = {0};
 
-		if (oom_adj >= 100) {
+		if (oom_adj >= 100 && !screen_on) {
 			task_comm_main = 1;
 			strncpy(task_package, "com.android.launcher", sizeof(task_package));
 		} else if (oom_adj >= 700) {
@@ -4148,6 +4181,14 @@ static const struct file_operations proc_task_operations = {
 
 void __init set_proc_pid_nlink(void)
 {
+	int ret;
+
+	ret = mi_drm_register_client(&task_notifier_block);
+	if (ret) {
+		pr_err("Failed to register msm_drm notifier, err: %d\n", ret);
+		mi_drm_unregister_client(&task_notifier_block);
+	}
+
 	nlink_tid = pid_entry_nlink(tid_base_stuff, ARRAY_SIZE(tid_base_stuff));
 	nlink_tgid = pid_entry_nlink(tgid_base_stuff, ARRAY_SIZE(tgid_base_stuff));
 }
