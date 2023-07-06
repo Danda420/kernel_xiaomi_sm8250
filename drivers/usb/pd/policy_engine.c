@@ -3808,7 +3808,6 @@ static void usbpd_sm(struct work_struct *w)
 	usbpd_dbg(&pd->dev, "typec mode:%d, pr:%d, handle state %s\n",
 			pd->typec_mode, pd->current_pr,
 			usbpd_state_strings[pd->current_state]);
-	*/
 
 	/* Register typec partner in case AAA is connected */
 	if (pd->typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
