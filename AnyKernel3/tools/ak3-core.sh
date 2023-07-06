@@ -1,9 +1,10 @@
 ### AnyKernel methods (DO NOT CHANGE)
 ## osm0sis @ xda-developers
 
-OUTFD=$1;
+[ "$OUTFD" ] || OUTFD=$1;
 
 # set up working directory variables
+[ "$AKHOME" ] && home=$AKHOME;
 [ "$home" ] || home=$PWD;
 bootimg=$home/boot.img;
 bin=$home/tools;
@@ -326,7 +327,8 @@ flash_boot() {
             echo "Attempting kernel unpack with busybox $comp..." >&2;
             $comp -dc $kernel > kernel;
           fi;
-          $bin/magiskboot hexpatch kernel 736B69705F696E697472616D667300 77616E745F696E697472616D667300;
+          # legacy SAR kernel string skip_initramfs -> want_initramfs
+          $bin/magiskboot hexpatch kernel 736B69705F696E697472616D6673 77616E745F696E697472616D6673;
           if [ "$(file_getprop $home/anykernel.sh do.systemless)" == 1 ]; then
             strings kernel 2>/dev/null | grep -E -m1 'Linux version.*#' > $home/vertmp;
           fi;
@@ -340,16 +342,37 @@ flash_boot() {
           fi;
           [ ! -f .magisk ] && $bin/magiskboot cpio ramdisk.cpio "extract .backup/.magisk .magisk";
           export $(cat .magisk);
-          [ $((magisk_patched & 8)) -ne 0 ] && export TWOSTAGEINIT=true;
           for fdt in dtb extra kernel_dtb recovery_dtbo; do
-            [ -f $fdt ] && $bin/magiskboot dtb $fdt patch;
+            [ -f $fdt ] && $bin/magiskboot dtb $fdt patch; # remove dtb verity/avb
           done;
+        elif [ -d /data/adb/ksu -a -f /data/adb/ksu/modules.img ] && [ "$(file_getprop $home/anykernel.sh do.systemless)" == 1 ]; then
+          ui_print " " "KernelSU detected! Setting up for kernel helper module...";
+          comp=$($bin/magiskboot decompress kernel 2>&1 | grep -vE 'raw|zimage' | sed -n 's;.*\[\(.*\)\];\1;p');
+          ($bin/magiskboot split $kernel || $bin/magiskboot decompress $kernel kernel) 2>/dev/null;
+          if [ $? != 0 -a "$comp" ] && $comp --help 2>/dev/null; then
+            echo "Attempting kernel unpack with busybox $comp..." >&2;
+            $comp -dc $kernel > kernel;
+          fi;
+          if strings kernel 2>/dev/null | grep -q -E '^/data/adb/ksud$'; then
+            touch $home/kernelsu_patched;
+            strings kernel 2>/dev/null | grep -E -m1 'Linux version.*#' > $home/vertmp;
+          else
+            ui_print " " "Warning: No KernelSU support detected in kernel!";
+          fi;
+          if [ "$comp" ]; then
+            $bin/magiskboot compress=$comp kernel kernel.$comp;
+            if [ $? != 0 ] && $comp --help 2>/dev/null; then
+              echo "Attempting kernel repack with busybox $comp..." >&2;
+              $comp -9c kernel > kernel.$comp;
+            fi;
+            mv -f kernel.$comp kernel;
+          fi;
         else
           case $kernel in
             *-dtb) rm -f kernel_dtb;;
           esac;
         fi;
-        unset magisk_patched KEEPFORCEENCRYPT KEEPVERITY SHA1 TWOSTAGEINIT; # leave PATCHVBMETAFLAG set for repack
+        unset magisk_patched KEEPVERITY KEEPFORCEENCRYPT RECOVERYMODE PREINITDEVICE SHA1 RANDOMSEED; # leave PATCHVBMETAFLAG set for repack
       ;;
     esac;
     case $ramdisk_compression in
@@ -383,7 +406,7 @@ flash_boot() {
       *recovery*|*SOS*) avbtype=recovery;;
       *) avbtype=boot;;
     esac;
-    if [ "$(/system/bin/dalvikvm -Xnoimage-dex2oat -cp $bin/boot_signer-dexed.jar com.android.verity.BootSignature -verify boot.img 2>&1 | grep VALID)" ]; then
+    if [ -f /system/bin/dalvikvm ] && [ "$(/system/bin/dalvikvm -Xnoimage-dex2oat -cp $bin/boot_signer-dexed.jar com.android.verity.BootSignature -verify boot.img 2>&1 | grep VALID)" ]; then
       echo "Signing with AVBv1..." >&2;
       /system/bin/dalvikvm -Xnoimage-dex2oat -cp $bin/boot_signer-dexed.jar com.android.verity.BootSignature /$avbtype boot-new.img $pk8 $cert boot-new-signed.img;
     fi;
@@ -415,7 +438,7 @@ flash_boot() {
 
 # flash_generic <name>
 flash_generic() {
-  local avb avbblock avbpath file flags img imgblock isro isunmounted path;
+  local avb avbblock avbpath file flags img imgblock imgsz isro isunmounted path;
 
   cd $home;
   for file in $1 $1.img; do
@@ -461,25 +484,36 @@ flash_generic() {
           cd $home;
         fi
       fi
-      echo "Removing any existing $1_ak3..." >&2;
-      $bin/lptools_static remove $1_ak3;
-      echo "Attempting to create $1_ak3..." >&2;
-      if $bin/lptools_static create $1_ak3 $(wc -c < $img); then
-        echo "Replacing $1$slot with $1_ak3..." >&2;
-        $bin/lptools_static unmap $1_ak3 || abort "Unmapping $1_ak3 failed. Aborting...";
-        $bin/lptools_static map $1_ak3 || abort "Mapping $1_ak3 failed. Aborting...";
-        $bin/lptools_static replace $1_ak3 $1$slot || abort "Replacing $1$slot failed. Aborting...";
-        imgblock=/dev/block/mapper/$1_ak3;
-      else
-        echo "Creating $1_ak3 failed. Attempting to resize $1$slot..." >&2;
-        $bin/httools_static umount $1 || abort "Unmounting $1 failed. Aborting...";
-        if [ -e $path/$1-verity ]; then
-          $bin/lptools_static unmap $1-verity || abort "Unmapping $1-verity failed. Aborting...";
+      imgsz=$(wc -c < $img);
+      if [ "$imgsz" != "$(wc -c < $imgblock)" ]; then
+        if [ -d /postinstall/tmp -a "$slot_select" == "inactive" ]; then
+          echo "Resizing $1$slot snapshot..." >&2;
+          $bin/snapshotupdater_static update $1 $imgsz || abort "Resizing $1$slot snapshot failed. Aborting...";
+        else
+          echo "Removing any existing $1_ak3..." >&2;
+          $bin/lptools_static remove $1_ak3;
+          echo "Clearing any merged cow partitions..." >&2;
+          $bin/lptools_static clear-cow;
+          echo "Attempting to create $1_ak3..." >&2;
+          if $bin/lptools_static create $1_ak3 $imgsz; then
+            echo "Replacing $1$slot with $1_ak3..." >&2;
+            $bin/lptools_static unmap $1_ak3 || abort "Unmapping $1_ak3 failed. Aborting...";
+            $bin/lptools_static map $1_ak3 || abort "Mapping $1_ak3 failed. Aborting...";
+            $bin/lptools_static replace $1_ak3 $1$slot || abort "Replacing $1$slot failed. Aborting...";
+            imgblock=/dev/block/mapper/$1_ak3;
+            ui_print " " "Warning: $1$slot replaced in super. Reboot before further logical partition operations.";
+          else
+            echo "Creating $1_ak3 failed. Attempting to resize $1$slot..." >&2;
+            $bin/httools_static umount $1 || abort "Unmounting $1 failed. Aborting...";
+            if [ -e $path/$1-verity ]; then
+              $bin/lptools_static unmap $1-verity || abort "Unmapping $1-verity failed. Aborting...";
+            fi
+            $bin/lptools_static unmap $1$slot || abort "Unmapping $1$slot failed. Aborting...";
+            $bin/lptools_static resize $1$slot $imgsz || abort "Resizing $1$slot failed. Aborting...";
+            $bin/lptools_static map $1$slot || abort "Mapping $1$slot failed. Aborting...";
+            isunmounted=1;
+          fi
         fi
-        $bin/lptools_static unmap $1$slot || abort "Unmapping $1$slot failed. Aborting...";
-        $bin/lptools_static resize $1$slot $(wc -c < $img) || abort "Resizing $1$slot failed. Aborting...";
-        $bin/lptools_static map $1$slot || abort "Mapping $1$slot failed. Aborting...";
-        isunmounted=1;
       fi
     elif [ "$(wc -c < $img)" -gt "$(wc -c < $imgblock)" ]; then
       abort "New $1 image larger than $1 partition. Aborting...";
@@ -686,10 +720,10 @@ patch_cmdline() {
   if ! grep -q "$1" $cmdfile; then
     cmdtmp=$(cat $cmdfile);
     echo "$cmdtmp $2" > $cmdfile;
-    sed -i -e 's;^ ;;' -e 's;  *; ;g' -e 's;[ \t]*$;;' $cmdfile;
+    sed -i -e 's;^[ \t]*;;' -e 's;  *; ;g' -e 's;[ \t]*$;;' $cmdfile;
   else
     match=$(grep -o "$1.*$" $cmdfile | cut -d\  -f1);
-    sed -i -e "s;${match};${2};" -e 's;^ ;;' -e 's;  *; ;g' -e 's;[ \t]*$;;' $cmdfile;
+    sed -i -e "s;${match};${2};" -e 's;^[ \t]*;;' -e 's;  *; ;g' -e 's;[ \t]*$;;' $cmdfile;
   fi;
   if [ -f "$home/cmdtmp" ]; then
     sed -i "s|^cmdline=.*|cmdline=$(cat $cmdfile)|" $split_img/header;
@@ -765,6 +799,7 @@ setup_ak() {
         [ "$slot" ] || slot=$(grep -o 'androidboot.slot=.*$' /proc/cmdline | cut -d\  -f1 | cut -d= -f2);
         [ "$slot" ] && slot=_$slot;
       fi;
+      [ "$slot" == "normal" ] && unset slot;
       if [ "$slot" ]; then
         if [ -d /postinstall/tmp -a ! "$slot_select" ]; then
           slot_select=inactive;
