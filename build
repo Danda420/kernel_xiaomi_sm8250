@@ -16,9 +16,41 @@ KERNELVER="$(make kernelversion)"
 DATE_CLOCK="$(date +'%H%M-%d%m%Y')"
 export compiler_name="Oxygen"
 
-if [[ -z "${JTHREAD}" ]]; then
-    COUNT="$(grep -c '^processor' /proc/cpuinfo)"
-    export JTHREAD="$((COUNT + 2))"
+aosp_build() {
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <695>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $APOLLO
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1544>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $APOLLO
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <700>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $ALIOTH
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1540>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $ALIOTH
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <695>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $MUNCH
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1546>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $MUNCH
+}
+
+restore_dtsi_dimension() {
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' $APOLLO
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1544>;/g' $APOLLO
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <700>;/g' $ALIOTH
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1540>;/g' $ALIOTH
+	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' $MUNCH
+	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1546>;/g' $MUNCH
+}
+
+build_non_ksu() {
+	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/CONFIG_OVERLAY_FS_INDEX=y/# CONFIG_OVERLAY_FS_INDEX is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	ZIPNAME=$KERNELVER-$DEVICE-${BUILD_TYPE}Oxygen+-$DATE_CLOCK.zip
+}
+
+build_ksu() {
+	sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_OVERLAY_FS_INDEX is not set/CONFIG_OVERLAY_FS_INDEX=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	ZIPNAME=$KERNELVER-$DEVICE-${BUILD_TYPE}Oxygen+-KernelSU-$DATE_CLOCK.zip
+}
+
+if [[ $2 == aosp ]]; then
+	aosp_build
+	BUILD_TYPE=AOSP-
 fi
 
 if [[ $1 == oc ]]; then
@@ -31,19 +63,8 @@ if [[ $1 == oc ]]; then
 			cd $ANYKERNEL_DIR
 			echo ""
 			echo "zipping"
-			if [[ $DEVICE == apollo ]]; then
-				if [[ ! -d $ANYKERNEL_DIR/ramdisk ]]; then
-					mkdir $ANYKERNEL_DIR/ramdisk
-					cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
-				fi
-				cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
-			elif [[ $DEVICE == alioth ]]; then
-				rm -rf $ANYKERNEL_DIR/ramdisk
-				cp $ANYKERNEL_DIR/oxygen+/alioth $ANYKERNEL_DIR/anykernel.sh
-			elif [[ $DEVICE == munch ]]; then
-				rm -rf $ANYKERNEL_DIR/ramdisk
-				cp $ANYKERNEL_DIR/oxygen+/munch-oc $ANYKERNEL_DIR/anykernel.sh
-			fi
+			rm -rf $ANYKERNEL_DIR/ramdisk
+			cp $ANYKERNEL_DIR/oxygen+/munch-oc $ANYKERNEL_DIR/anykernel.sh
 			zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz dtb dtbo.img
 			mv $ZIPNAME $KERNEL_DIR/
 			echo ""
@@ -103,30 +124,6 @@ else
 	}
 fi
 
-aosp_build() {
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <695>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $APOLLO
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1544>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $APOLLO
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <700>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $ALIOTH
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1540>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $ALIOTH
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <695>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $MUNCH
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1546>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $MUNCH
-}
-
-restore_dtsi_dimension() {
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' $APOLLO
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1544>;/g' $APOLLO
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <700>;/g' $ALIOTH
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1540>;/g' $ALIOTH
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' $MUNCH
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1546>;/g' $MUNCH
-}
-
-if [[ $2 == aosp ]]; then
-	aosp_build
-else
-	restore_dtsi_dimension
-fi
-
 build() {
 	DEFCONFIG=vendor/${DEVICE}_defconfig
 	echo "cleaning..."
@@ -175,31 +172,17 @@ build() {
 			OBJDUMP=llvm-objdump \
 			STRIP=llvm-strip \
 			ld-name=${LINKER} \
-			-j${JTHREAD} CC="ccache ${CC}"
+			-j$(nproc --all) CC="ccache ${CC}"
 
 		zipkernel
-		
 		restore_dtsi_dimension
+		build_non_ksu
 		
 		BUILD_END=$(date +"%s")
 		DIFF=$(($BUILD_END - $BUILD_START))
 		echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
 		rm -rf $KERNEL_DIR/out/
 	}
-
-build_non_ksu() {
-	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	sed -i 's/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	sed -i 's/CONFIG_OVERLAY_FS_INDEX=y/# CONFIG_OVERLAY_FS_INDEX is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-$DATE_CLOCK.zip
-}
-
-build_ksu() {
-	sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	sed -i 's/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	sed -i 's/# CONFIG_OVERLAY_FS_INDEX is not set/CONFIG_OVERLAY_FS_INDEX=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	ZIPNAME=$KERNELVER-$DEVICE-Oxygen+-KernelSU-$DATE_CLOCK.zip
-}
 
 choose_build() {
 	echo ""
