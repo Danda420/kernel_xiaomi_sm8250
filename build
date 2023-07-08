@@ -38,91 +38,83 @@ build_non_ksu() {
 	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/CONFIG_OVERLAY_FS_INDEX=y/# CONFIG_OVERLAY_FS_INDEX is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	ZIPNAME=$KERNELVER-$DEVICE-${BUILD_TYPE}Oxygen+-$DATE_CLOCK.zip
+	ZIPNAME=$KERNELVER-$DEVICE-${BUILD_TYPE}${VARIANT}Oxygen+-$DATE_CLOCK.zip
 }
 
 build_ksu() {
 	sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/# CONFIG_OVERLAY_FS_INDEX is not set/CONFIG_OVERLAY_FS_INDEX=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
-	ZIPNAME=$KERNELVER-$DEVICE-${BUILD_TYPE}Oxygen+-KernelSU-$DATE_CLOCK.zip
+	ZIPNAME=$KERNELVER-$DEVICE-${BUILD_TYPE}${VARIANT}Oxygen+-KernelSU-$DATE_CLOCK.zip
 }
+
+build_oc() {
+	mkdir $ANYKERNEL_DIR/oxygen+/backup
+	mv arch/arm64/boot/dts/vendor/qcom/kona-v2-gpu.dtsi $ANYKERNEL_DIR/oxygen+/backup/
+	cp $ANYKERNEL_DIR/oxygen+/kona-v2-gpu.dtsi arch/arm64/boot/dts/vendor/qcom/kona-v2-gpu.dtsi
+	chmod 755 arch/arm64/boot/dts/vendor/qcom/kona-v2-gpu.dtsi
+}
+
+restore_gpu_dtsi() {
+	mv $ANYKERNEL_DIR/oxygen+/backup/kona-v2-gpu.dtsi arch/arm64/boot/dts/vendor/qcom/kona-v2-gpu.dtsi
+	chmod 755 arch/arm64/boot/dts/vendor/qcom/kona-v2-gpu.dtsi
+	rm -rf $ANYKERNEL_DIR/oxygen+/backup
+}
+
+if [[ $1 == oc ]]; then
+	build_oc
+	VARIANT=OC-
+fi
 
 if [[ $2 == aosp ]]; then
 	aosp_build
 	BUILD_TYPE=AOSP-
 fi
 
-if [[ $1 == oc ]]; then
-	zipkernel() {
-		if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
+zipkernel() {
+	if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtb.img ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
 
-			mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz $ANYKERNEL_DIR/
-			mv $KERNEL_DIR/out/arch/arm64/boot/dtb.img $ANYKERNEL_DIR/dtb
-			mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
-			cd $ANYKERNEL_DIR
-			echo ""
-			echo "zipping"
+		mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz $ANYKERNEL_DIR/
+		mv $KERNEL_DIR/out/arch/arm64/boot/dtb.img $ANYKERNEL_DIR/dtb
+		mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
+		cd $ANYKERNEL_DIR
+		echo ""
+		echo "zipping"
+		if [[ $DEVICE == apollo ]]; then
+			if [[ ! -d $ANYKERNEL_DIR/ramdisk ]]; then
+				mkdir $ANYKERNEL_DIR/ramdisk
+				cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
+			fi
+			cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
+		elif [[ $DEVICE == alioth ]]; then
 			rm -rf $ANYKERNEL_DIR/ramdisk
-			cp $ANYKERNEL_DIR/oxygen+/munch-oc $ANYKERNEL_DIR/anykernel.sh
-			zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz dtb dtbo.img
-			mv $ZIPNAME $KERNEL_DIR/
-			echo ""
+			cp $ANYKERNEL_DIR/oxygen+/alioth $ANYKERNEL_DIR/anykernel.sh
+		elif [[ $DEVICE == munch ]]; then
+			rm -rf $ANYKERNEL_DIR/ramdisk
+			cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
+		fi
+		zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz dtb dtbo.img
+		mv $ZIPNAME $KERNEL_DIR/
+		echo ""
 
-			echo "Cleaning AnyKernel3 dir"
-			echo ""
-			rm -rf $ANYKERNEL_DIR/*.zip
-			rm -rf $ANYKERNEL_DIR/Image.gz
-			rm -rf $ANYKERNEL_DIR/dtb
-			rm -rf $ANYKERNEL_DIR/dtbo.img
-			echo "****** build done! ******"
-			echo ""
-			echo "Your kernel zip name is $ZIPNAME"
-			echo ""
-			else
-				echo " Kernel build failed! abort zipping..."
-			fi
-	}
-else
-	zipkernel() {
-		if [[ -f $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb ]] && [[ -f $KERNEL_DIR/out/arch/arm64/boot/dtbo.img ]]; then
-
-			mv $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $ANYKERNEL_DIR/
-			mv $KERNEL_DIR/out/arch/arm64/boot/dtbo.img $ANYKERNEL_DIR/
-			cd $ANYKERNEL_DIR
-			echo ""
-			echo "zipping"
-			if [[ $DEVICE == apollo ]]; then
-				if [[ ! -d $ANYKERNEL_DIR/ramdisk ]]; then
-					mkdir $ANYKERNEL_DIR/ramdisk
-					cp -r $ANYKERNEL_DIR/oxygen+/overlay.d $ANYKERNEL_DIR/ramdisk/
-				fi
-				cp $ANYKERNEL_DIR/oxygen+/apollo $ANYKERNEL_DIR/anykernel.sh
-			elif [[ $DEVICE == alioth ]]; then
-				rm -rf $ANYKERNEL_DIR/ramdisk
-				cp $ANYKERNEL_DIR/oxygen+/alioth $ANYKERNEL_DIR/anykernel.sh
-			elif [[ $DEVICE == munch ]]; then
-				rm -rf $ANYKERNEL_DIR/ramdisk
-				cp $ANYKERNEL_DIR/oxygen+/munch $ANYKERNEL_DIR/anykernel.sh
-			fi
-			zip -r9 $ZIPNAME META-INF ramdisk tools anykernel.sh banner Image.gz-dtb dtbo.img
-			mv $ZIPNAME $KERNEL_DIR/
-			echo ""
-
-			echo "Cleaning AnyKernel3 dir"
-			echo ""
-			rm -rf $ANYKERNEL_DIR/*.zip
-			rm -rf $ANYKERNEL_DIR/Image.gz-dtb
-			rm -rf $ANYKERNEL_DIR/dtbo.img
-			echo "****** build done! ******"
-			echo ""
-			echo "Your kernel zip name is $ZIPNAME"
-			echo ""
-			else
-				echo " Kernel build failed! abort zipping..."
-			fi
-	}
-fi
+		echo "Cleaning AnyKernel3 dir"
+		echo ""
+		rm -rf $ANYKERNEL_DIR/*.zip
+		rm -rf $ANYKERNEL_DIR/Image.gz
+		rm -rf $ANYKERNEL_DIR/dtb
+		rm -rf $ANYKERNEL_DIR/dtbo.img
+		echo "****** build done! ******"
+		echo ""
+		echo "Your kernel zip name is $ZIPNAME"
+		echo ""
+		BUILD_END=$(date +"%s")
+		DIFF=$(($BUILD_END - $BUILD_START))
+		echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
+	else
+		echo " Kernel build failed! abort zipping..."
+	fi
+	rm -rf $KERNEL_DIR/out/
+}
 
 build() {
 	DEFCONFIG=vendor/${DEVICE}_defconfig
@@ -173,15 +165,11 @@ build() {
 			STRIP=llvm-strip \
 			ld-name=${LINKER} \
 			-j$(nproc --all) CC="ccache ${CC}"
-
+			
+		restore_gpu_dtsi
 		zipkernel
 		restore_dtsi_dimension
 		build_non_ksu
-		
-		BUILD_END=$(date +"%s")
-		DIFF=$(($BUILD_END - $BUILD_START))
-		echo -e "Build completed in '$(($DIFF / 60))' minute(s) and '$(($DIFF % 60))' seconds"
-		rm -rf $KERNEL_DIR/out/
 	}
 
 choose_build() {
