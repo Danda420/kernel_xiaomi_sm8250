@@ -9,7 +9,7 @@ config TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	  To compile this driver as a module, choose M here:
 
 config TOUCHSCREEN_SUPPORT_NEW_GAME_MODE
-	bool "Touch Support New Game Mode"
+	tristate "Touch Support New Game Mode"
 	help
 	  Say Y here if the device support new game mode
 
