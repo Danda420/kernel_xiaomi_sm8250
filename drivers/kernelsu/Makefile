@@ -19,15 +19,15 @@ KSU_GIT_VERSION := $(shell cd $(srctree)/$(src); /usr/bin/env PATH="$$PATH":/usr
 ccflags-y += -DKSU_GIT_VERSION=$(KSU_GIT_VERSION)
 endif
 
-ifndef EXPECTED_SIZE
-EXPECTED_SIZE := 0x033b
+ifndef KSU_EXPECTED_SIZE
+KSU_EXPECTED_SIZE := 0x033b
 endif
 
-ifndef EXPECTED_HASH
-EXPECTED_HASH := 0xb0b91415
+ifndef KSU_EXPECTED_HASH
+KSU_EXPECTED_HASH := 0xb0b91415
 endif
 
-ccflags-y += -DEXPECTED_SIZE=$(EXPECTED_SIZE)
-ccflags-y += -DEXPECTED_HASH=$(EXPECTED_HASH)
+ccflags-y += -DEXPECTED_SIZE=$(KSU_EXPECTED_SIZE)
+ccflags-y += -DEXPECTED_HASH=$(KSU_EXPECTED_HASH)
 ccflags-y += -Wno-implicit-function-declaration -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat
 ccflags-y += -Wno-declaration-after-statement
