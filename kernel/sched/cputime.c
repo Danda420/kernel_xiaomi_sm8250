@@ -3,7 +3,6 @@
  */
 #include <linux/cpufreq_times.h>
 #include "sched.h"
-#include "walt.h"
 
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
 

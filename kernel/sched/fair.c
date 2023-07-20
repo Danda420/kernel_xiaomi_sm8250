@@ -24,8 +24,6 @@
 
 #include <trace/events/sched.h>
 
-#include "walt.h"
-
 #ifdef CONFIG_SMP
 static inline bool task_fits_max(struct task_struct *p, int cpu);
 static inline unsigned long boosted_task_util(struct task_struct *task);
@@ -3969,8 +3967,7 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 
 	if (is_min_capacity_cpu(cpu)) {
 		if (task_boost_policy(p) == SCHED_BOOST_ON_BIG ||
-			task_boost > 0 ||
-			walt_should_kick_upmigrate(p, cpu))
+			task_boost > 0)
 			return false;
 	} else { /* mid cap cpu */
 		if (task_boost > TASK_BOOST_ON_MID)
@@ -4012,9 +4009,6 @@ static inline void adjust_cpus_for_packing(struct task_struct *p,
 
 	if (*best_idle_cpu == -1 || *target_cpu == -1)
 		return;
-
-	if (prefer_spread_on_idle(*best_idle_cpu))
-		fbt_env->need_idle |= 2;
 
 	if (fbt_env->need_idle || task_placement_boost_enabled(p) || boosted ||
 		shallowest_idle_cstate <= 0) {
@@ -5603,7 +5597,6 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 
 	if (!se) {
 		add_nr_running(rq, 1);
-		inc_rq_walt_stats(rq, p);
 		/*
 		 * Since new tasks are assigned an initial util_avg equal to
 		 * half of the spare capacity of their CPU, tiny tasks have the
@@ -5715,10 +5708,8 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		update_cfs_group(se);
 	}
 
-	if (!se) {
+	if (!se)
 		sub_nr_running(rq, 1);
-		dec_rq_walt_stats(rq, p);
-	}
 
 	/* balance early to pull high priority tasks */
 	if (unlikely(!was_sched_idle && sched_idle_rq(rq)))
@@ -7108,9 +7099,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 			 * See check_for_migration()
 			 */
 			if (is_reserved(i))
-				continue;
-
-			if (sched_cpu_high_irqload(i))
 				continue;
 
 			if (fbt_env->skip_cpu == i)
@@ -8942,8 +8930,7 @@ static int detach_tasks(struct lb_env *env)
 		return 0;
 
 	if (env->src_rq->nr_running < 32) {
-		if (!same_cluster(env->dst_cpu, env->src_cpu))
-			env->flags |= LBF_IGNORE_PREFERRED_CLUSTER_TASKS;
+		env->flags |= LBF_IGNORE_PREFERRED_CLUSTER_TASKS;
 
 		if (capacity_orig_of(env->dst_cpu) <
 				capacity_orig_of(env->src_cpu))
@@ -10752,9 +10739,8 @@ static int load_balance(int this_cpu, struct rq *this_rq,
 		.loop		= 0,
 	};
 
-	env.prefer_spread = (prefer_spread_on_idle(this_cpu) &&
-				!((sd->flags & SD_ASYM_CPUCAPACITY) &&
-				 !is_asym_cap_cpu(this_cpu)));
+	env.prefer_spread = !((sd->flags & SD_ASYM_CPUCAPACITY) &&
+				 !is_asym_cap_cpu(this_cpu));
 
 	cpumask_and(cpus, sched_domain_span(sd), cpu_active_mask);
 
@@ -11266,7 +11252,7 @@ static void rebalance_domains(struct rq *rq, enum cpu_idle_type idle)
 		need_decay = update_newidle_cost(sd, 0);
 		max_cost += sd->max_newidle_lb_cost;
 
-		if (!sd_overutilized(sd) && !prefer_spread_on_idle(cpu))
+		if (!sd_overutilized(sd))
 			continue;
 		/*
 		 * Stop the load balance at this level. There is another
@@ -11508,8 +11494,7 @@ static void nohz_balancer_kick(struct rq *rq)
 	 * happens from the tickpath.
 	 */
 	if (static_branch_likely(&sched_energy_present)) {
-		if (rq->nr_running >= 2 && (cpu_overutilized(cpu) ||
-			prefer_spread_on_idle(cpu)))
+		if (rq->nr_running >= 2 && cpu_overutilized(cpu))
 			flags = NOHZ_KICK_MASK;
 		goto out;
 	}

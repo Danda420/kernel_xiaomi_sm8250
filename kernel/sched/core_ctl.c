@@ -18,7 +18,6 @@
 
 #include <trace/events/sched.h>
 #include "sched.h"
-#include "walt.h"
 
 struct cluster_data {
 	bool inited;
