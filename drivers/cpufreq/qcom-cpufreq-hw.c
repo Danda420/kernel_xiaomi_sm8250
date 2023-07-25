@@ -354,7 +354,7 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 	struct em_data_callback em_cb = EM_DATA_CB(of_dev_pm_opp_get_cpu_power);
 	struct cpufreq_qcom *c;
 	struct device *cpu_dev;
-	int ret;
+	int ret, nr_opp;
 
 	cpu_dev = get_cpu_device(policy->cpu);
 	if (!cpu_dev) {
@@ -371,8 +371,8 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 
 	cpumask_copy(policy->cpus, &c->related_cpus);
 
-	ret = dev_pm_opp_get_opp_count(cpu_dev);
-	if (ret <= 0)
+	nr_opp = dev_pm_opp_get_opp_count(cpu_dev);
+	if (nr_opp <= 0)
 		dev_err(cpu_dev, "OPP table is not ready\n");
 
 	policy->fast_switch_possible = true;
@@ -380,7 +380,7 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 	policy->driver_data = c;
 	policy->dvfs_possible_from_any_cpu = true;
 
-	ret = em_register_perf_domain(policy->cpus, ret, &em_cb);
+	ret = em_dev_register_perf_domain(cpu_dev, nr_opp, &em_cb, policy->cpus, true);
 	if (ret){
 		dev_err(cpu_dev, "failed to register opp energy model: %d\n", ret);
 	}
