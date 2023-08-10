@@ -20,15 +20,14 @@ supported.patchlevels=
 '; } # end properties
 
 ### AnyKernel install
-# begin attributes
+## boot files attributes
 attributes() {
 set_perm_recursive 0 0 755 644 $ramdisk/*;
 set_perm_recursive 0 0 750 750 $ramdisk/init* $ramdisk/sbin;
 } # end attributes
 
-
 if [[ $cpud == 1 ]]; then
-## boot shell variables
+# boot shell variables
 block=/dev/block/bootdevice/by-name/boot;
 is_slot_device=0;
 else
