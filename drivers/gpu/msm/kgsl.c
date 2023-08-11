@@ -2235,7 +2235,7 @@ static long gpumem_free_entry_on_timestamp(struct kgsl_device *device,
 	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &temp);
 	trace_kgsl_mem_timestamp_queue(device, entry, context->id, temp,
 		timestamp);
-	ret = kgsl_add_low_prio_event(device, &context->events,
+	ret = kgsl_add_event(device, &context->events,
 		timestamp, gpumem_free_func, entry);
 
 	if (ret)
@@ -5427,22 +5427,11 @@ static int __init kgsl_core_init(void)
 		kthread_worker_fn, &kgsl_driver.worker, "kgsl_worker_thread");
 
 	if (IS_ERR(kgsl_driver.worker_thread)) {
-		pr_err("kgsl: unable to start kgsl_worker_thread\n");
-		goto err;
-	}
-
-	kthread_init_worker(&kgsl_driver.low_prio_worker);
-
-	kgsl_driver.low_prio_worker_thread = kthread_run_perf_critical(cpu_lp_mask,
-		kthread_worker_fn, &kgsl_driver.low_prio_worker, "kgsl_low_prio_worker_thread");
-
-	if (IS_ERR(kgsl_driver.low_prio_worker_thread)) {
-		pr_err("kgsl: unable to start kgsl_low_prio_worker_thread\n");
+		pr_err("kgsl: unable to start kgsl thread\n");
 		goto err;
 	}
 
 	sched_setscheduler(kgsl_driver.worker_thread, SCHED_FIFO, &param);
-	/* kgsl_driver.low_prio_worker_thread should not be SCHED_FIFO */
 
 	kgsl_events_init();
 
