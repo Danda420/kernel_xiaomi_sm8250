@@ -10,31 +10,29 @@ export CC="${CLANG_DIR}/bin/clang"
 export LINKER="lld"
 export compiler_name="Oxygen"
 export DTSI_DIR=$KERNEL_DIR/arch/arm64/boot/dts/vendor/qcom
-export APOLLO=$DTSI_DIR/dsi-panel-j3s-37-02-0a-dsc-video.dtsi
-export ALIOTH=$DTSI_DIR/dsi-panel-k11a-38-08-0a-dsc-cmd.dtsi
 export MUNCH=$DTSI_DIR/dsi-panel-l11r-38-08-0a-dsc-cmd.dtsi
 KERNELVER="$(make kernelversion)"
 DATE_CLOCK="$(date +'%H%M-%d%m%Y')"
 
+if [[ $(git remote | grep ksu) != "ksu" ]]; then
+     git remote add ksu https://github.com/tiann/KernelSU
+     git fetch ksu main > /dev/null
+fi
+
+KSUVER=$(git rev-list --count ksu/main)
+
 aosp_build() {
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <695>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $APOLLO
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1544>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $APOLLO
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <700>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $ALIOTH
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1540>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $ALIOTH
 	sed -i 's/qcom,mdss-pan-physical-width-dimension = <695>;/qcom,mdss-pan-physical-width-dimension = <70>;/g' $MUNCH
 	sed -i 's/qcom,mdss-pan-physical-height-dimension = <1546>;/qcom,mdss-pan-physical-height-dimension = <155>;/g' $MUNCH
 }
 
 restore_dtsi_dimension() {
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' $APOLLO
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1544>;/g' $APOLLO
-	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <700>;/g' $ALIOTH
-	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1540>;/g' $ALIOTH
 	sed -i 's/qcom,mdss-pan-physical-width-dimension = <70>;/qcom,mdss-pan-physical-width-dimension = <695>;/g' $MUNCH
 	sed -i 's/qcom,mdss-pan-physical-height-dimension = <155>;/qcom,mdss-pan-physical-height-dimension = <1546>;/g' $MUNCH
 }
 
 build_non_ksu() {
+	sed -i "s/CONFIG_GIT_VERSION=${KSUVER}/CONFIG_GIT_VERSION=null/g" $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/CONFIG_OVERLAY_FS_INDEX=y/# CONFIG_OVERLAY_FS_INDEX is not set/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
@@ -42,6 +40,7 @@ build_non_ksu() {
 }
 
 build_ksu() {
+	sed -i "s/CONFIG_GIT_VERSION=null/CONFIG_GIT_VERSION=${KSUVER}/g" $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 	sed -i 's/# CONFIG_OVERLAY_FS_INDEX is not set/CONFIG_OVERLAY_FS_INDEX=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
@@ -162,31 +161,6 @@ build() {
 		build_non_ksu
 	}
 
-choose_build() {
-	echo ""
-	echo "****** Building kernel for $DEVICE ******"
-	echo ""
-	while true; do
-	    echo " "
-	    echo "1. Build kernel without KernelSU"
-	    echo "2. Build kernel with KernelSU"
-	    read -p "" choose
-	    case $choose in
-		1 ) 
-		build_non_ksu
-		build
-		exit;;
-		2 )
-		build_ksu
-		build
-		exit;;
-		* ) 
-		echo "Please answer 1 or 2.";;
-	    esac
-	done
-
-}
-
 if [[ $1 == oc ]]; then
 	build_oc
 	VARIANT=OC-
@@ -198,26 +172,22 @@ if [[ $2 == aosp ]]; then
 fi
 
 clear 
+DEVICE=munch
 while true; do
-    echo "Build kernel for :"
-    echo "(1) MI 10T/Pro (apollo)"
-    echo "(2) POCO F3 (alioth)"
-    echo "(3) POCO F4 (munch)"
+    echo " "
+    echo "1. Build kernel without KernelSU"
+    echo "2. Build kernel with KernelSU"
     read -p "" choose
     case $choose in
-        1 ) 
-        DEVICE=apollo
-        choose_build
-        exit;;
-        2 )
-        DEVICE=alioth
-        choose_build
-        exit;;
-        3 )
-        DEVICE=munch
-        choose_build
-        exit;;
-        * ) 
-        echo "Please answer 1, 2 or 3.";;
-    esac
+	1 ) 
+	build_non_ksu
+	build
+	exit;;
+	2 )
+	build_ksu
+	build
+	exit;;
+	* ) 
+	echo "Please answer 1 or 2.";;
+   esac
 done
