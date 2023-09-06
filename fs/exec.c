@@ -1731,25 +1731,28 @@ static int exec_binprm(struct linux_binprm *bprm)
 	return ret;
 }
 
-static noinline bool is_lmkd_reinit(struct user_arg_ptr *argv)
+static void android_service_blacklist(const char *name)
 {
-	const char __user *str;
-	char buf[10];
-	int len;
+#define FULL(x) { x, sizeof(x) }
+#define PREFIX(x) { x, sizeof(x) - 1 }
+	struct {
+		const char *path;
+		size_t len;
+	} static const blacklist[] = {
+		FULL("/vendor/bin/msm_irqbalance"),
+	};
+#undef FULL
+#undef PREFIX
+	int i;
 
-	str = get_user_arg_ptr(*argv, 1);
-	if (IS_ERR(str))
-		return false;
-
-	// strnlen_user() counts NULL terminator
-	len = strnlen_user(str, MAX_ARG_STRLEN);
-	if (len != 9)
-		return false;
-
-	if (copy_from_user(buf, str, len))
-		return false;
-
-	return !strcmp(buf, "--reinit");
+	for (i = 0; i < ARRAY_SIZE(blacklist); i++) {
+		if (!strncmp(blacklist[i].path, name, blacklist[i].len)) {
+			pr_info("%s: sending SIGSTOP to %s\n", __func__, name);
+			do_send_sig_info(SIGSTOP, SEND_SIG_PRIV, current,
+					 PIDTYPE_TGID);
+			break;
+		}
+	}
 }
 
 /*
@@ -1877,15 +1880,6 @@ static int __do_execve_file(int fd, struct filename *filename,
 		bprm.argc = 1;
 	}
 
-     // Super nasty hack to disable lmkd reloading props
-     if (unlikely(strcmp(bprm.filename, "/system/bin/lmkd") == 0)) {
-         if (is_lmkd_reinit(&argv)) {
-             pr_info("sys_execve(): prevented /system/bin/lmkd --reinit\n");
-             retval = -ENOENT;
-             goto out;
-         }
-     }
-
     retval = exec_binprm(&bprm);
 	if (retval < 0)
 		goto out;
@@ -1902,6 +1896,9 @@ static int __do_execve_file(int fd, struct filename *filename,
 			set_cpus_allowed_ptr(current, cpu_perf_mask);
 		}
 	}
+
+	if (is_global_init(current->parent))
+		android_service_blacklist(filename->name);
 
 	/* execve succeeded */
 	current->fs->in_exec = 0;
