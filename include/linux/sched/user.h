@@ -9,6 +9,7 @@
 #ifdef CONFIG_PACKAGE_RUNTIME_INFO
 #include <linux/pkg_stat.h>
 #endif
+#include <linux/android_kabi.h>
 
 struct key;
 
@@ -53,6 +54,9 @@ struct user_struct {
 
 	/* Miscellaneous per-user rate limit */
 	struct ratelimit_state ratelimit;
+
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
 };
 
 extern int uids_sysfs_init(void);
