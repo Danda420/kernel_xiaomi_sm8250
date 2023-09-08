@@ -65,6 +65,7 @@ struct cam_req_mgr_util_hdl_tbl {
  * @v4l2_sub_dev_flag: flag to create v4l2 sub device
  * @media_entity_flag: flag for media entity
  * @reserved: reserved field
+ * @dev_id: device id for handle
  * @ops: ops pointer for a device handle
  * @priv: private data for a device handle
  */
@@ -73,6 +74,7 @@ struct cam_create_dev_hdl {
 	int32_t v4l2_sub_dev_flag;
 	int32_t media_entity_flag;
 	int32_t reserved;
+	uint64_t dev_id;	
 	void *ops;
 	void *priv;
 };
