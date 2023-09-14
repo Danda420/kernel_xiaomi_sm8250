@@ -478,6 +478,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 	u32 data, src, lval, i, core_count, prev_cc, prev_freq, cur_freq, volt;
 	u32 vc;
 	unsigned long cpu;
+	int max_index;
 
 	c->table = devm_kcalloc(dev, lut_max_entries + 1,
 				sizeof(*c->table), GFP_KERNEL);
@@ -541,6 +542,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 				prev->flags = CPUFREQ_BOOST_FREQ;
 			break;
 		}
+		max_index = i;
 
 		prev_cc = core_count;
 		prev_freq = cur_freq;
@@ -558,7 +560,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 	c->table[i].frequency = CPUFREQ_TABLE_END;
 	for_each_cpu(cpu, &c->related_cpus) {
 		per_cpu(cpufreq_boost_pcpu, cpu).c = c;
-		per_cpu(cpufreq_boost_pcpu, cpu).max_index = i - 1;
+		per_cpu(cpufreq_boost_pcpu, cpu).max_index = max_index - 1;
 	}
 
 	if (c->skip_data.skip) {
