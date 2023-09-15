@@ -38,11 +38,7 @@ enum print_reason {
 	PR_OEM		= BIT(2),
 	PR_DEBUG	= BIT(3),
 };
-
-static int debug_mask = PR_OEM;
-module_param_named(
-	debug_mask, debug_mask, int, 0600
-);
+#define debug_mask PR_INTERRUPT
 
 #define FG_MAX_INDEX 2
 #define RETRY_COUNT	5
