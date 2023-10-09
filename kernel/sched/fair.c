@@ -4215,7 +4215,7 @@ static inline void util_est_update(struct cfs_rq *cfs_rq,
 	 * To avoid overestimation of actual task utilization, skip updates if
 	 * we cannot grant there is idle time in this CPU.
 	 */
-	if (task_util(p) > capacity_orig_of(cpu_of(rq_of(cfs_rq))))
+	if (task_util(p) > arch_scale_cpu_capacity(cpu_of(rq_of(cfs_rq))))
 		return;
 
 	/*
@@ -4251,8 +4251,8 @@ bias_to_this_cpu(struct task_struct *p, int cpu, int start_cpu)
 {
 	bool base_test = cpumask_test_cpu(cpu, p->cpus_ptr) &&
 			cpu_active(cpu);
-	bool start_cap_test = (capacity_orig_of(cpu) >=
-					capacity_orig_of(start_cpu));
+	bool start_cap_test = (arch_scale_cpu_capacity(cpu) >=
+					arch_scale_cpu_capacity(start_cpu));
 
 	return base_test && start_cap_test;
 }
@@ -4275,14 +4275,14 @@ static inline int util_fits_cpu(unsigned long util,
 		return fits;
 
 	/*
-	 * We must use capacity_orig_of() for comparing against uclamp_min and
+	 * We must use arch_scale_cpu_capacity() for comparing against uclamp_min and
 	 * uclamp_max. We only care about capacity pressure (by using
 	 * capacity_of()) for comparing against the real util.
 	 *
 	 * If a task is boosted to 1024 for example, we don't want a tiny
 	 * pressure to skew the check whether it fits a CPU or not.
 	 *
-	 * Similarly if a task is capped to capacity_orig_of(little_cpu), it
+	 * Similarly if a task is capped to arch_scale_cpu_capacity(little_cpu), it
 	 * should fit a little cpu even if there's some pressure.
 	 *
 	 * Only exception is for thermal pressure since it has a direct impact
@@ -4298,7 +4298,7 @@ static inline int util_fits_cpu(unsigned long util,
 	 * honour the inverted capacity for both uclamp_min and uclamp_max all
 	 * the time.
 	 */
-	capacity_orig = capacity_orig_of(cpu);
+	capacity_orig = arch_scale_cpu_capacity(cpu);
 	capacity_orig_thermal = capacity_orig - arch_scale_thermal_pressure(cpu);
 
 	/*
@@ -7172,7 +7172,7 @@ select_idle_capacity(struct task_struct *p, struct sched_domain *sd, int target)
 		 * Look for the CPU with best capacity.
 		 */
 		else if (fits < 0)
-			cpu_cap = capacity_orig_of(cpu) - thermal_load_avg(cpu_rq(cpu));
+			cpu_cap = arch_scale_cpu_capacity(cpu) - thermal_load_avg(cpu_rq(cpu));
 
 		/*
 		 * First, select CPU which fits better (-1 being better than 0).
@@ -7370,7 +7370,7 @@ static unsigned long cpu_util_without(int cpu, struct task_struct *p)
 	 * clamp to the maximum CPU capacity to ensure consistency with
 	 * the cpu_util call.
 	 */
-	return min_t(unsigned long, util, capacity_orig_of(cpu));
+	return min_t(unsigned long, util, arch_scale_cpu_capacity(cpu));
 }
 
 /*
@@ -7379,7 +7379,7 @@ static unsigned long cpu_util_without(int cpu, struct task_struct *p)
  */
 unsigned long capacity_curr_of(int cpu)
 {
-	unsigned long max_cap = cpu_rq(cpu)->cpu_capacity_orig;
+	unsigned long max_cap = arch_scale_cpu_capacity(cpu_of(cpu_rq(cpu)));
 	unsigned long scale_freq = arch_scale_freq_capacity(cpu);
 
 	return cap_scale(max_cap, scale_freq);
@@ -7515,7 +7515,7 @@ cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost)
 		util = max(util, util_est);
 	}
 
-	return min(util, capacity_orig_of(cpu));
+	return min(util, arch_scale_cpu_capacity(cpu));
 }
 
 unsigned long cpu_util_cfs(int cpu)
@@ -8843,8 +8843,8 @@ static int detach_tasks(struct lb_env *env)
 	if (env->src_rq->nr_running < 32) {
 		env->flags |= LBF_IGNORE_PREFERRED_CLUSTER_TASKS;
 
-		if (capacity_orig_of(env->dst_cpu) <
-				capacity_orig_of(env->src_cpu))
+		if (arch_scale_cpu_capacity(env->dst_cpu) <
+				arch_scale_cpu_capacity(env->src_cpu))
 			env->flags |= LBF_IGNORE_BIG_TASKS;
 	}
 
@@ -9417,7 +9417,7 @@ static inline int
 check_cpu_capacity(struct rq *rq, struct sched_domain *sd)
 {
 	return ((rq->cpu_capacity * sd->imbalance_pct) <
-				(rq->cpu_capacity_orig * 100));
+				(arch_scale_cpu_capacity(cpu_of(rq)) * 100));
 }
 
 /* Check if the rq has a misfit task */
@@ -10178,8 +10178,8 @@ static struct sched_group *find_busiest_group(struct lb_env *env)
 			cpu_busiest = group_first_cpu(sds.busiest);
 
 			/* TODO:don't assume same cap cpus are in same domain */
-			capacity_local = capacity_orig_of(cpu_local);
-			capacity_busiest = capacity_orig_of(cpu_busiest);
+			capacity_local = arch_scale_cpu_capacity(cpu_local);
+			capacity_busiest = arch_scale_cpu_capacity(cpu_busiest);
 			if ((sds.busiest->group_weight > 1) &&
 				capacity_local > capacity_busiest) {
 				goto out_balanced;
@@ -10417,8 +10417,8 @@ static int need_active_balance(struct lb_env *env)
 
 	if ((env->idle != CPU_NOT_IDLE) &&
 		(capacity_of(env->src_cpu) < capacity_of(env->dst_cpu)) &&
-		((capacity_orig_of(env->src_cpu) <
-				capacity_orig_of(env->dst_cpu))) &&
+		((arch_scale_cpu_capacity(env->src_cpu) <
+				arch_scale_cpu_capacity(env->dst_cpu))) &&
 				env->src_rq->cfs.h_nr_running == 1 &&
 				cpu_overutilized(env->src_cpu) &&
 				!cpu_overutilized(env->dst_cpu)) {
@@ -11059,7 +11059,7 @@ static inline int find_energy_aware_new_ilb(void)
 	int cpu = raw_smp_processor_id();
 	cpumask_t idle_cpus, tmp_cpus;
 	struct sched_group *sg;
-	unsigned long ref_cap = capacity_orig_of(cpu);
+	unsigned long ref_cap = arch_scale_cpu_capacity(cpu);
 	unsigned long best_cap = 0, best_cap_cpu = -1;
 
 	rcu_read_lock();
@@ -11081,7 +11081,7 @@ static inline int find_energy_aware_new_ilb(void)
 		if (i >= nr_cpu_ids)
 			continue;
 
-		cap = capacity_orig_of(i);
+		cap = arch_scale_cpu_capacity(i);
 
 		/* The first preference is for the same capacity CPU */
 		if (cap == ref_cap) {
