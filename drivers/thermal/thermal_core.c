@@ -1712,14 +1712,12 @@ static ssize_t
 thermal_sconfig_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
 {
-	int ret, val = -1;
+	int val = -1;
 
-	ret = kstrtoint(buf, 10, &val);
+	val = simple_strtol(buf, NULL, 10);
 
 	atomic_set(&switch_mode, val);
 
-	if (ret)
-		return ret;
 	return len;
 }
 
@@ -1779,14 +1777,12 @@ static ssize_t
 thermal_temp_state_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
 {
-	int ret, val = -1;
+	int val = -1;
 
-	ret = kstrtoint(buf, 10, &val);
+	val = simple_strtol(buf, NULL, 10);
 
 	atomic_set(&temp_state, val);
 
-	if (ret)
-		return ret;
 	return len;
 }
 
