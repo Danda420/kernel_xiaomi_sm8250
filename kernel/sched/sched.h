@@ -1752,6 +1752,10 @@ extern const u32		sched_prio_to_wmult[40];
  * MOVE - paired with SAVE/RESTORE, explicitly does not preserve the location
  *        in the runqueue.
  *
+ * NOCLOCK - skip the update_rq_clock() (avoids double updates)
+ *
+ * MIGRATION - p->on_rq == TASK_ON_RQ_MIGRATING (used for DEADLINE)
+ *
  * ENQUEUE_HEAD      - place at front of runqueue (tail if not specified)
  * ENQUEUE_REPLENISH - CBS (replenish runtime and postpone deadline)
  * ENQUEUE_MIGRATED  - the task was migrated during wakeup
@@ -1764,6 +1768,7 @@ extern const u32		sched_prio_to_wmult[40];
 #define DEQUEUE_NOCLOCK		0x08 /* Matches ENQUEUE_NOCLOCK */
 #define DEQUEUE_IDLE		0x80 /* The last dequeue before IDLE */
 #define DEQUEUE_SPECIAL		0x10
+#define DEQUEUE_MIGRATING	0x100 /* Matches ENQUEUE_MIGRATING */
 #define DEQUEUE_DELAYED		0x200 /* Matches ENQUEUE_DELAYED */
 
 #define ENQUEUE_WAKEUP		0x01
@@ -1781,7 +1786,8 @@ extern const u32		sched_prio_to_wmult[40];
 
 #define ENQUEUE_WAKEUP_SYNC	0x80
 #define ENQUEUE_INITIAL		0x100
-#define ENQUEUE_DELAYED		0x200
+#define ENQUEUE_MIGRATING	0x200
+#define ENQUEUE_DELAYED		0x400
 
 #define RETRY_TASK		((void *)-1UL)
 
