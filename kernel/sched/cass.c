@@ -40,7 +40,7 @@ unsigned long cass_cpu_util(int cpu, bool sync)
 
 	/* Deduct @current's util from this CPU if this is a sync wake */
 	if (sync && cpu == smp_processor_id())
-		sub_positive(&util, task_util(current));
+		lsub_positive(&util, task_util(current));
 
 	if (sched_feat(UTIL_EST))
 		util = max_t(unsigned long, util,
@@ -118,7 +118,8 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 		 * Check if this CPU is idle or only has SCHED_IDLE tasks. For
 		 * sync wakes, always treat the current CPU as idle.
 		 */
-		if ((sync && cpu == smp_processor_id()) || idle_cpu(cpu)) {
+		if ((sync && cpu == smp_processor_id()) ||
+		    available_idle_cpu(cpu) || sched_idle_cpu(cpu)) {
 			/* Discard any previous non-idle candidate */
 			if (!has_idle) {
 				best = curr;
@@ -177,7 +178,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 }
 
 static int cass_select_task_rq_fair(struct task_struct *p, int prev_cpu,
-				    int sd_flag, int wake_flags, 
+				    int sd_flag, int wake_flags,
 				    int sibling_count_hint)
 {
 	bool sync;
