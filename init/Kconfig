@@ -1326,6 +1326,13 @@ config UCLAMP_ASSIST
 	help
 	  This option enabled in-kernel uclamp setting overrides
 
+config CPUSET_ASSIST
+	bool "Cpuset configuration helper"
+	depends on CPUSETS
+	depends on ANDROID
+	help
+	  This option enabled in-kernel uclamp setting overrides
+
 config SYSFS_DEPRECATED
 	bool "Enable deprecated sysfs features to support old userspace tools"
 	depends on SYSFS

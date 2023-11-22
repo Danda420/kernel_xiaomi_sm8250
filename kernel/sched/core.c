@@ -8107,7 +8107,11 @@ static int cpu_cgroup_css_online(struct cgroup_subsys_state *css)
 	rcu_read_unlock();
 	mutex_unlock(&uclamp_mutex);
 #ifdef CONFIG_UCLAMP_ASSIST
+<<<<<<< HEAD
         uclamp_set(css);
+=======
+	uclamp_set(css);
+>>>>>>> 7a3b0810af19 (sched/core: Introduce Uclamp Assist)
 #endif
 #endif
 
@@ -8432,10 +8436,10 @@ static void uclamp_set(struct cgroup_subsys_state *css)
 	int i;
 
 	static struct uclamp_param tgts[] = {
-		{"top-app",             "0", "max",  1},
-       		{"foreground",          "0",  "80",  0},
-                {"dex2oat",             "0",  "30",  0},
-        	{"background",          "0",  "30",  0},
+		{"top-app",             "1", "max",  1},
+       		{"foreground",          "0", "max",  0},
+                {"dex2oat",             "0",  "60",  0},
+        	{"background",          "0",  "50",  0},
         	{"system-background",   "0",  "50",  0},
 	};
 
@@ -8455,7 +8459,7 @@ static void uclamp_set(struct cgroup_subsys_state *css)
 
 			pr_info("uclamp_assist: setting values for %s: uclamp_min=%s uclamp_max=%s uclamp_latency_sensitive=%d\n",
 				tgt.name, tgt.uclamp_min, tgt.uclamp_max,tgt.uclamp_latency_sensitive);
-			return;
+			return;			
 		}
 	}
 
