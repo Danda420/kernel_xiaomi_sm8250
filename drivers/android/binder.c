@@ -2162,8 +2162,7 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 		ret = -EINVAL;
 		goto done;
 	}
-	if (security_binder_transfer_binder(binder_get_cred(proc),
-					    binder_get_cred(target_proc))) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2204,8 +2203,7 @@ static int binder_translate_handle(struct flat_binder_object *fp,
 				  proc->pid, thread->pid, fp->handle);
 		return -EINVAL;
 	}
-	if (security_binder_transfer_binder(binder_get_cred(proc),
-					    binder_get_cred(target_proc))) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2287,8 +2285,7 @@ static int binder_translate_fd(u32 fd, binder_size_t fd_offset,
 		ret = -EBADF;
 		goto err_fget;
 	}
-	ret = security_binder_transfer_file(binder_get_cred(proc),
-					    binder_get_cred(target_proc), file);
+	ret = security_binder_transfer_file(proc->cred, target_proc->cred, file);
 	if (ret < 0) {
 		ret = -EPERM;
 		goto err_security;
@@ -2756,8 +2753,8 @@ static void binder_transaction(struct binder_proc *proc,
 			return_error_line = __LINE__;
 			goto err_invalid_target_handle;
 		}
-		if (security_binder_transaction(binder_get_cred(proc),
-					binder_get_cred(target_proc)) < 0) {
+		if (security_binder_transaction(proc->cred,
+						target_proc->cred) < 0) {
 			return_error = BR_FAILED_REPLY;
 			return_error_param = -EPERM;
 			return_error_line = __LINE__;
@@ -2885,7 +2882,7 @@ static void binder_transaction(struct binder_proc *proc,
 		u32 secid;
 		size_t added_size;
 		int max_retries = 100;
-		security_cred_getsecid(binder_get_cred(proc), &secid);
+		security_cred_getsecid(proc->cred, &secid);
  retry_alloc:
 		ret = security_secid_to_secctx(secid, &secctx, &secctx_sz);
 		if (ret == -ENOMEM && max_retries-- > 0) {
@@ -4654,9 +4651,9 @@ static struct binder_thread *binder_get_thread(struct binder_proc *proc)
 }
 static void binder_free_proc(struct binder_proc *proc)
 {
+	struct binder_proc_wrap *proc_wrap;
 	struct binder_device *device;
-	struct binder_proc_ext *eproc =
-		container_of(proc, struct binder_proc_ext, proc);
+
 	BUG_ON(!list_empty(&proc->todo));
 	BUG_ON(!list_empty(&proc->delivered_death));
 	if (proc->outstanding_txns)
@@ -4669,10 +4666,11 @@ static void binder_free_proc(struct binder_proc *proc)
 	}
 	binder_alloc_deferred_release(&proc->alloc);
 	put_task_struct(proc->tsk);
-	put_cred(eproc->cred);
+	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
 	dbitmap_free(&proc->dmap);
-	kfree(eproc);
+	proc_wrap = binder_proc_wrap_entry(proc);
+	kfree(proc_wrap);
 }
 static void binder_free_thread(struct binder_thread *thread)
 {
@@ -4853,7 +4851,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 		ret = -EBUSY;
 		goto out;
 	}
-	ret = security_binder_set_context_mgr(binder_get_cred(proc));
+	ret = security_binder_set_context_mgr(proc->cred);
 	if (ret < 0)
 		goto out;
 	if (uid_valid(context->binder_context_mgr_uid)) {
@@ -5305,8 +5303,8 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 static int binder_open(struct inode *nodp, struct file *filp)
 {
+	struct binder_proc_wrap *proc_wrap;
 	struct binder_proc *proc, *itr;
-	struct binder_proc_ext *eproc;
 	struct binder_device *binder_dev;
 	struct binderfs_info *info;
 #ifdef CONFIG_ANDROID_BINDER_LOGS
@@ -5315,17 +5313,17 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	bool existing_pid = false;
 	binder_debug(BINDER_DEBUG_OPEN_CLOSE, "%s: %d:%d\n", __func__,
 		     current->group_leader->pid, current->pid);
-	eproc = kzalloc(sizeof(*eproc), GFP_KERNEL);
-	if (eproc == NULL)
+	proc_wrap = kzalloc(sizeof(*proc_wrap), GFP_KERNEL);
+	if (proc_wrap == NULL)
 		return -ENOMEM;
-	proc = &eproc->proc;
+	proc = &proc_wrap->proc;
 
 	dbitmap_init(&proc->dmap);
 	spin_lock_init(&proc->inner_lock);
 	spin_lock_init(&proc->outer_lock);
 	get_task_struct(current->group_leader);
 	proc->tsk = current->group_leader;
-	eproc->cred = get_cred(filp->f_cred);
+	proc->cred = get_cred(filp->f_cred);
 	INIT_LIST_HEAD(&proc->todo);
 	init_waitqueue_head(&proc->freeze_wait);
 	if (binder_supported_policy(current->policy)) {
