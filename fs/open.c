@@ -1089,14 +1089,25 @@ EXPORT_SYMBOL(file_open_root);
 
 #ifdef CONFIG_BLOCK_UNWANTED_FILES
 static char *files_array[] = {
+	"com.feravolt",
 	"fde",
 	"lspeed",
 	"nfsinjector",
 	"lkt",
+	"MAGNE",
+	"lawrun",
+	"cyborg.kaka.lawrun",
+	"miui"
 };
 
 static char *paths_array[] = {
 	"/data/adb/modules",
+	"/system/app",
+	"/system_ext/app",
+	"/product/app",
+	"/product/priv-app",
+	"/data/app",
+	"/data/data"
 };
 
 static bool string_compare(const char *arg1, const char *arg2)
