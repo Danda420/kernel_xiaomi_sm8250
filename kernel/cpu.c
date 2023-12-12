@@ -33,7 +33,6 @@
 #include <linux/percpu-rwsem.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/cpuset.h>
-#include <linux/random.h>
 
 #include <trace/events/power.h>
 #define CREATE_TRACE_POINTS
@@ -1494,22 +1493,6 @@ core_initcall(cpu_hotplug_pm_sync_init);
 
 int __boot_cpu_id;
 
-/* Horrific hacks because we can't add more to cpuhp_hp_states. */
-static int random_and_perf_prepare_fusion(unsigned int cpu)
-{
-#ifdef CONFIG_PERF_EVENTS
-	perf_event_init_cpu(cpu);
-#endif
-	random_prepare_cpu(cpu);
-	return 0;
-}
-static int random_and_workqueue_online_fusion(unsigned int cpu)
-{
-	workqueue_online_cpu(cpu);
-	random_online_cpu(cpu);
-	return 0;
-}
-
 #endif /* CONFIG_SMP */
 
 /* Boot processor state steps */
@@ -1528,7 +1511,7 @@ static struct cpuhp_step cpuhp_hp_states[] = {
 	},
 	[CPUHP_PERF_PREPARE] = {
 		.name			= "perf:prepare",
-		.startup.single		= random_and_perf_prepare_fusion,
+		.startup.single		= perf_event_init_cpu,
 		.teardown.single	= perf_event_exit_cpu,
 	},
 	[CPUHP_WORKQUEUE_PREP] = {
@@ -1644,7 +1627,7 @@ static struct cpuhp_step cpuhp_hp_states[] = {
 	},
 	[CPUHP_AP_WORKQUEUE_ONLINE] = {
 		.name			= "workqueue:online",
-		.startup.single		= random_and_workqueue_online_fusion,
+		.startup.single		= workqueue_online_cpu,
 		.teardown.single	= workqueue_offline_cpu,
 	},
 	[CPUHP_AP_RCUTREE_ONLINE] = {
