@@ -779,7 +779,9 @@ static inline void ufshcd_cond_add_cmd_trace(struct ufs_hba *hba,
 
 	if (cmd) { /* data phase exists */
 		/* trace UPIU also */
+#ifdef CONFIG_SCSI_UFSHCD_CMD_LOGGING
 		ufshcd_add_cmd_upiu_trace(hba, tag, str);
+#endif
 		opcode = cmd->cmnd[0];
 		if ((opcode == READ_10) || (opcode == WRITE_10)) {
 			/*
