@@ -2279,6 +2279,10 @@ config ASN1
 
 source "kernel/Kconfig.locks"
 
+config GIT_VERSION
+	int "Default git verison"
+	default 0
+
 config ARCH_HAS_SYNC_CORE_BEFORE_USERMODE
 	bool
 
