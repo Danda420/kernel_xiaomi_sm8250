@@ -196,8 +196,8 @@ static int __sdcardfs_fill_super(
 		goto out;
 	}
 
-	pr_info("sdcardfs: dev_name -> %s\n", dev_name);
-	pr_info("sdcardfs: gid=%d,mask=%x\n", mntopts->gid, mntopts->mask);
+	pr_debug("sdcardfs: dev_name -> %s\n", dev_name);
+	pr_debug("sdcardfs: gid=%d,mask=%x\n", mntopts->gid, mntopts->mask);
 
 	/* parse lower path */
 	err = kern_path(dev_name, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,
@@ -218,9 +218,9 @@ static int __sdcardfs_fill_super(
 	sb_info = sb->s_fs_info;
 	copy_sb_opts(&sb_info->options, fc);
 	if (opts->debug) {
-		pr_info("sdcardfs : options - debug:%d\n", opts->debug);
-		pr_info("sdcardfs : options - gid:%d\n", mntopts->gid);
-		pr_info("sdcardfs : options - mask:%d\n", mntopts->mask);
+		pr_debug("sdcardfs : options - debug:%d\n", opts->debug);
+		pr_debug("sdcardfs : options - gid:%d\n", mntopts->gid);
+		pr_debug("sdcardfs : options - mask:%d\n", mntopts->mask);
 	}
 
 	/* set the lower superblock field of upper superblock */
@@ -294,7 +294,7 @@ static int __sdcardfs_fill_super(
 	mutex_unlock(&sdcardfs_super_list_lock);
 
 	if (!(fc->sb_flags & SB_SILENT))
-		pr_info("sdcardfs: mounted on top of %s type %s\n",
+		pr_debug("sdcardfs: mounted on top of %s type %s\n",
 				dev_name, lower_sb->s_type->name);
 	goto out; /* all is well */
 
@@ -353,9 +353,9 @@ static int sdcardfs_reconfigure_context(struct fs_context *fc)
 
 	sbi->options.debug = fc_opts->opts.debug;
 	if (sbi->options.debug) {
-		pr_info("sdcardfs : options - debug:%d\n", sbi->options.debug);
-		pr_info("sdcardfs : options - gid:%d\n", fc_opts->vfsopts.gid);
-		pr_info("sdcardfs : options - mask:%d\n",
+		pr_debug("sdcardfs : options - debug:%d\n", sbi->options.debug);
+		pr_debug("sdcardfs : options - gid:%d\n", fc_opts->vfsopts.gid);
+		pr_debug("sdcardfs : options - mask:%d\n",
 						fc_opts->vfsopts.mask);
 	}
 	return 0;
