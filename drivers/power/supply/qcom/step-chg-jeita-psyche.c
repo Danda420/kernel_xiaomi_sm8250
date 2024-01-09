@@ -1060,7 +1060,7 @@ static int handle_jeita(struct step_chg_info *chip)
 
 	rc = power_supply_get_property(chip->batt_psy,
 				POWER_SUPPLY_PROP_VOLTAGE_MAX, &pval);
-	pr_info("%s = %d max voltage= %duv FV = %duV\n",
+	pr_debug("%s = %d max voltage= %duv FV = %duV\n",
 		chip->jeita_fcc_config->param.prop_name, temp, pval.intval, fv_uv);
 	if (rc || (pval.intval == fv_uv)) {
 		vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
