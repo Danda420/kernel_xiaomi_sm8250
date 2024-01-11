@@ -220,7 +220,7 @@ static int set_wlan_mac_address(const u8 *mac_list, const uint32_t len,
 		addr = &priv->wlan_der_mac_addr;
 
 	if (addr->no_of_mac_addr_set) {
-		pr_err("WLAN MAC address is already set, num %d type %d\n",
+		pr_debug("WLAN MAC address is already set, num %d type %d\n",
 		       addr->no_of_mac_addr_set, type);
 		return 0;
 	}
@@ -266,7 +266,7 @@ static u8 *get_wlan_mac_address(struct device *dev,
 		addr = &priv->wlan_der_mac_addr;
 
 	if (!addr->no_of_mac_addr_set) {
-		pr_err("WLAN MAC address is not set, type %d\n", type);
+		pr_debug("WLAN MAC address is not set, type %d\n", type);
 		goto out;
 	}
 	*num = addr->no_of_mac_addr_set;
