@@ -3760,7 +3760,7 @@ static int pcie_phy_init(struct msm_pcie_dev_t *dev)
 		return -ENODEV;
 	}
 
-	PCIE_INFO(dev, "PCIe RC%d PHY is ready!\n", dev->rc_idx);
+	PCIE_DBG(dev, "PCIe RC%d PHY is ready!\n", dev->rc_idx);
 
 	return 0;
 }
@@ -4206,7 +4206,7 @@ static int msm_pcie_get_reg(struct msm_pcie_dev_t *pcie_dev)
 		res = platform_get_resource_byname(pcie_dev->pdev,
 						IORESOURCE_MEM, res_info->name);
 		if (!res) {
-			PCIE_ERR(pcie_dev,
+			PCIE_DBG(pcie_dev,
 				"PCIe: RC%d: no %s resource found.\n",
 				pcie_dev->rc_idx, res_info->name);
 		} else {
@@ -4427,9 +4427,9 @@ static int msm_pcie_link_train(struct msm_pcie_dev_t *dev)
 		msm_pcie_confirm_linkup(dev, false, false, NULL)) {
 		PCIE_DBG(dev, "Link is up after %d checkings\n",
 			link_check_count);
-		PCIE_INFO(dev, "PCIe RC%d link initialized\n", dev->rc_idx);
+		PCIE_DBG(dev, "PCIe RC%d link initialized\n", dev->rc_idx);
 	} else {
-		PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
+		PCIE_DBG(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
 			dev->rc_idx);
 		gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
 			dev->gpio[MSM_PCIE_GPIO_PERST].on);
@@ -4492,7 +4492,7 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 
 	/* assert PCIe reset link to keep EP in reset */
 
-	PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
+	PCIE_DBG(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
 		dev->rc_idx);
 	gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
 				dev->gpio[MSM_PCIE_GPIO_PERST].on);
@@ -4551,7 +4551,7 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 				BIT(MSM_PCIE_INT_EVT_MSI_6) |
 				BIT(MSM_PCIE_INT_EVT_MSI_7));
 
-	PCIE_INFO(dev, "PCIe: RC%d: PCIE20_PARF_INT_ALL_MASK: 0x%x\n",
+	PCIE_DBG(dev, "PCIe: RC%d: PCIE20_PARF_INT_ALL_MASK: 0x%x\n",
 		dev->rc_idx,
 		readl_relaxed(dev->parf + PCIE20_PARF_INT_ALL_MASK));
 
@@ -4576,7 +4576,7 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 
 	/* de-assert PCIe reset link to bring EP out of reset */
 
-	PCIE_INFO(dev, "PCIe: Release the reset of endpoint of RC%d.\n",
+	PCIE_DBG(dev, "PCIe: Release the reset of endpoint of RC%d.\n",
 		dev->rc_idx);
 	gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
 				1 - dev->gpio[MSM_PCIE_GPIO_PERST].on);
@@ -4674,7 +4674,7 @@ static void msm_pcie_disable(struct msm_pcie_dev_t *dev)
 	dev->power_on = false;
 	dev->link_turned_off_counter++;
 
-	PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
+	PCIE_DBG(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
 		dev->rc_idx);
 
 	gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
@@ -5160,7 +5160,7 @@ static void handle_sbr_func(struct work_struct *work)
 		dev->link_status = MSM_PCIE_LINK_ENABLED;
 		PCIE_DBG(dev, "Link is up after %d checkings\n",
 			link_check_count);
-		PCIE_INFO(dev, "PCIe RC%d link initialized\n", dev->rc_idx);
+		PCIE_DBG(dev, "PCIe RC%d link initialized\n", dev->rc_idx);
 	} else {
 		PCIE_ERR(dev, "PCIe RC%d link initialization failed\n",
 			dev->rc_idx);
@@ -6451,7 +6451,7 @@ static int msm_pcie_probe(struct platform_device *pdev)
 		pcie_dev->pins_sleep = pinctrl_lookup_state(pcie_dev->pinctrl,
 								"sleep");
 		if (IS_ERR(pcie_dev->pins_sleep)) {
-			PCIE_ERR(pcie_dev,
+			PCIE_DBG(pcie_dev,
 				"PCIe: RC%d could not get pinctrl sleep state\n",
 				pcie_dev->rc_idx);
 			pcie_dev->pins_sleep = NULL;
