@@ -27,7 +27,7 @@ MODULE_DEVICE_TABLE(pci, pci_pf_stub_whitelist);
 static int pci_pf_stub_probe(struct pci_dev *dev,
 			     const struct pci_device_id *id)
 {
-	pci_info(dev, "claimed by pci-pf-stub\n");
+	pci_dbg(dev, "claimed by pci-pf-stub\n");
 	return 0;
 }
 

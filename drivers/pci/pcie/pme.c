@@ -341,7 +341,7 @@ static int pcie_pme_probe(struct pcie_device *srv)
 		return ret;
 	}
 
-	pci_info(port, "Signaling PME with IRQ %d\n", srv->irq);
+	pci_dbg(port, "Signaling PME with IRQ %d\n", srv->irq);
 
 	pcie_pme_mark_devices(port);
 	pcie_pme_interrupt_enable(port, true);

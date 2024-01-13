@@ -458,7 +458,7 @@ found:
 		}
 		iov->barsz[i] = resource_size(res);
 		res->end = res->start + resource_size(res) * total - 1;
-		pci_info(dev, "VF(n) BAR%d space: %pR (contains BAR%d for %d VFs)\n",
+		pci_dbg(dev, "VF(n) BAR%d space: %pR (contains BAR%d for %d VFs)\n",
 			 i, res, i, total);
 		i += bar64;
 		nres++;

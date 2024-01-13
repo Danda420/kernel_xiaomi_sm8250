@@ -753,7 +753,7 @@ static irqreturn_t pnv_php_interrupt(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
-	pci_info(pdev, "PCI slot [%s] %s (IRQ: %d)\n",
+	pci_dbg(pdev, "PCI slot [%s] %s (IRQ: %d)\n",
 		 php_slot->name, added ? "added" : "removed", irq);
 	INIT_WORK(&event->work, pnv_php_event_handler);
 	event->added = added;

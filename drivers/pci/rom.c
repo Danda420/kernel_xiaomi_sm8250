@@ -92,14 +92,14 @@ static size_t pci_get_rom_size(struct pci_dev *pdev, void __iomem *rom,
 		void __iomem *pds;
 		/* Standard PCI ROMs start out with these bytes 55 AA */
 		if (readw(image) != 0xAA55) {
-			pci_info(pdev, "Invalid PCI ROM header signature: expecting 0xaa55, got %#06x\n",
+			pci_dbg(pdev, "Invalid PCI ROM header signature: expecting 0xaa55, got %#06x\n",
 				 readw(image));
 			break;
 		}
 		/* get the PCI data structure and check its "PCIR" signature */
 		pds = image + readw(image + 24);
 		if (readl(pds) != 0x52494350) {
-			pci_info(pdev, "Invalid PCI ROM data signature: expecting 0x52494350, got %#010x\n",
+			pci_dbg(pdev, "Invalid PCI ROM data signature: expecting 0x52494350, got %#010x\n",
 				 readl(pds));
 			break;
 		}
@@ -111,7 +111,7 @@ static size_t pci_get_rom_size(struct pci_dev *pdev, void __iomem *rom,
 			break;
 		if (!last_image) {
 			if (readw(image) != 0xAA55) {
-				pci_info(pdev, "No more image in the PCI ROM\n");
+				pci_dbg(pdev, "No more image in the PCI ROM\n");
 				break;
 			}
 		}

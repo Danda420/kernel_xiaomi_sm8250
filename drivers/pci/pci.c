@@ -1147,7 +1147,7 @@ pci_power_t pci_choose_state(struct pci_dev *dev, pm_message_t state)
 	case PM_EVENT_HIBERNATE:
 		return PCI_D3hot;
 	default:
-		pci_info(dev, "unrecognized suspend event %d\n",
+		pci_dbg(dev, "unrecognized suspend event %d\n",
 			 state.event);
 		BUG();
 	}
@@ -2742,14 +2742,14 @@ void pci_pm_init(struct pci_dev *dev)
 			dev->d2_support = true;
 
 		if (dev->d1_support || dev->d2_support)
-			pci_printk(KERN_DEBUG, dev, "supports%s%s\n",
+			pci_dbg(dev, "supports%s%s\n",
 				   dev->d1_support ? " D1" : "",
 				   dev->d2_support ? " D2" : "");
 	}
 
 	pmc &= PCI_PM_CAP_PME_MASK;
 	if (pmc) {
-		pci_printk(KERN_DEBUG, dev, "PME# supported from%s%s%s%s%s\n",
+		pci_dbg(dev, "PME# supported from%s%s%s%s%s\n",
 			 (pmc & PCI_PM_CAP_PME_D0) ? " D0" : "",
 			 (pmc & PCI_PM_CAP_PME_D1) ? " D1" : "",
 			 (pmc & PCI_PM_CAP_PME_D2) ? " D2" : "",
@@ -2913,16 +2913,16 @@ static int pci_ea_read(struct pci_dev *dev, int offset)
 	res->flags = flags;
 
 	if (bei <= PCI_EA_BEI_BAR5)
-		pci_printk(KERN_DEBUG, dev, "BAR %d: %pR (from Enhanced Allocation, properties %#02x)\n",
+		pci_dbg(dev, "BAR %d: %pR (from Enhanced Allocation, properties %#02x)\n",
 			   bei, res, prop);
 	else if (bei == PCI_EA_BEI_ROM)
-		pci_printk(KERN_DEBUG, dev, "ROM: %pR (from Enhanced Allocation, properties %#02x)\n",
+		pci_dbg(dev, "ROM: %pR (from Enhanced Allocation, properties %#02x)\n",
 			   res, prop);
 	else if (bei >= PCI_EA_BEI_VF_BAR0 && bei <= PCI_EA_BEI_VF_BAR5)
-		pci_printk(KERN_DEBUG, dev, "VF BAR %d: %pR (from Enhanced Allocation, properties %#02x)\n",
+		pci_dbg(dev, "VF BAR %d: %pR (from Enhanced Allocation, properties %#02x)\n",
 			   bei - PCI_EA_BEI_VF_BAR0, res, prop);
 	else
-		pci_printk(KERN_DEBUG, dev, "BEI %d res: %pR (from Enhanced Allocation, properties %#02x)\n",
+		pci_dbg(dev, "BEI %d res: %pR (from Enhanced Allocation, properties %#02x)\n",
 			   bei, res, prop);
 
 out:
@@ -3139,7 +3139,7 @@ static void pci_disable_acs_redir(struct pci_dev *dev)
 
 	pci_write_config_word(dev, pos + PCI_ACS_CTRL, ctrl);
 
-	pci_info(dev, "disabled ACS redirect\n");
+	pci_dbg(dev, "disabled ACS redirect\n");
 }
 
 /**
@@ -4153,7 +4153,7 @@ int pci_set_cacheline_size(struct pci_dev *dev)
 	if (cacheline_size == pci_cache_line_size)
 		return 0;
 
-	pci_printk(KERN_DEBUG, dev, "cache line size of %d is not supported\n",
+	pci_dbg(dev, "cache line size of %d is not supported\n",
 		   pci_cache_line_size << 2);
 
 	return -EINVAL;
@@ -4398,7 +4398,7 @@ static int pci_dev_wait(struct pci_dev *dev, char *reset_type, int timeout)
 		}
 
 		if (delay > 1000)
-			pci_info(dev, "not ready %dms after %s; waiting\n",
+			pci_dbg(dev, "not ready %dms after %s; waiting\n",
 				 delay - 1, reset_type);
 
 		msleep(delay);
@@ -4407,7 +4407,7 @@ static int pci_dev_wait(struct pci_dev *dev, char *reset_type, int timeout)
 	}
 
 	if (delay > 1000)
-		pci_info(dev, "ready %dms after %s\n", delay - 1,
+		pci_dbg(dev, "ready %dms after %s\n", delay - 1,
 			 reset_type);
 
 	return 0;
@@ -4567,7 +4567,7 @@ bool pcie_wait_for_link(struct pci_dev *pdev, bool active)
 		timeout -= 10;
 	}
 
-	pci_info(pdev, "Data Link Layer Link Active not %s in 1000 msec\n",
+	pci_dbg(pdev, "Data Link Layer Link Active not %s in 1000 msec\n",
 		 active ? "set" : "cleared");
 
 	return false;
@@ -5661,11 +5661,11 @@ void __pcie_print_link_status(struct pci_dev *dev, bool verbose)
 	bw_avail = pcie_bandwidth_available(dev, &limiting_dev, &speed, &width);
 
 	if (bw_avail >= bw_cap && verbose)
-		pci_info(dev, "%u.%03u Gb/s available PCIe bandwidth (%s x%d link)\n",
+		pci_dbg(dev, "%u.%03u Gb/s available PCIe bandwidth (%s x%d link)\n",
 			 bw_cap / 1000, bw_cap % 1000,
 			 PCIE_SPEED2STR(speed_cap), width_cap);
 	else if (bw_avail < bw_cap)
-		pci_info(dev, "%u.%03u Gb/s available PCIe bandwidth, limited by %s x%d link at %s (capable of %u.%03u Gb/s with %s x%d link)\n",
+		pci_dbg(dev, "%u.%03u Gb/s available PCIe bandwidth, limited by %s x%d link at %s (capable of %u.%03u Gb/s with %s x%d link)\n",
 			 bw_avail / 1000, bw_avail % 1000,
 			 PCIE_SPEED2STR(speed), width,
 			 limiting_dev ? pci_name(limiting_dev) : "<unknown>",
@@ -5802,7 +5802,7 @@ void pci_add_dma_alias(struct pci_dev *dev, u8 devfn)
 	}
 
 	set_bit(devfn, dev->dma_alias_mask);
-	pci_info(dev, "Enabling fixed DMA alias to %02x.%d\n",
+	pci_dbg(dev, "Enabling fixed DMA alias to %02x.%d\n",
 		 PCI_SLOT(devfn), PCI_FUNC(devfn));
 }
 
@@ -5918,7 +5918,7 @@ static void pci_request_resource_alignment(struct pci_dev *dev, int bar,
 		return;
 
 	if (r->flags & IORESOURCE_PCI_FIXED) {
-		pci_info(dev, "BAR%d %pR: ignoring requested alignment %#llx\n",
+		pci_dbg(dev, "BAR%d %pR: ignoring requested alignment %#llx\n",
 			 bar, r, (unsigned long long)align);
 		return;
 	}
@@ -5955,7 +5955,7 @@ static void pci_request_resource_alignment(struct pci_dev *dev, int bar,
 	 * devices and we use the second.
 	 */
 
-	pci_info(dev, "BAR%d %pR: requesting alignment to %#llx\n",
+	pci_dbg(dev, "BAR%d %pR: requesting alignment to %#llx\n",
 		 bar, r, (unsigned long long)align);
 
 	if (resize) {

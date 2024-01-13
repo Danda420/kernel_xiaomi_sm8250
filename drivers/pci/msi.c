@@ -1011,7 +1011,7 @@ static int __pci_enable_msix(struct pci_dev *dev, struct msix_entry *entries,
 
 	/* Check whether driver already requested for MSI irq */
 	if (dev->msi_enabled) {
-		pci_info(dev, "can't enable MSI-X (MSI IRQ already assigned)\n");
+		pci_dbg(dev, "can't enable MSI-X (MSI IRQ already assigned)\n");
 		return -EINVAL;
 	}
 	return msix_capability_init(dev, entries, nvec, affd);
@@ -1077,7 +1077,7 @@ static int __pci_enable_msi_range(struct pci_dev *dev, int minvec, int maxvec,
 
 	/* Check whether driver already requested MSI-X irqs */
 	if (dev->msix_enabled) {
-		pci_info(dev, "can't enable MSI (MSI-X already enabled)\n");
+		pci_dbg(dev, "can't enable MSI (MSI-X already enabled)\n");
 		return -EINVAL;
 	}
 

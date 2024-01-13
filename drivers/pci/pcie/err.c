@@ -160,7 +160,7 @@ static pci_ers_result_t default_reset_link(struct pci_dev *dev)
 	int rc;
 
 	rc = pci_bus_error_reset(dev);
-	pci_printk(KERN_DEBUG, dev, "downstream link has been reset\n");
+	pci_dbg(dev, "downstream link has been reset\n");
 	return rc ? PCI_ERS_RESULT_DISCONNECT : PCI_ERS_RESULT_RECOVERED;
 }
 
@@ -175,13 +175,13 @@ static pci_ers_result_t reset_link(struct pci_dev *dev, u32 service)
 	} else if (dev->has_secondary_link) {
 		status = default_reset_link(dev);
 	} else {
-		pci_printk(KERN_DEBUG, dev, "no link-reset support at upstream device %s\n",
+		pci_dbg(dev, "no link-reset support at upstream device %s\n",
 			pci_name(dev));
 		return PCI_ERS_RESULT_DISCONNECT;
 	}
 
 	if (status != PCI_ERS_RESULT_RECOVERED) {
-		pci_printk(KERN_DEBUG, dev, "link reset at upstream device %s failed\n",
+		pci_dbg(dev, "link reset at upstream device %s failed\n",
 			pci_name(dev));
 		return PCI_ERS_RESULT_DISCONNECT;
 	}
@@ -207,7 +207,7 @@ static pci_ers_result_t broadcast_error_message(struct pci_dev *dev,
 {
 	struct aer_broadcast_data result_data;
 
-	pci_printk(KERN_DEBUG, dev, "broadcast %s message\n", error_mesg);
+	pci_dbg(dev, "broadcast %s message\n", error_mesg);
 	result_data.state = state;
 	if (cb == report_error_detected)
 		result_data.result = PCI_ERS_RESULT_CAN_RECOVER;
@@ -269,10 +269,10 @@ void pcie_do_fatal_recovery(struct pci_dev *dev, u32 service)
 	if (result == PCI_ERS_RESULT_RECOVERED) {
 		if (pcie_wait_for_link(udev, true))
 			pci_rescan_bus(udev->bus);
-		pci_info(dev, "Device recovery from fatal error successful\n");
+		pci_dbg(dev, "Device recovery from fatal error successful\n");
 	} else {
 		pci_uevent_ers(dev, PCI_ERS_RESULT_DISCONNECT);
-		pci_info(dev, "Device recovery from fatal error failed\n");
+		pci_dbg(dev, "Device recovery from fatal error failed\n");
 	}
 
 	pci_dev_put(dev);
@@ -335,12 +335,12 @@ void pcie_do_nonfatal_recovery(struct pci_dev *dev)
 
 	pci_aer_clear_device_status(dev);
 	pci_cleanup_aer_uncorrect_error_status(dev);
-	pci_info(dev, "AER: Device recovery successful\n");
+	pci_dbg(dev, "AER: Device recovery successful\n");
 	return;
 
 failed:
 	pci_uevent_ers(dev, PCI_ERS_RESULT_DISCONNECT);
 
 	/* TODO: Should kernel panic here? */
-	pci_info(dev, "AER: Device recovery failed\n");
+	pci_dbg(dev, "AER: Device recovery failed\n");
 }

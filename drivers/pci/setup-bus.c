@@ -255,7 +255,7 @@ static void reassign_resources_sorted(struct list_head *realloc_head,
 				 (IORESOURCE_STARTALIGN|IORESOURCE_SIZEALIGN);
 			if (pci_reassign_resource(add_res->dev, idx,
 						  add_size, align))
-				pci_printk(KERN_DEBUG, add_res->dev,
+				pci_dbg(add_res->dev,
 					   "failed to add %llx res[%d]=%pR\n",
 					   (unsigned long long)add_size,
 					   idx, res);
@@ -514,7 +514,7 @@ void pci_setup_cardbus(struct pci_bus *bus)
 	struct resource *res;
 	struct pci_bus_region region;
 
-	pci_info(bridge, "CardBus bridge to %pR\n",
+	pci_dbg(bridge, "CardBus bridge to %pR\n",
 		 &bus->busn_res);
 
 	res = bus->resource[0];
@@ -524,7 +524,7 @@ void pci_setup_cardbus(struct pci_bus *bus)
 		 * The IO resource is allocated a range twice as large as it
 		 * would normally need.  This allows us to set both IO regs.
 		 */
-		pci_info(bridge, "  bridge window %pR\n", res);
+		pci_dbg(bridge, "  bridge window %pR\n", res);
 		pci_write_config_dword(bridge, PCI_CB_IO_BASE_0,
 					region.start);
 		pci_write_config_dword(bridge, PCI_CB_IO_LIMIT_0,
@@ -534,7 +534,7 @@ void pci_setup_cardbus(struct pci_bus *bus)
 	res = bus->resource[1];
 	pcibios_resource_to_bus(bridge->bus, &region, res);
 	if (res->flags & IORESOURCE_IO) {
-		pci_info(bridge, "  bridge window %pR\n", res);
+		pci_dbg(bridge, "  bridge window %pR\n", res);
 		pci_write_config_dword(bridge, PCI_CB_IO_BASE_1,
 					region.start);
 		pci_write_config_dword(bridge, PCI_CB_IO_LIMIT_1,
@@ -544,7 +544,7 @@ void pci_setup_cardbus(struct pci_bus *bus)
 	res = bus->resource[2];
 	pcibios_resource_to_bus(bridge->bus, &region, res);
 	if (res->flags & IORESOURCE_MEM) {
-		pci_info(bridge, "  bridge window %pR\n", res);
+		pci_dbg(bridge, "  bridge window %pR\n", res);
 		pci_write_config_dword(bridge, PCI_CB_MEMORY_BASE_0,
 					region.start);
 		pci_write_config_dword(bridge, PCI_CB_MEMORY_LIMIT_0,
@@ -554,7 +554,7 @@ void pci_setup_cardbus(struct pci_bus *bus)
 	res = bus->resource[3];
 	pcibios_resource_to_bus(bridge->bus, &region, res);
 	if (res->flags & IORESOURCE_MEM) {
-		pci_info(bridge, "  bridge window %pR\n", res);
+		pci_dbg(bridge, "  bridge window %pR\n", res);
 		pci_write_config_dword(bridge, PCI_CB_MEMORY_BASE_1,
 					region.start);
 		pci_write_config_dword(bridge, PCI_CB_MEMORY_LIMIT_1,
@@ -597,7 +597,7 @@ static void pci_setup_bridge_io(struct pci_dev *bridge)
 		l = ((u16) io_limit_lo << 8) | io_base_lo;
 		/* Set up upper 16 bits of I/O base/limit. */
 		io_upper16 = (region.end & 0xffff0000) | (region.start >> 16);
-		pci_info(bridge, "  bridge window %pR\n", res);
+		pci_dbg(bridge, "  bridge window %pR\n", res);
 	} else {
 		/* Clear upper 16 bits of I/O base/limit. */
 		io_upper16 = 0;
@@ -623,7 +623,7 @@ static void pci_setup_bridge_mmio(struct pci_dev *bridge)
 	if (res->flags & IORESOURCE_MEM) {
 		l = (region.start >> 16) & 0xfff0;
 		l |= region.end & 0xfff00000;
-		pci_info(bridge, "  bridge window %pR\n", res);
+		pci_dbg(bridge, "  bridge window %pR\n", res);
 	} else {
 		l = 0x0000fff0;
 	}
@@ -652,7 +652,7 @@ static void pci_setup_bridge_mmio_pref(struct pci_dev *bridge)
 			bu = upper_32_bits(region.start);
 			lu = upper_32_bits(region.end);
 		}
-		pci_info(bridge, "  bridge window %pR\n", res);
+		pci_dbg(bridge, "  bridge window %pR\n", res);
 	} else {
 		l = 0x0000fff0;
 	}
@@ -667,7 +667,7 @@ static void __pci_setup_bridge(struct pci_bus *bus, unsigned long type)
 {
 	struct pci_dev *bridge = bus->self;
 
-	pci_info(bridge, "PCI bridge to %pR\n",
+	pci_dbg(bridge, "PCI bridge to %pR\n",
 		 &bus->busn_res);
 
 	if (type & IORESOURCE_IO)
@@ -939,7 +939,7 @@ static void pbus_size_io(struct pci_bus *bus, resource_size_t min_size,
 			resource_size(b_res), min_align);
 	if (!size0 && !size1) {
 		if (b_res->start || b_res->end)
-			pci_info(bus->self, "disabling bridge window %pR to %pR (unused)\n",
+			pci_dbg(bus->self, "disabling bridge window %pR to %pR (unused)\n",
 				 b_res, &bus->busn_res);
 		b_res->flags = 0;
 		return;
@@ -951,7 +951,7 @@ static void pbus_size_io(struct pci_bus *bus, resource_size_t min_size,
 	if (size1 > size0 && realloc_head) {
 		add_to_list(realloc_head, bus->self, b_res, size1-size0,
 			    min_align);
-		pci_printk(KERN_DEBUG, bus->self, "bridge window %pR to %pR add_size %llx\n",
+		pci_dbg(bus->self, "bridge window %pR to %pR add_size %llx\n",
 			   b_res, &bus->busn_res,
 			   (unsigned long long)size1-size0);
 	}
@@ -1088,7 +1088,7 @@ static int pbus_size_mem(struct pci_bus *bus, unsigned long mask,
 				resource_size(b_res), add_align);
 	if (!size0 && !size1) {
 		if (b_res->start || b_res->end)
-			pci_info(bus->self, "disabling bridge window %pR to %pR (unused)\n",
+			pci_dbg(bus->self, "disabling bridge window %pR to %pR (unused)\n",
 				 b_res, &bus->busn_res);
 		b_res->flags = 0;
 		return 0;
@@ -1098,7 +1098,7 @@ static int pbus_size_mem(struct pci_bus *bus, unsigned long mask,
 	b_res->flags |= IORESOURCE_STARTALIGN;
 	if (size1 > size0 && realloc_head) {
 		add_to_list(realloc_head, bus->self, b_res, size1-size0, add_align);
-		pci_printk(KERN_DEBUG, bus->self, "bridge window %pR to %pR add_size %llx add_align %llx\n",
+		pci_dbg(bus->self, "bridge window %pR to %pR add_size %llx add_align %llx\n",
 			   b_res, &bus->busn_res,
 			   (unsigned long long) (size1 - size0),
 			   (unsigned long long) add_align);
@@ -1402,7 +1402,7 @@ void __pci_bus_assign_resources(const struct pci_bus *bus,
 			break;
 
 		default:
-			pci_info(dev, "not setting up bridge for bus %04x:%02x\n",
+			pci_dbg(dev, "not setting up bridge for bus %04x:%02x\n",
 				 pci_domain_nr(b), b->number);
 			break;
 		}
@@ -1508,7 +1508,7 @@ static void __pci_bridge_assign_resources(const struct pci_dev *bridge,
 		break;
 
 	default:
-		pci_info(bridge, "not setting up bridge for bus %04x:%02x\n",
+		pci_dbg(bridge, "not setting up bridge for bus %04x:%02x\n",
 			 pci_domain_nr(b), b->number);
 		break;
 	}
@@ -1566,7 +1566,7 @@ static void pci_bridge_release_resources(struct pci_bus *bus,
 	release_child_resources(r);
 	if (!release_resource(r)) {
 		type = old_flags = r->flags & PCI_RES_TYPE_MASK;
-		pci_printk(KERN_DEBUG, dev, "resource %d %pR released\n",
+		pci_dbg(dev, "resource %d %pR released\n",
 					PCI_BRIDGE_RESOURCES + idx, r);
 		/* keep the old size */
 		r->end = resource_size(r) - 1;
@@ -2126,7 +2126,7 @@ int pci_reassign_bridge_resources(struct pci_dev *bridge, unsigned long type)
 			if (ret)
 				goto cleanup;
 
-			pci_info(bridge, "BAR %d: releasing %pR\n",
+			pci_dbg(bridge, "BAR %d: releasing %pR\n",
 				 i, res);
 
 			if (res->parent)

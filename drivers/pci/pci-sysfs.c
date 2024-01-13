@@ -399,7 +399,7 @@ static ssize_t msi_bus_store(struct device *dev, struct device_attribute *attr,
 	 */
 	if (!subordinate) {
 		pdev->no_msi = !val;
-		pci_info(pdev, "MSI/MSI-X %s for future drivers\n",
+		pci_dbg(pdev, "MSI/MSI-X %s for future drivers\n",
 			 val ? "allowed" : "disallowed");
 		return count;
 	}
@@ -598,7 +598,7 @@ static ssize_t sriov_numvfs_store(struct device *dev,
 
 	/* is PF driver loaded w/callback */
 	if (!pdev->driver || !pdev->driver->sriov_configure) {
-		pci_info(pdev, "Driver doesn't support SRIOV configuration via sysfs\n");
+		pci_dbg(pdev, "Driver doesn't support SRIOV configuration via sysfs\n");
 		ret = -ENOENT;
 		goto exit;
 	}
