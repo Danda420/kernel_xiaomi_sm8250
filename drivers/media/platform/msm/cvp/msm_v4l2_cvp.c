@@ -526,7 +526,7 @@ static int msm_cvp_pm_suspend(struct device *dev)
 
 static int msm_cvp_pm_resume(struct device *dev)
 {
-	dprintk(CVP_INFO, "%s\n", __func__);
+	dprintk(CVP_DBG, "%s\n", __func__);
 	return 0;
 }
 
@@ -562,7 +562,7 @@ static int __init msm_cvp_init(void)
 	mutex_init(&cvp_driver->lock);
 	cvp_driver->debugfs_root = msm_cvp_debugfs_init_drv();
 	if (!cvp_driver->debugfs_root)
-		dprintk(CVP_ERR,
+		dprintk(CVP_DBG,
 			"Failed to create debugfs for msm_cvp\n");
 
 	rc = platform_driver_register(&msm_cvp_driver);
