@@ -48,13 +48,13 @@ do {									\
 #define ctrl_dbg(ctrl, format, arg...)					\
 	do {								\
 		if (shpchp_debug)					\
-			pci_printk(KERN_DEBUG, ctrl->pci_dev,		\
+			pci_dbg(ctrl->pci_dev,		\
 					format, ## arg);		\
 	} while (0)
 #define ctrl_err(ctrl, format, arg...)					\
 	pci_err(ctrl->pci_dev, format, ## arg)
 #define ctrl_info(ctrl, format, arg...)					\
-	pci_info(ctrl->pci_dev, format, ## arg)
+	pci_dbg(ctrl->pci_dev, format, ## arg)
 #define ctrl_warn(ctrl, format, arg...)					\
 	pci_warn(ctrl->pci_dev, format, ## arg)
 

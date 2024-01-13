@@ -118,7 +118,7 @@ int acpi_get_hp_hw_control_from_firmware(struct pci_dev *pdev)
 
 	while (handle) {
 		acpi_get_name(handle, ACPI_FULL_PATHNAME, &string);
-		pci_info(pdev, "Requesting control of SHPC hotplug via OSHP (%s)\n",
+		pci_dbg(pdev, "Requesting control of SHPC hotplug via OSHP (%s)\n",
 			 (char *)string.pointer);
 		status = acpi_run_oshp(handle);
 		if (ACPI_SUCCESS(status))
@@ -131,11 +131,11 @@ int acpi_get_hp_hw_control_from_firmware(struct pci_dev *pdev)
 			break;
 	}
 
-	pci_info(pdev, "Cannot get control of SHPC hotplug\n");
+	pci_dbg(pdev, "Cannot get control of SHPC hotplug\n");
 	kfree(string.pointer);
 	return -ENODEV;
 got_one:
-	pci_info(pdev, "Gained control of SHPC hotplug (%s)\n",
+	pci_dbg(pdev, "Gained control of SHPC hotplug (%s)\n",
 		 (char *)string.pointer);
 	kfree(string.pointer);
 	return 0;
