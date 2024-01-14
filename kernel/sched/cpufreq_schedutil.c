@@ -231,9 +231,17 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 #ifdef CONFIG_PACKAGE_RUNTIME_INFO
 	unsigned int walt_freq;
 #endif
+	unsigned int freq;
 	unsigned int idx, l_freq, h_freq;
-	unsigned int freq = arch_scale_freq_invariant() ?
-				policy->cpuinfo.max_freq : policy->cur;
+
+	if (arch_scale_freq_invariant())
+		freq = policy->cpuinfo.max_freq;
+	else
+		/*
+		 * Apply a 25% margin so that we select a higher frequency than
+		 * the current one before the CPU is fully busy:
+		 */
+		freq = policy->cur + (policy->cur >> 2);
 
 #ifdef CONFIG_PACKAGE_RUNTIME_INFO
 	walt_freq = map_util_freq(util, freq, max);
