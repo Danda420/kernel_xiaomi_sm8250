@@ -135,3 +135,12 @@ all.config
 
 # fetched Android config fragments
 kernel/configs/android-*.cfg
+
+# OemPorts10T
+build.log
+log.txt
+build
+build_munch
+build.sh
+out/
+*.zip
