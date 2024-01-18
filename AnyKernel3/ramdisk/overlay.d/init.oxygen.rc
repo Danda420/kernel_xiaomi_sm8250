@@ -1,0 +1,92 @@
+on property:sys.boot_completed=1
+   exec u:r:init:s0 root root -- /init.oxygen.sh
+   exec u:r:su:s0 root root -- /init.oxygen.sh
+ 
+   chown system system /sys/class/thermal/thermal_message/sconfig
+   setprop spectrum.support 1
+   setprop persist.spectrum.profile default
+         setprop persist.spectrum.kernel Oxygen+
+
+#default
+on property:persist.spectrum.profile=default
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq 2419200
+   write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2419200
+   write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2419200
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2841600
+   
+#balance
+on property:persist.spectrum.profile=0
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 1574400
+   write /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq 1574400
+   write /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq 1574400
+   write /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq 1574400
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq 2246400
+   write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2246400
+   write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2246400
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2419200
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 0
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
+   
+#perf
+on property:persist.spectrum.profile=1
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor performance
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor performance
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor performance
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq 2419200
+   write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2419200
+   write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2419200
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2841600
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 10
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
+   
+   
+#batt
+on property:persist.spectrum.profile=2
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor powersave
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor powersave
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 1075200
+   write /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq 1075200
+   write /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq 1075200
+   write /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq 1075200
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq 1344000
+   write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 1344000
+   write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 1344000
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 1862400
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 2
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
+   
+
+#game
+on property:persist.spectrum.profile=3
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor schedutil
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor performance
+   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq 1804800
+   write /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq 2246400
+   write /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq 2246400
+   write /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2246400
+   write /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq 2745600
+   chmod 660 /sys/class/thermal/thermal_message/sconfig
+   write /sys/class/thermal/thermal_message/sconfig 16
+   chmod 444 /sys/class/thermal/thermal_message/sconfig
