@@ -155,14 +155,10 @@ struct ts_ic_info {
 /*****************************************************************************
 * DEBUG function define here
 *****************************************************************************/
-static unsigned int XIAOMI_TP_DEBUG_EN;
+static unsigned int XIAOMI_TP_DEBUG_EN = 0;
 #define TPD_DEVICE "focal_3518"
 
-#define XIAOMI_TP_DEBUG(a, arg...)\
-	do {\
-		if (XIAOMI_TP_DEBUG_EN == 1)\
-		pr_err (TPD_DEVICE ": " a, ##arg);\
-	} while (0)
+#define XIAOMI_TP_DEBUG(a, arg...) ((void)0)
 
 #if FTS_DEBUG_EN
 #define FTS_DEBUG_LEVEL     1
