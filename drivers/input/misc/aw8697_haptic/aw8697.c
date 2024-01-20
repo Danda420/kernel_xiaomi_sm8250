@@ -4169,7 +4169,7 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 	struct qti_hap_effect *effect;
 	int rc = 0, tmp, i = 0, j, m;
 
-	printk("%s  %d enter\n", __func__, __LINE__);
+	pr_debug("%s  %d enter\n", __func__, __LINE__);
 	aw8697->reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
 	if (aw8697->reset_gpio < 0) {
 		dev_err(dev,
@@ -4177,44 +4177,44 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 			__func__);
 		return -EINVAL;
 	} else {
-		dev_info(dev, "%s: reset gpio provided ok\n", __func__);
+		dev_dbg(dev, "%s: reset gpio provided ok\n", __func__);
 	}
 	aw8697->irq_gpio = of_get_named_gpio(np, "irq-gpio", 0);
 	if (aw8697->irq_gpio < 0) {
 		dev_err(dev, "%s: no irq gpio provided.\n", __func__);
 	} else {
-		dev_info(dev, "%s: irq gpio provided ok.\n", __func__);
+		dev_dbg(dev, "%s: irq gpio provided ok.\n", __func__);
 	}
 
 	val = of_property_read_u32(np, "vib_mode", &aw8697->info.mode);
 	if (val != 0)
-		printk("vib_mode not found\n");
+		pr_debug("vib_mode not found\n");
 	val = of_property_read_u32(np, "vib_f0_pre", &aw8697->info.f0_pre);
 	if (val != 0)
-		printk("vib_f0_pre not found\n");
+		pr_debug("vib_f0_pre not found\n");
 	val =
 	    of_property_read_u32(np, "vib_f0_cali_percen",
 				 &aw8697->info.f0_cali_percen);
 	if (val != 0)
-		printk("vib_f0_cali_percen not found\n");
+		pr_debug("vib_f0_cali_percen not found\n");
 
 	val =
 	    of_property_read_u32_array(np, "vib_rtp_time", rtp_time,
 				       ARRAY_SIZE(rtp_time));
 	if (val != 0)
-		printk("%s vib_rtp_time not found\n", __func__);
+		pr_debug("%s vib_rtp_time not found\n", __func__);
 	memcpy(aw8697->info.rtp_time, rtp_time, sizeof(rtp_time));
 
 	val =
 	    of_property_read_u32(np, "vib_effect_id_boundary",
 				 &aw8697->info.effect_id_boundary);
 	if (val != 0)
-		printk("%s vib_effect_id_boundary not found\n", __func__);
+		pr_debug("%s vib_effect_id_boundary not found\n", __func__);
 	val =
 	    of_property_read_u32(np, "vib_effect_max",
 				 &aw8697->info.effect_max);
 	if (val != 0)
-		printk("%s vib_effect_max not found\n", __func__);
+		pr_debug("%s vib_effect_max not found\n", __func__);
 
 	config->play_rate_us = HAP_PLAY_RATE_US_DEFAULT;
 	rc = of_property_read_u32(np, "qcom,play-rate-us", &tmp);
@@ -4236,37 +4236,37 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 		return -ENOMEM;
 
 	aw8697->effects_count = tmp;
-	printk("%s ---%d aw8697->effects_count=%d\n", __func__, __LINE__, aw8697->effects_count);
+	pr_debug("%s ---%d aw8697->effects_count=%d\n", __func__, __LINE__, aw8697->effects_count);
 	for_each_available_child_of_node(np, child_node) {
-		printk("%s  %d  i=%d\n", __func__, __LINE__, i);
+		pr_debug("%s  %d  i=%d\n", __func__, __LINE__, i);
 		effect = &aw8697->predefined[i++];
-		printk("%s  %d  i=%d\n", __func__, __LINE__, i);
+		pr_debug("%s  %d  i=%d\n", __func__, __LINE__, i);
 		rc = of_property_read_u32(child_node, "qcom,effect-id",
 					  &effect->id);
 		if (rc != 0) {
-			printk("%s Read qcom,effect-id failed\n", __func__);
+			pr_debug("%s Read qcom,effect-id failed\n", __func__);
 		}
-		printk(" 20190420_dt effect_id: %d\n", effect->id);
+		pr_debug(" 20190420_dt effect_id: %d\n", effect->id);
 
-		printk("%s ---%d \n", __func__, __LINE__);
+		pr_debug("%s ---%d \n", __func__, __LINE__);
 		effect->vmax_mv = config->vmax_mv;
 		rc = of_property_read_u32(child_node, "qcom,wf-vmax-mv", &tmp);
 		if (rc != 0)
-			printk("%s  Read qcom,wf-vmax-mv failed !\n", __func__);
+			pr_debug("%s  Read qcom,wf-vmax-mv failed !\n", __func__);
 		else
 			effect->vmax_mv = tmp;
 
-		printk("%s ---%d effect->vmax_mv =%d \n", __func__, __LINE__, effect->vmax_mv);
+		pr_debug("%s ---%d effect->vmax_mv =%d \n", __func__, __LINE__, effect->vmax_mv);
 		rc = of_property_count_elems_of_size(child_node,
 						     "qcom,wf-pattern",
 						     sizeof(u8));
 		if (rc < 0) {
-			printk("%s Count qcom,wf-pattern property failed !\n",
+			pr_debug("%s Count qcom,wf-pattern property failed !\n",
 			       __func__);
 		} else if (rc == 0) {
-			printk("%s qcom,wf-pattern has no data\n", __func__);
+			pr_debug("%s qcom,wf-pattern has no data\n", __func__);
 		}
-		printk("%s ---%d \n", __func__, __LINE__);
+		pr_debug("%s ---%d \n", __func__, __LINE__);
 
 		effect->pattern_length = rc;
 		effect->pattern = devm_kcalloc(aw8697->dev,
@@ -4277,26 +4277,26 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 					       effect->pattern,
 					       effect->pattern_length);
 		if (rc < 0) {
-			printk("%s Read qcom,wf-pattern property failed !\n",
+			pr_debug("%s Read qcom,wf-pattern property failed !\n",
 			       __func__);
 		}
-		printk("%s %d  effect->pattern_length=%d  effect->pattern=%d \n", __func__, __LINE__,
+		pr_debug("%s %d  effect->pattern_length=%d  effect->pattern=%d \n", __func__, __LINE__,
 			effect->pattern_length, (int)effect->pattern);
 
 		effect->play_rate_us = config->play_rate_us;
 		rc = of_property_read_u32(child_node, "qcom,wf-play-rate-us",
 					  &tmp);
 		if (rc < 0)
-			printk("%s Read qcom,wf-play-rate-us failed !\n",
+			pr_debug("%s Read qcom,wf-play-rate-us failed !\n",
 			       __func__);
 		else
 			effect->play_rate_us = tmp;
-		printk("%s ---%d effect->play_rate_us=%d \n", __func__, __LINE__, effect->play_rate_us);
+		pr_debug("%s ---%d effect->play_rate_us=%d \n", __func__, __LINE__, effect->play_rate_us);
 
 		rc = of_property_read_u32(child_node, "qcom,wf-repeat-count",
 					  &tmp);
 		if (rc < 0) {
-			printk("%s Read  qcom,wf-repeat-count failed !\n",
+			pr_debug("%s Read  qcom,wf-repeat-count failed !\n",
 			       __func__);
 		} else {
 			for (j = 0; j < ARRAY_SIZE(wf_repeat); j++)
@@ -4306,12 +4306,12 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 			effect->wf_repeat_n = j;
 		}
 
-		printk("%s ---%d \n", __func__, __LINE__);
+		pr_debug("%s ---%d \n", __func__, __LINE__);
 
 		rc = of_property_read_u32(child_node, "qcom,wf-s-repeat-count",
 					  &tmp);
 		if (rc < 0) {
-			printk("%s Read  qcom,wf-s-repeat-count failed !\n",
+			pr_debug("%s Read  qcom,wf-s-repeat-count failed !\n",
 			       __func__);
 		} else {
 			for (j = 0; j < ARRAY_SIZE(wf_s_repeat); j++)
@@ -4321,7 +4321,7 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 			effect->wf_s_repeat_n = j;
 		}
 
-		printk("%s ---%d \n", __func__, __LINE__);
+		pr_debug("%s ---%d \n", __func__, __LINE__);
 
 		effect->lra_auto_res_disable = of_property_read_bool(child_node,
 								     "qcom,lra-auto-resonance-disable");
@@ -4333,7 +4333,7 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 			continue;
 
 		if (tmp > HAP_BRAKE_PATTERN_MAX) {
-			printk
+			pr_debug
 			    ("%s wf-brake-pattern shouldn't be more than %d bytes\n",
 			     __func__, HAP_BRAKE_PATTERN_MAX);
 		}
@@ -4342,7 +4342,7 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 					       "qcom,wf-brake-pattern",
 					       effect->brake, tmp);
 		if (rc < 0) {
-			printk("%s Failed to get wf-brake-pattern !\n",
+			pr_debug("%s Failed to get wf-brake-pattern !\n",
 			       __func__);
 		}
 
@@ -4350,38 +4350,38 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 	}
 
 	for (j = 0; j < 175; j++)
-		aw_dev_info(aw8697->dev,
+		aw_dev_dbg(aw8697->dev,
 			    " 20190420_dt aw8697->info.rtp_time[%d]: %d\n", j,
 			    aw8697->info.rtp_time[j]);
 
 	for (j = 0; j < i; j++) {
-		printk(" 20190420_dt       effect_id: %d\n",
+		pr_debug(" 20190420_dt       effect_id: %d\n",
 		       aw8697->predefined[j].id);
-		printk(" 20190420_dt       vmax: %d mv\n",
+		pr_debug(" 20190420_dt       vmax: %d mv\n",
 		       aw8697->predefined[j].vmax_mv);
-		printk("20190420_dt        play_rate: %d us\n",
+		pr_debug("20190420_dt        play_rate: %d us\n",
 		       aw8697->predefined[j].play_rate_us);
 		for (m = 0; m < aw8697->predefined[j].pattern_length; m++)
-			printk("20190420_dt     pattern[%d]: 0x%x\n", m,
+			pr_debug("20190420_dt     pattern[%d]: 0x%x\n", m,
 			       aw8697->predefined[j].pattern[m]);
 		for (m = 0; m < aw8697->predefined[j].brake_pattern_length; m++)
-			printk("20190420_dt     brake_pattern[%d]: 0x%x\n", m,
+			pr_debug("20190420_dt     brake_pattern[%d]: 0x%x\n", m,
 			       aw8697->predefined[j].brake[m]);
-		printk("20190420_dt         brake_en: %d\n",
+		pr_debug("20190420_dt         brake_en: %d\n",
 		       aw8697->predefined[j].brake_en);
-		printk("20190420_dt        wf_repeat_n: %d\n",
+		pr_debug("20190420_dt        wf_repeat_n: %d\n",
 		       aw8697->predefined[j].wf_repeat_n);
-		printk("20190420_dt         wf_s_repeat_n: %d\n",
+		pr_debug("20190420_dt         wf_s_repeat_n: %d\n",
 		       aw8697->predefined[j].wf_s_repeat_n);
-		printk("20190420_dt         lra_auto_res_disable: %d\n",
+		pr_debug("20190420_dt         lra_auto_res_disable: %d\n",
 		       aw8697->predefined[j].lra_auto_res_disable);
 	}
-	printk(" 20190420_dt       aw8697->effects_count: %d\n",
+	pr_debug(" 20190420_dt       aw8697->effects_count: %d\n",
 	       aw8697->effects_count);
-	printk(" 20190420_dt       aw8697->effect_id_boundary: %d\n",
+	pr_debug(" 20190420_dt       aw8697->effect_id_boundary: %d\n",
 	       aw8697->info.effect_id_boundary);
 
-	printk(" 20190420_dt aw8697->effect_max: %d\n",
+	pr_debug(" 20190420_dt aw8697->effect_max: %d\n",
 		    aw8697->info.effect_max);
 
 	return 0;

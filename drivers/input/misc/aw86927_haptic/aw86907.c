@@ -4214,137 +4214,137 @@ int aw86907_parse_dt( struct aw86907 *aw86907, struct device *dev,
 
 	val = of_property_read_u32(np, "aw86907_vib_mode", &aw86907->info.mode);
 	if (val != 0)
-		aw_info("%s vib_mode not found\n", __func__);
+		aw_dbg("%s vib_mode not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_brk_bst_md",
 				   &aw86907->info.brk_bst_md);
 	if (val != 0)
-		aw_info("%s vib_brk_bst_md not found\n", __func__);
+		aw_dbg("%s vib_brk_bst_md not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_f0_ref", &aw86907->info.f0_ref);
 	if (val != 0)
-		aw_info("%s vib_f0_ref not found\n", __func__);
+		aw_dbg("%s vib_f0_ref not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_f0_cali_percent",
 				   &aw86907->info.f0_cali_percent);
 	if (val != 0)
-		aw_info("%s vib_f0_cali_percent not found\n", __func__);
+		aw_dbg("%s vib_f0_cali_percent not found\n", __func__);
 
 	val = of_property_read_u32(np, "aw86907_vib_cont_drv1_lvl",
 				   &aw86907->info.cont_drv1_lvl);
 	if (val != 0)
-		aw_info("%s vib_cont_drv1_lvl not found\n", __func__);
+		aw_dbg("%s vib_cont_drv1_lvl not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_drv2_lvl",
 				   &aw86907->info.cont_drv2_lvl);
 	if (val != 0)
-		aw_info("%s vib_cont_drv2_lvl not found\n", __func__);
+		aw_dbg("%s vib_cont_drv2_lvl not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_drv1_time",
 				   &aw86907->info.cont_drv1_time);
 	if (val != 0)
-		aw_info("%s vib_cont_drv1_time not found\n", __func__);
+		aw_dbg("%s vib_cont_drv1_time not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_drv2_time",
 				   &aw86907->info.cont_drv2_time);
 	if (val != 0)
-		aw_info("%s vib_cont_drv2_time not found\n", __func__);
+		aw_dbg("%s vib_cont_drv2_time not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_drv_width",
 				   &aw86907->info.cont_drv_width);
 	if (val != 0)
-		aw_info("%s vib_cont_drv_width not found\n", __func__);
+		aw_dbg("%s vib_cont_drv_width not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_wait_num",
 				   &aw86907->info.cont_wait_num);
 	if (val != 0)
-		aw_info("%s vib_cont_wait_num not found\n", __func__);
+		aw_dbg("%s vib_cont_wait_num not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_bst_brk_gain",
 				   &aw86907->info.cont_bst_brk_gain);
 	if (val != 0)
-		aw_info("%s vib_cont_bst_brk_gain not found\n", __func__);
+		aw_dbg("%s vib_cont_bst_brk_gain not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_brk_gain",
 				   &aw86907->info.cont_brk_gain);
 	if (val != 0)
-		aw_info("%s vib_cont_brk_gain not found\n", __func__);
+		aw_dbg("%s vib_cont_brk_gain not found\n", __func__);
 	val =
 	    of_property_read_u32(np, "aw86907_vib_cont_tset", &aw86907->info.cont_tset);
 	if (val != 0)
-		aw_info("%s vib_cont_tset not found\n", __func__);
+		aw_dbg("%s vib_cont_tset not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_bemf_set",
 				   &aw86907->info.cont_bemf_set);
 	if (val != 0)
-		aw_info("%s vib_cont_bemf_set not found\n", __func__);
+		aw_dbg("%s vib_cont_bemf_set not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_d2s_gain", &aw86907->info.d2s_gain);
 	if (val != 0)
-		aw_info("%s vib_d2s_gain not found\n", __func__);
+		aw_dbg("%s vib_d2s_gain not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_brk_time",
 				   &aw86907->info.cont_brk_time);
 	if (val != 0)
-		aw_info("%s vib_cont_brk_time not found\n", __func__);
+		aw_dbg("%s vib_cont_brk_time not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_cont_track_margin",
 				   &aw86907->info.cont_track_margin);
 	if (val != 0)
-		aw_info("%s vib_cont_track_margin not found\n", __func__);
+		aw_dbg("%s vib_cont_track_margin not found\n", __func__);
 	aw86907->info.is_enabled_auto_bst =
 			of_property_read_bool(np, "aw86907_vib_is_enabled_auto_bst");
-	aw_info("%s aw86907->info.is_enabled_auto_bst = %d\n", __func__,
+	aw_dbg("%s aw86907->info.is_enabled_auto_bst = %d\n", __func__,
 		    aw86907->info.is_enabled_auto_bst);
 	aw86907->info.is_enabled_i2s =
 			of_property_read_bool(np, "aw86907_vib_is_enabled_i2s");
-	aw_info("%s aw86907->info.is_enabled_i2s = %d\n",
+	aw_dbg("%s aw86907->info.is_enabled_i2s = %d\n",
 		    __func__, aw86907->info.is_enabled_i2s);
 	aw86907->info.is_enabled_one_wire =
 			of_property_read_bool(np, "aw86907_vib_is_enabled_one_wire");
-	aw_info("%s aw86907->info.is_enabled_one_wire = %d\n",
+	aw_dbg("%s aw86907->info.is_enabled_one_wire = %d\n",
 		    __func__, aw86907->info.is_enabled_one_wire);
 	aw86907->info.powerup_f0_cali =
 			of_property_read_bool(np, "aw86907_vib_powerup_f0_cali");
-	aw_info("%s aw86907->info.vib_powerup_f0_cali = %d\n",
+	aw_dbg("%s aw86907->info.vib_powerup_f0_cali = %d\n",
 		    __func__, aw86907->info.powerup_f0_cali);
 	val = of_property_read_u32_array(np, "aw86907_vib_bstcfg", bstcfg_temp,
 					 ARRAY_SIZE(bstcfg_temp));
 	if (val != 0)
-		aw_info("%s vib_bstcfg not found\n", __func__);
+		aw_dbg("%s vib_bstcfg not found\n", __func__);
 	memcpy(aw86907->info.bstcfg, bstcfg_temp, sizeof(bstcfg_temp));
 
 	val = of_property_read_u32(np, "aw86907_vib_bst_vol_default",
 				   &aw86907->info.bst_vol_default);
 	if (val != 0)
-		aw_info("%s vib_bst_vol_default not found\n", __func__);
+		aw_dbg("%s vib_bst_vol_default not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_bst_vol_ram",
 				   &aw86907->info.bst_vol_ram);
 	if (val != 0)
-		aw_info("%s vib_bst_vol_ram not found\n", __func__);
+		aw_dbg("%s vib_bst_vol_ram not found\n", __func__);
 	val = of_property_read_u32(np, "aw86907_vib_bst_vol_rtp",
 				   &aw86907->info.bst_vol_rtp);
 	if (val != 0)
-		aw_info("%s vib_bst_vol_rtp not found\n", __func__);
+		aw_dbg("%s vib_bst_vol_rtp not found\n", __func__);
 
 	val = of_property_read_u32_array(np, "aw86907_vib_prctmode",
 					 prctmode_temp,
 					 ARRAY_SIZE(prctmode_temp));
 	if (val != 0)
-		aw_info("%s vib_prctmode not found\n", __func__);
+		aw_dbg("%s vib_prctmode not found\n", __func__);
 	memcpy(aw86907->info.prctmode, prctmode_temp, sizeof(prctmode_temp));
 	val = of_property_read_u32_array(np, "aw86907_vib_sine_array", sine_array_temp,
 					 ARRAY_SIZE(sine_array_temp));
 	if (val != 0)
-		aw_info("%s vib_sine_array not found\n", __func__);
+		aw_dbg("%s vib_sine_array not found\n", __func__);
 	memcpy(aw86907->info.sine_array, sine_array_temp,
 	       sizeof(sine_array_temp));
 	val =
 	    of_property_read_u32_array(np, "aw86907_vib_trig_config", trig_config_temp,
 				       ARRAY_SIZE(trig_config_temp));
 	if (val != 0)
-		aw_info("%s vib_trig_config not found\n",  __func__);
+		aw_dbg("%s vib_trig_config not found\n",  __func__);
 	memcpy(aw86907->info.trig_config, trig_config_temp,
 	       sizeof(trig_config_temp));
 
 	val = of_property_read_u32(np, "vib_effect_id_boundary",
 				 &aw86907->info.effect_id_boundary);
 	if (val != 0)
-		aw_info("%s vib_effect_id_boundary not found\n", __func__);
+		aw_dbg("%s vib_effect_id_boundary not found\n", __func__);
 	val = of_property_read_u32(np, "vib_effect_max",
 				 &aw86907->info.effect_max);
 	if (val != 0)
-		aw_info("%s vib_effect_max not found\n", __func__);
+		aw_dbg("%s vib_effect_max not found\n", __func__);
 	val = of_property_read_u32_array(np, "vib_rtp_time", rtp_time,
 				       ARRAY_SIZE(rtp_time));
 	if (val != 0)
-		aw_info("%s vib_rtp_time not found\n", __func__);
+		aw_dbg("%s vib_rtp_time not found\n", __func__);
 	memcpy(aw86907->info.rtp_time, rtp_time, sizeof(rtp_time));
 	config->play_rate_us = HAP_PLAY_RATE_US_DEFAULT;
 	rc = of_property_read_u32(np, "play-rate-us", &tmp);
@@ -4371,27 +4371,27 @@ int aw86907_parse_dt( struct aw86907 *aw86907, struct device *dev,
 		rc = of_property_read_u32(child_node, "mtk,effect-id",
 					  &effect->id);
 		if (rc != 0)
-			aw_info("%s Read mtk,effect-id failed\n", __func__);
+			aw_dbg("%s Read mtk,effect-id failed\n", __func__);
 
 		effect->vmax_mv = config->vmax_mv;
 		rc = of_property_read_u32(child_node, "mtk,wf-vmax-mv", &tmp);
 		if (rc != 0)
-			aw_info("%s  Read mtk,wf-vmax-mv failed !\n", __func__);
+			aw_dbg("%s  Read mtk,wf-vmax-mv failed !\n", __func__);
 		else
 			effect->vmax_mv = tmp;
 
-		aw_info("%s ---%d effect->vmax_mv =%d\n", __func__, __LINE__,
+		aw_dbg("%s ---%d effect->vmax_mv =%d\n", __func__, __LINE__,
 			effect->vmax_mv);
 		rc = of_property_count_elems_of_size(child_node,
 						     "mtk,wf-pattern",
 						     sizeof(u8));
 		if (rc < 0) {
-			aw_info("%s Count mtk,wf-pattern property failed !\n",
+			aw_dbg("%s Count mtk,wf-pattern property failed !\n",
 			       __func__);
 		} else if (rc == 0) {
-			aw_info("%s mtk,wf-pattern has no data\n", __func__);
+			aw_dbg("%s mtk,wf-pattern has no data\n", __func__);
 		}
-		aw_info("%s ---%d\n", __func__, __LINE__);
+		aw_dbg("%s ---%d\n", __func__, __LINE__);
 
 		effect->pattern_length = rc;
 		effect->pattern = devm_kcalloc(aw86907->dev,
@@ -4402,7 +4402,7 @@ int aw86907_parse_dt( struct aw86907 *aw86907, struct device *dev,
 					       effect->pattern,
 					       effect->pattern_length);
 		if (rc < 0) {
-			aw_info("%s Read mtk,wf-pattern property failed !\n",
+			aw_dbg("%s Read mtk,wf-pattern property failed !\n",
 			       __func__);
 		}
 
@@ -4410,7 +4410,7 @@ int aw86907_parse_dt( struct aw86907 *aw86907, struct device *dev,
 		rc = of_property_read_u32(child_node, "mtk,wf-play-rate-us",
 					  &tmp);
 		if (rc < 0)
-			aw_info("%s Read mtk,wf-play-rate-us failed !\n",
+			aw_dbg("%s Read mtk,wf-play-rate-us failed !\n",
 			       __func__);
 		else
 			effect->play_rate_us = tmp;
@@ -4418,7 +4418,7 @@ int aw86907_parse_dt( struct aw86907 *aw86907, struct device *dev,
 		rc = of_property_read_u32(child_node, "mtk,wf-repeat-count",
 					  &tmp);
 		if (rc < 0) {
-			aw_info("%s Read  mtk,wf-repeat-count failed !\n",
+			aw_dbg("%s Read  mtk,wf-repeat-count failed !\n",
 			       __func__);
 		} else {
 			for (j = 0; j < ARRAY_SIZE(wf_repeat); j++)
@@ -4431,7 +4431,7 @@ int aw86907_parse_dt( struct aw86907 *aw86907, struct device *dev,
 		rc = of_property_read_u32(child_node, "mtk,wf-s-repeat-count",
 					  &tmp);
 		if (rc < 0) {
-			aw_info("%s Read  mtk,wf-s-repeat-count failed !\n",
+			aw_dbg("%s Read  mtk,wf-s-repeat-count failed !\n",
 			       __func__);
 		} else {
 			for (j = 0; j < ARRAY_SIZE(wf_s_repeat); j++)
@@ -4452,7 +4452,7 @@ int aw86907_parse_dt( struct aw86907 *aw86907, struct device *dev,
 			continue;
 
 		if (tmp > HAP_BRAKE_PATTERN_MAX) {
-			aw_info("%s wf-brake-pattern shouldn't be more than %d bytes\n",
+			aw_dbg("%s wf-brake-pattern shouldn't be more than %d bytes\n",
 			       __func__, HAP_BRAKE_PATTERN_MAX);
 		}
 
@@ -4460,20 +4460,20 @@ int aw86907_parse_dt( struct aw86907 *aw86907, struct device *dev,
 					       "mtk,wf-brake-pattern",
 					       effect->brake, tmp);
 		if (rc < 0) {
-			aw_info("%s Failed to get wf-brake-pattern !\n",
+			aw_dbg("%s Failed to get wf-brake-pattern !\n",
 			       __func__);
 		}
 
 		effect->brake_pattern_length = tmp;
 	}
 
-	aw_info("%s aw86907->info.brk_bst_md: %d\n",
+	aw_dbg("%s aw86907->info.brk_bst_md: %d\n",
 		    __func__, aw86907->info.brk_bst_md);
-	aw_info("%s aw86907->info.bst_vol_default: %d\n",
+	aw_dbg("%s aw86907->info.bst_vol_default: %d\n",
 		    __func__, aw86907->info.bst_vol_default);
-	aw_info("%s aw86907->info.bst_vol_ram: %d\n",
+	aw_dbg("%s aw86907->info.bst_vol_ram: %d\n",
 		    __func__, aw86907->info.bst_vol_ram);
-	aw_info("%s aw86907->info.bst_vol_rtp: %d\n",
+	aw_dbg("%s aw86907->info.bst_vol_rtp: %d\n",
 		    __func__, aw86907->info.bst_vol_rtp);
 
 	return 0;
