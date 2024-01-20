@@ -123,7 +123,7 @@ static void print_send_buffer(struct nqx_dev *nqx_dev, unsigned char *buf, int l
 	for (i = 0; i < len; i++)
 		snprintf(output + i * 2, 3, "%02x ", buf[i]);
 
-	dev_warn(&nqx_dev->client->dev, "%3d > %s\n", len, output);
+	dev_dbg(&nqx_dev->client->dev, "%3d > %s\n", len, output);
 }
 
 static void print_recv_buffer(struct nqx_dev *nqx_dev, unsigned char *buf, int len)
@@ -137,7 +137,7 @@ static void print_recv_buffer(struct nqx_dev *nqx_dev, unsigned char *buf, int l
 	for (i = 0; i < len; i++)
 		snprintf(output + i * 2, 3, "%02x ", buf[i]);
 
-	dev_warn(&nqx_dev->client->dev, "%3d < %s\n", len, output);
+	dev_dbg(&nqx_dev->client->dev, "%3d < %s\n", len, output);
 }
 #endif
 
@@ -382,7 +382,7 @@ static ssize_t nfc_read(struct file *filp, char __user *buf,
 #endif
 
 	if (copy_to_user(buf, tmp, ret)) {
-		dev_warn(&nqx_dev->client->dev,
+		dev_dbg(&nqx_dev->client->dev,
 			"%s : failed to copy to user space\n", __func__);
 		ret = -EFAULT;
 		goto err;
@@ -487,7 +487,7 @@ static int sn100_ese_pwr(struct nqx_dev *nqx_dev, unsigned long arg)
 {
 	int r = -1;
 
-	dev_warn(&nqx_dev->client->dev, "%s : enter, arg=%d\n", __func__, arg);
+	dev_dbg(&nqx_dev->client->dev, "%s : enter, arg=%d\n", __func__, arg);
 	if (arg == ESE_POWER_ON) {
 		/**
 		 * Let's store the NFC VEN pin state
@@ -499,25 +499,25 @@ static int sn100_ese_pwr(struct nqx_dev *nqx_dev, unsigned long arg)
 		nqx_dev->nfc_ven_enabled =
 			gpio_get_value(nqx_dev->en_gpio);
 		if (!nqx_dev->nfc_ven_enabled) {
-			dev_warn(&nqx_dev->client->dev,
+			dev_dbg(&nqx_dev->client->dev,
 				"%s : eSE HAL service setting en_gpio HIGH\n", __func__);
 			gpio_set_value(nqx_dev->en_gpio, 1);
 			/* hardware dependent delay */
 			usleep_range(1000, 1100);
 		} else {
-			dev_warn(&nqx_dev->client->dev, "%s : en_gpio already HIGH\n", __func__);
+			dev_dbg(&nqx_dev->client->dev, "%s : en_gpio already HIGH\n", __func__);
 		}
 		nqx_dev->is_ese_session_active = true;
 		r = 0;
 	} else if (arg == ESE_POWER_OFF) {
 		if (!nqx_dev->nfc_ven_enabled) {
-			dev_warn(&nqx_dev->client->dev,
+			dev_dbg(&nqx_dev->client->dev,
 				"%s : NFC not enabled, disabling en_gpio\n", __func__);
 			gpio_set_value(nqx_dev->en_gpio, 0);
 			/* hardware dependent delay */
 			usleep_range(1000, 1100);
 		} else {
-			dev_warn(&nqx_dev->client->dev,
+			dev_dbg(&nqx_dev->client->dev,
 				"%s : keep en_gpio high as NFC is enabled\n", __func__);
 		}
 		nqx_dev->is_ese_session_active = false;
@@ -558,7 +558,7 @@ static int sn100_ese_pwr(struct nqx_dev *nqx_dev, unsigned long arg)
 	} else if (arg == ESE_POWER_STATE) {
 		// eSE power state
 		r = gpio_get_value(nqx_dev->en_gpio);
-		dev_warn(&nqx_dev->client->dev, "%s : VEN status = %d\n", __func__, r);
+		dev_dbg(&nqx_dev->client->dev, "%s : VEN status = %d\n", __func__, r);
 	}
 	return r;
 }
@@ -815,7 +815,7 @@ static int nfc_open(struct inode *inode, struct file *filp)
 
 	mutex_unlock(&nqx_dev->dev_ref_mutex);
 
-	dev_warn(&nqx_dev->client->dev,
+	dev_dbg(&nqx_dev->client->dev,
 			"%s: (%d,%d) %d\n", __func__, imajor(inode), iminor(inode),
 				nqx_dev->dev_ref_count);
 	return 0;
@@ -842,7 +842,7 @@ static int nfc_close(struct inode *inode, struct file *filp)
 
 	mutex_unlock(&nqx_dev->dev_ref_mutex);
 
-	dev_warn(&nqx_dev->client->dev,
+	dev_dbg(&nqx_dev->client->dev,
 			"%s: dev_ref_count = %d\n", __func__, nqx_dev->dev_ref_count);
 
 	filp->private_data = NULL;
@@ -868,7 +868,7 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 	int r = 0;
 	struct nqx_dev *nqx_dev = filp->private_data;
 
-	dev_warn(&nqx_dev->client->dev, "%s : enter, arg=%d\n", __func__, arg);
+	dev_dbg(&nqx_dev->client->dev, "%s : enter, arg=%d\n", __func__, arg);
 
 	if (arg == NFC_POWER_OFF) {
 		/*
@@ -894,7 +894,7 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 				dev_dbg(&nqx_dev->client->dev, "keeping en_gpio high\n");
 			}
 		} else {
-			dev_warn(&nqx_dev->client->dev, "%s : set en_gpio to low\n", __func__);
+			dev_dbg(&nqx_dev->client->dev, "%s : set en_gpio to low\n", __func__);
 			gpio_set_value(nqx_dev->en_gpio, 0);
 			usleep_range(10000, 10100);
 		}
@@ -913,7 +913,7 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 			gpio_set_value(nqx_dev->firm_gpio, 0);
 			usleep_range(10000, 10100);
 		}
-		dev_warn(&nqx_dev->client->dev, "%s : set en_gpio to high\n", __func__);
+		dev_dbg(&nqx_dev->client->dev, "%s : set en_gpio to high\n", __func__);
 		gpio_set_value(nqx_dev->en_gpio, 1);
 		usleep_range(10000, 10100);
 		if (nqx_dev->pdata->clk_pin_voting) {
@@ -951,7 +951,7 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 		 * Setting firmware download gpio to HIGH for SN100U
 		 * before FW download start
 		 */
-		dev_warn(&nqx_dev->client->dev, "%s : SN100 fw gpio HIGH\n", __func__);
+		dev_dbg(&nqx_dev->client->dev, "%s : SN100 fw gpio HIGH\n", __func__);
 		if (gpio_is_valid(nqx_dev->firm_gpio)) {
 			gpio_set_value(nqx_dev->firm_gpio, 1);
 			usleep_range(10000, 10100);
@@ -963,7 +963,7 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 		 * Setting firmware download gpio to LOW for SN100U
 		 * FW download finished
 		 */
-		dev_warn(&nqx_dev->client->dev, "%s : SN100 fw gpio LOW\n", __func__);
+		dev_dbg(&nqx_dev->client->dev, "%s : SN100 fw gpio LOW\n", __func__);
 		if (gpio_is_valid(nqx_dev->firm_gpio)) {
 			gpio_set_value(nqx_dev->firm_gpio, 0);
 			usleep_range(10000, 10100);
@@ -1058,7 +1058,7 @@ static long nfc_ioctl(struct file *pfile, unsigned int cmd,
 	int r = 0;
 	struct nqx_dev *nqx_dev = pfile->private_data;
 
-	dev_warn(&nqx_dev->client->dev, "%s : enter, arg=%d\n", __func__, arg);
+	dev_dbg(&nqx_dev->client->dev, "%s : enter, arg=%d\n", __func__, arg);
 	if (!nqx_dev)
 		return -ENODEV;
 
@@ -1186,7 +1186,7 @@ reset_enable_gpio:
 			send_retry_count  += 1;
 			goto reset_enable_gpio;
 		} else {
-			dev_warn(&client->dev,
+			dev_dbg(&client->dev,
 				"%s: - send core reset retry Max times, go on\n", __func__);
 			nqx_dev->nqx_info.info.chip_type = NFCC_SN100_A;
 			nqx_dev->nqx_info.info.rom_version = 0;
@@ -1305,9 +1305,9 @@ reset_enable_gpio:
 		nci_reset_rsp[1], nci_reset_rsp[2]);
 
 err_nfcc_reset_failed:
-	dev_warn(&nqx_dev->client->dev, "NQ NFCC chip_type = %x\n",
+	dev_dbg(&nqx_dev->client->dev, "NQ NFCC chip_type = %x\n",
 		nqx_dev->nqx_info.info.chip_type);
-	dev_warn(&nqx_dev->client->dev, "NQ fw version = %x.%x.%x\n",
+	dev_dbg(&nqx_dev->client->dev, "NQ fw version = %x.%x.%x\n",
 		nqx_dev->nqx_info.info.rom_version,
 		nqx_dev->nqx_info.info.fw_major,
 		nqx_dev->nqx_info.info.fw_minor);
@@ -1327,7 +1327,7 @@ err_nfcc_reset_failed:
 		break;
 	case NFCC_SN100_A:
 	case NFCC_SN100_B:
-		dev_warn(&client->dev,
+		dev_dbg(&client->dev,
 		"%s: ## NFCC == SN100x ##\n", __func__);
 		break;
 	default:
@@ -1336,7 +1336,7 @@ err_nfcc_reset_failed:
 		break;
 	}
 
-	dev_warn(&client->dev, "%s : hw check scuessfully\n", __func__);
+	dev_dbg(&client->dev, "%s : hw check scuessfully\n", __func__);
 	ret = 0;
 	nqx_dev->nfc_ven_enabled = true;
 	goto done;
@@ -1420,14 +1420,14 @@ static int nfc_parse_dt(struct device *dev, struct nqx_platform_data *pdata)
 
 	pdata->firm_gpio = of_get_named_gpio(np, "qcom,nq-firm", 0);
 	if (!gpio_is_valid(pdata->firm_gpio)) {
-		dev_warn(dev,
+		dev_dbg(dev,
 			"FIRM GPIO <OPTIONAL> error getting from OF node\n");
 		pdata->firm_gpio = -EINVAL;
 	}
 
 	pdata->ese_gpio = of_get_named_gpio(np, "qcom,nq-esepwr", 0);
 	if (!gpio_is_valid(pdata->ese_gpio)) {
-		dev_warn(dev,
+		dev_dbg(dev,
 			"ese GPIO <OPTIONAL> error getting from OF node\n");
 		pdata->ese_gpio = -EINVAL;
 	}
@@ -1490,7 +1490,7 @@ static int nqx_probe(struct i2c_client *client,
 	struct nqx_platform_data *platform_data;
 	struct nqx_dev *nqx_dev;
 
-	dev_warn(&client->dev, "%s: enter\n", __func__);
+	dev_dbg(&client->dev, "%s: enter\n", __func__);
 	if (client->dev.of_node) {
 		platform_data = devm_kzalloc(&client->dev,
 			sizeof(struct nqx_platform_data), GFP_KERNEL);
