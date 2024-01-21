@@ -2861,7 +2861,7 @@ static int __check_core_registered(struct hal_device_data core,
 	struct list_head *curr, *next;
 
 	if (!core.dev_count) {
-		d_vpr_e("no device Registered\n");
+		pr_debug("no device Registered\n");
 		return -EINVAL;
 	}
 
@@ -2892,7 +2892,7 @@ static int __check_core_registered(struct hal_device_data core,
 			return 0;
 		}
 
-		d_vpr_e("Device not registered\n");
+		pr_debug("Device not registered\n");
 		return -EINVAL;
 	}
 	return -EINVAL;

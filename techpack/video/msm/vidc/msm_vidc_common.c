@@ -1429,8 +1429,7 @@ static int msm_vidc_comm_update_ctrl(struct msm_vidc_inst *inst,
 
 	ctrl = v4l2_ctrl_find(&inst->ctrl_handler, id);
 	if (!ctrl) {
-		s_vpr_e(inst->sid,
-			"%s: Conrol id %d not found\n", __func__, id);
+		pr_debug("err: %s: %s: Conrol id %d not found\n", inst->sid, __func__, id);
 		return -EINVAL;
 	}
 
@@ -1445,9 +1444,8 @@ static int msm_vidc_comm_update_ctrl(struct msm_vidc_inst *inst,
 			is_menu ? ctrl->menu_skip_mask : cap->step_size,
 			cap->default_value);
 	if (rc) {
-		s_vpr_e(inst->sid,
-			"%s: failed: control name %s, min %d, max %d, %s %x, default_value %d\n",
-			__func__, ctrl->name, cap->min, cap->max,
+		pr_debug("err: %d: %s: failed: control name %s, min %d, max %d, %s %x, default_value %d\n",
+			inst->sid, __func__, ctrl->name, cap->min, cap->max,
 			is_menu ? "menu_skip_mask" : "step",
 			is_menu ? ctrl->menu_skip_mask : cap->step_size,
 			cap->default_value);
