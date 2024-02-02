@@ -443,6 +443,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(capacity_alert_min),
 	POWER_SUPPLY_ATTR(capacity_alert_max),
 	POWER_SUPPLY_ATTR(capacity_level),
+	POWER_SUPPLY_ATTR(cp_to_sw_status),
 	POWER_SUPPLY_ATTR(shutdown_delay),
 	POWER_SUPPLY_ATTR(shutdown_delay_en),
 	POWER_SUPPLY_ATTR(soc_decimal),
@@ -468,6 +469,8 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(calibrate),
 	POWER_SUPPLY_ATTR(ffc_termination_bbc),
 	POWER_SUPPLY_ATTR(mtbf_current),
+	POWER_SUPPLY_ATTR(enable_bypass_mode),
+	POWER_SUPPLY_ATTR(smart_batt),
 	POWER_SUPPLY_ATTR(has_dp),
 	/* Local extensions */
 	POWER_SUPPLY_ATTR(usb_hc),
@@ -681,6 +684,8 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(step_vfloat_index),
 	POWER_SUPPLY_ATTR(night_charging),
 	POWER_SUPPLY_ATTR(i2c_error_count),
+	POWER_SUPPLY_ATTR(avg_current),
+	POWER_SUPPLY_ATTR(charging_mode),
 	/* PS5169 properties */
 	POWER_SUPPLY_ATTR(ps_en),
 	POWER_SUPPLY_ATTR(ps_chipid),

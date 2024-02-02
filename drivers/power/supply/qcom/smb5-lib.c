@@ -2497,7 +2497,7 @@ static void smblib_check_input_status(struct smb_charger *chg)
 	if ((input_present & INPUT_PRESENT_DC
 			|| input_present & INPUT_PRESENT_USB)
 				&& !off_charge_flag
-				&& (vbat_uv <= (CUTOFF_VOL_THR - 200))) {
+				&& (vbat_uv <= CUTOFF_VOL_THR)) {
 		chg->report_input_absent = true;
 		power_supply_changed(chg->batt_psy);
 	}
@@ -6635,24 +6635,6 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 		usb_current = USBIN_500MA;
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT) {
 		if (usb_current == -ETIMEDOUT || is_float) {
-			/* we do not use USB500mA for float charger */
-#if 0
-			if ((chg->float_cfg & FLOAT_OPTIONS_MASK)
-						== FORCE_FLOAT_SDP_CFG_BIT) {
-
-				/*
-				 * Confiugure USB500 mode if Float charger is
-				 * configured for SDP mode.
-				 */
-				rc = vote(chg->usb_icl_votable,
-					SW_ICL_MAX_VOTER, true, USBIN_500MA);
-				if (rc < 0)
-					smblib_err(chg,
-						"Couldn't set SDP ICL rc=%d\n",
-						rc);
-				return rc;
-			}
-#endif
 			if (chg->connector_type == POWER_SUPPLY_CONNECTOR_TYPEC) {
 				/*
 				 * Valid FLOAT charger, report the current
@@ -8985,7 +8967,6 @@ int smblib_get_adapter_power_max(struct smb_charger *chg)
 			rc = power_supply_get_property(chg->usb_psy,
 						POWER_SUPPLY_PROP_APDO_MAX, &pval);
 			apdo_max = pval.intval;
-			pr_info("apdo_max:%d\n", apdo_max);
 
 			if (apdo_max == 65)
 				return APDO_MAX_65W; /* only for J1 65W adapter */
@@ -11516,15 +11497,13 @@ static int smblib_dynamic_recharge_vbat(struct smb_charger *chg)
 	} else
 		return 0;
 
-	if (chg->batt_psy) {
-		rc = power_supply_set_property(chg->batt_psy,
-				POWER_SUPPLY_PROP_RECHARGE_VBAT,
-				&val);
-		if (rc < 0) {
-			dev_err(chg->dev, "Couldn't set POWER_SUPPLY_PROP_CHARGER_TEMP_MAX rc=%d\n",
-					rc);
-			return -EINVAL;
-		}
+	rc = power_supply_set_property(chg->batt_psy,
+			POWER_SUPPLY_PROP_RECHARGE_VBAT,
+			&val);
+	if (rc < 0) {
+		dev_err(chg->dev, "Couldn't set POWER_SUPPLY_PROP_CHARGER_TEMP_MAX rc=%d\n",
+				rc);
+		return -EINVAL;
 	}
 
 	return 0;
