@@ -707,6 +707,10 @@ static int bq2597x_set_busovp_th(struct bq2597x *bq, int threshold)
 
 	ret = bq2597x_update_bits(bq, BQ2597X_REG_06,
 				BQ2597X_BUS_OVP_MASK, val);
+
+	//ret = bq2597x_update_bits(bq, 0x31,
+	//			0x20, 0x20);
+	bq_err("diable busovp %d,val:%d,ret:%d\n", threshold,val,ret);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(bq2597x_set_busovp_th);
@@ -1980,6 +1984,7 @@ static enum power_supply_property bq2597x_charger_props[] = {
 	POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_QC3,
 	POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_PD,
 	POWER_SUPPLY_PROP_MODEL_NAME,
+	POWER_SUPPLY_PROP_CHARGING_MODE,
 };
 static void bq2597x_check_alarm_status(struct bq2597x *bq);
 static void bq2597x_check_fault_status(struct bq2597x *bq);
@@ -2113,6 +2118,9 @@ static int bq2597x_charger_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TI_BUS_ERROR_STATUS:
 		val->intval = bq2597x_check_vbus_error_status(bq);
 		break;
+	case POWER_SUPPLY_PROP_CHARGING_MODE:
+		val->intval = sc8551_get_charge_mode(bq);
+		break;
 	default:
 		return -EINVAL;
 
@@ -2143,6 +2151,9 @@ static int bq2597x_charger_set_property(struct power_supply *psy,
 		bq2597x_set_busovp_th(bq, bq->cfg->bus_ovp_th);
 		bq2597x_set_acovp_th(bq, bq->cfg->ac_ovp_th);
 		break;
+	case POWER_SUPPLY_PROP_CHARGING_MODE:
+		sc8551_set_charge_mode(bq, val->intval);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2159,6 +2170,7 @@ static int bq2597x_charger_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_QC3:
 	case POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_PD:
+	case POWER_SUPPLY_PROP_CHARGING_MODE:
 		ret = 1;
 		break;
 	default:
@@ -2224,6 +2236,10 @@ static void bq2597x_dump_important_regs(struct bq2597x *bq)
 
 	int ret;
 	u8 val;
+	int result;
+
+	bq2597x_get_adc_data(bq, ADC_VBUS, &result);
+	bq_err("dump VBUS = %d\n",result);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0A, &val);
 	if (!ret)
@@ -2250,10 +2266,20 @@ static void bq2597x_dump_important_regs(struct bq2597x *bq)
 		bq_err("dump fault flag Reg[%02X] = 0x%02X\n",
 				BQ2597X_REG_11, val);
 
+	ret = bq2597x_read_byte(bq, BQ2597X_REG_06, &val);
+	if (!ret)
+		bq_err("dump fault flag Reg[%02X] = 0x%02X\n",
+				BQ2597X_REG_06, val);
+
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_2D, &val);
 	if (!ret)
 		bq_err("dump regulation flag Reg[%02X] = 0x%02X\n",
 				BQ2597X_REG_2D, val);
+
+	ret = bq2597x_read_byte(bq, 0x31, &val);
+	if (!ret)
+		bq_err("dump regulation flag Reg0x31 = 0x%02X\n",
+				 val);
 }
 
 static void bq2597x_check_alarm_status(struct bq2597x *bq)
@@ -2345,12 +2371,15 @@ static int bq2597x_check_vbus_error_status(struct bq2597x *bq)
 	u8 stat = 0;
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0A, &stat);
+	bq_err("BQ2597X_REG_0A:0x%02x\n", stat);
 	if (!ret) {
-		bq_info("BQ2597X_REG_0A:0x%02x\n", stat);
+		bq_err("BQ2597X_REG_0A:0x%02x\n", stat);
 		if (stat & VBUS_ERROR_LOW_MASK)
 			return VBUS_ERROR_LOW;
 		else if (stat & VBUS_ERROR_HIGH_MASK)
 			return VBUS_ERROR_HIGH;
+		else
+			return VBUS_ERROR_NONE;
 	}
 
 	return VBUS_ERROR_NONE;
@@ -2572,8 +2601,7 @@ static int bq2597x_charger_probe(struct i2c_client *client,
 	}
 
 	/* determine_initial_status(bq); */
-	if (sc8551_get_charge_mode(bq))
-		sc8551_set_charge_mode(bq, 0);
+	sc8551_set_charge_mode(bq, 0);
 	bq_info("bq2597x probe successfully, Part Num:%d\n!",
 				bq->part_no);
 
