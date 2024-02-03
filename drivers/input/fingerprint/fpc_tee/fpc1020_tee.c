@@ -18,7 +18,7 @@
  *
  *
  * Copyright (c) 2015 Fingerprint Cards AB <tech@fingerprints.com>
- * Copyright (C) 2022 Xiaomi, Inc.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License Version 2
@@ -27,7 +27,6 @@
 
 #define FPC_DRM_INTERFACE_WA
 
-#define CONFIG_FINGERPRINT_FP_VREG_CONTROL
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/atomic.h>
@@ -45,7 +44,9 @@
 #include <linux/fb.h>
 #include <linux/pinctrl/qcom-pinctrl.h>
 #include <drm/drm_bridge.h>
+#ifndef FPC_DRM_INTERFACE_WA
 #include <drm/drm_notifier_mi.h>
+#endif
 
 #define FPC_GPIO_NO_DEFAULT -1
 #define FPC_GPIO_NO_DEFINED -2
@@ -68,6 +69,7 @@
 #define RELEASE_WAKELOCK "release_wakelock"
 #define START_IRQS_RECEIVED_CNT "start_irqs_received_counter"
 
+
 static const char *const pctl_names[] = {
 	"fpc1020_reset_reset",
 	"fpc1020_reset_active",
@@ -81,15 +83,15 @@ struct vreg_config {
 	int gpio;
 };
 
-#ifdef CONFIG_FINGERPRINT_FP_VREG_CONTROL
 struct regulator *vreg;
-#endif
 
 static struct vreg_config vreg_conf[] = {
 	{"vdd_ana", 1800000UL, 1800000UL, 6000, FPC_GPIO_NO_DEFAULT},
 	/*{ "vcc_spi", 1800000UL, 1800000UL, 10, }, */
 	/*{ "vdd_io", 1800000UL, 1800000UL, 6000, }, */
 };
+
+static int power_cfg = 0;
 
 struct fpc1020_data {
 	struct device *dev;
@@ -116,7 +118,9 @@ struct fpc1020_data {
 
 	atomic_t wakeup_enabled;	/* Used both in ISR and non-ISR */
 	int irqf;
+#ifndef FPC_DRM_INTERFACE_WA
 	struct notifier_block fb_notifier;
+#endif
 	bool fb_black;
 	bool wait_finger_down;
 	struct work_struct work;
@@ -171,22 +175,6 @@ static int request_vreg_gpio(struct fpc1020_data *fpc1020, bool enable)
 	mutex_lock(&fpc1020->lock);
 
 	if (enable && !fpc1020->gpios_requested) {
-		rc = fpc1020_request_named_gpio(fpc1020, "fpc,gpio_vdd1v8",
-						&fpc1020->vdd1v8_gpio);
-		if (rc == FPC_GPIO_NO_DEFINED) {
-			dev_err(dev, "fpc vdd1v8 gpio get failed! \n");
-			vreg_conf[0].gpio = FPC_GPIO_NO_DEFAULT;
-		} else if (rc == FPC_GPIO_REQUEST_FAIL) {
-			dev_err(dev, "fpc vdd1v8 gpio request failed! \n");
-			goto release_vreg_gpio;
-		} else {
-			dev_info(dev, "fpc vdd1v8 gpio applied at  %d\n",
-				 fpc1020->vdd1v8_gpio);
-			vreg_conf[0].gpio = fpc1020->vdd1v8_gpio;
-		}
-
-		dev_info(dev, "fpc vreg gpio requested successfully!\n");
-
 		rc = fpc1020_request_named_gpio(fpc1020, "fpc,gpio_irq",
 						&fpc1020->irq_gpio);
 		if (rc) {
@@ -235,14 +223,6 @@ release_irq_gpio:
 			devm_gpio_free(dev, fpc1020->irq_gpio);
 			fpc1020->irq_gpio = FPC_GPIO_NO_DEFAULT;
 			dev_info(dev, "fpc irq gpio released successfully!\n");
-		}
-
-release_vreg_gpio:
-		if (gpio_is_valid(fpc1020->vdd1v8_gpio)) {
-			devm_gpio_free(dev, fpc1020->vdd1v8_gpio);
-			fpc1020->vdd1v8_gpio = FPC_GPIO_NO_DEFAULT;
-			vreg_conf[0].gpio = FPC_GPIO_NO_DEFAULT;
-			dev_info(dev, "fpc vreg gpio released successfully!\n");
 		}
 
 		fpc1020->gpios_requested = false;
@@ -566,35 +546,36 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 
 		select_pin_ctl(fpc1020, "fpc1020_reset_reset");
 
-#ifdef CONFIG_FINGERPRINT_FP_VREG_CONTROL
-		pr_info("Try to enable fp_vdd_vreg\n");
-		vreg = regulator_get(dev, "fp_vdd_vreg");
+		if (power_cfg == 1) {
+			pr_info("Try to enable fp_vdd_vreg\n");
+			vreg = regulator_get(dev, "fp_vdd_vreg");
 
-		if (vreg == NULL) {
-			dev_err(dev, "fp_vdd_vreg regulator get failed!\n");
-			goto exit;
-		}
+			if (vreg == NULL) {
+				dev_err(dev, "fp_vdd_vreg regulator get failed!\n");
+				goto exit;
+			}
 
-		if (regulator_is_enabled(vreg)) {
-			pr_info("fp_vdd_vreg is already enabled!\n");
+			if (regulator_is_enabled(vreg)) {
+				pr_info("fp_vdd_vreg is already enabled!\n");
+			} else {
+				rc = regulator_enable(vreg);
+				if (rc) {
+					dev_err(dev, "error enabling fp_vdd_vreg!\n");
+					regulator_put(vreg);
+					vreg = NULL;
+					goto exit;
+				}
+			}
+
+			pr_info("fp_vdd_vreg is enabled!\n");
 		} else {
-			rc = regulator_enable(vreg);
+			rc = vreg_setup(fpc1020, "vdd_ana", true);
 			if (rc) {
-			dev_err(dev, "error enabling fp_vdd_vreg!\n");
-			regulator_put(vreg);
-			vreg = NULL;
-			goto exit;
+				dev_dbg(dev, "fpc power on failed。 \n");
+				goto exit;
 			}
 		}
 
-		pr_info("fp_vdd_vreg is enabled!\n");
-#else
-		rc = vreg_setup(fpc1020, "vdd_ana", true);
-		if (rc) {
-			dev_dbg(dev, "fpc power on failed。 \n");
-			goto exit;
-		}
-#endif
 		usleep_range(PWR_ON_SLEEP_MIN_US, PWR_ON_SLEEP_MAX_US);
 
 		/* As we can't control chip select here the other part of the
@@ -618,13 +599,20 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 		(void)select_pin_ctl(fpc1020, "fpc1020_reset_reset");
 
 		usleep_range(PWR_ON_SLEEP_MIN_US, PWR_ON_SLEEP_MAX_US);
-#ifndef CONFIG_FINGERPRINT_FP_VREG_CONTROL
-		rc = vreg_setup(fpc1020, "vdd_ana", false);
-		if (rc) {
-			dev_dbg(dev, "fpc vreg power off failed. \n");
-			goto exit;
+
+		if (power_cfg == 1) {
+			rc = regulator_disable(vreg);
+			if (rc) {
+				dev_dbg(dev, "error disabling fp_vdd_vreg!\n");
+				goto exit;
+			}
+		} else {
+			rc = vreg_setup(fpc1020, "vdd_ana", false);
+			if (rc) {
+				dev_dbg(dev, "fpc vreg power off failed. \n");
+				goto exit;
+			}
 		}
-#endif
 exit:
 		fpc1020->prepared = false;
 	} else {
@@ -779,7 +767,8 @@ static ssize_t vendor_update(struct device *dev,
 			     struct device_attribute *attr,
 			     const char *buf, size_t count)
 {
-	return count;
+	int rc;
+	return rc ? rc : count;
 }
 
 static DEVICE_ATTR(vendor, S_IWUSR, NULL, vendor_update);
@@ -809,6 +798,31 @@ static ssize_t irq_enable_set(struct device *dev,
 static DEVICE_ATTR(irq_enable, S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP, NULL,
 		   irq_enable_set);
 
+static ssize_t power_cfg_set(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	int rc = 0;
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
+
+	mutex_lock(&fpc1020->lock);
+
+	if (!strncmp(buf, "1V8", strlen("1V8")))
+		power_cfg = 0;
+	else if (!strncmp(buf, "3V3", strlen("3V3")))
+		power_cfg = 1;
+	else
+		rc = -EINVAL;
+
+	mutex_unlock(&fpc1020->lock);
+
+	dev_info(fpc1020->dev, "fpc set power_cfg: %d, rc: %d\n", power_cfg, rc);
+
+	return rc ? rc : count;
+}
+
+static DEVICE_ATTR(power_cfg, S_IWUSR, NULL, power_cfg_set);
+
 static struct attribute *attributes[] = {
 	&dev_attr_request_vreg.attr,
 	&dev_attr_pinctl_set.attr,
@@ -822,6 +836,7 @@ static struct attribute *attributes[] = {
 	&dev_attr_irq.attr,
 	&dev_attr_vendor.attr,
 	&dev_attr_fingerdown_wait.attr,
+	&dev_attr_power_cfg.attr,
 	NULL
 };
 
@@ -843,12 +858,10 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
 
-	mutex_lock(&fpc1020->lock);
 	if (atomic_read(&fpc1020->wakeup_enabled)) {
 		fpc1020->nbr_irqs_received++;
 		__pm_wakeup_event(fpc1020->ttw_wl, FPC_TTW_HOLD_TIME);
 	}
-	mutex_unlock(&fpc1020->lock);
 
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 	if (fpc1020->wait_finger_down && fpc1020->fb_black && fpc1020->prepared) {
@@ -890,6 +903,19 @@ static int fpc1020_request_named_gpio(struct fpc1020_data *fpc1020,
 	return 0;
 }
 
+static void set_fingerprintd_nice(int nice)
+{
+	struct task_struct *p;
+
+	read_lock(&tasklist_lock);
+	for_each_process(p) {
+		if (strstr(p->comm, "erprint"))
+			set_user_nice(p, nice);
+	}
+	read_unlock(&tasklist_lock);
+}
+
+#ifndef FPC_DRM_INTERFACE_WA
 static int fpc_fb_notif_callback(struct notifier_block *nb,
 				 unsigned long val, void *data)
 {
@@ -910,9 +936,11 @@ static int fpc_fb_notif_callback(struct notifier_block *nb,
 		blank = *(int *)(evdata->data);
 		switch (blank) {
 		case MI_DRM_BLANK_POWERDOWN:
+                        set_fingerprintd_nice(MIN_NICE);
 			fpc1020->fb_black = true;
 			break;
 		case MI_DRM_BLANK_UNBLANK:
+                        set_fingerprintd_nice(0);
 			fpc1020->fb_black = false;
 			break;
 		default:
@@ -926,6 +954,7 @@ static int fpc_fb_notif_callback(struct notifier_block *nb,
 static struct notifier_block fpc_notif_block = {
 	.notifier_call = fpc_fb_notif_callback,
 };
+#endif
 
 static int fpc1020_probe(struct platform_device *pdev)
 {
@@ -983,7 +1012,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 
 	atomic_set(&fpc1020->wakeup_enabled, 1);
 
-	fpc1020->irqf = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
+	fpc1020->irqf = IRQF_TRIGGER_RISING | IRQF_ONESHOT | IRQF_LITTLE_AFFINE;
 	fpc1020->irq_requested = false;
 	fpc1020->gpios_requested = false;
 	device_init_wakeup(dev, 1);
@@ -1021,17 +1050,11 @@ static int fpc1020_probe(struct platform_device *pdev)
 	fpc1020->wait_finger_down = false;
 #ifndef FPC_DRM_INTERFACE_WA
 	INIT_WORK(&fpc1020->work, notification_work);
-#endif
 	fpc1020->fb_notifier = fpc_notif_block;
 	mi_drm_register_client(&fpc1020->fb_notifier);
+#endif
 
 	//rc = hw_reset(fpc1020);
-
-	if (msm_gpio_mpm_wake_set(121, true)) {
-		dev_info(dev, "%s: GPIO 121 wake set failed!\n", __func__);
-	} else {
-		dev_info(dev, "%s: GPIO 121 wake set success!\n", __func__);
-	}
 
 	dev_info(dev, "%s: ok\n", __func__);
 
@@ -1044,7 +1067,9 @@ static int fpc1020_remove(struct platform_device *pdev)
 {
 	struct fpc1020_data *fpc1020 = platform_get_drvdata(pdev);
 
+#ifndef FPC_DRM_INTERFACE_WA
 	mi_drm_unregister_client(&fpc1020->fb_notifier);
+#endif
 	sysfs_remove_group(&pdev->dev.kobj, &attribute_group);
 	mutex_destroy(&fpc1020->lock);
 	wakeup_source_unregister(fpc1020->ttw_wl);
