@@ -451,7 +451,6 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC, "%s", NAME_ARRAY[0]);
 	}
 #endif
-
 	if (is_async &&
 	    alloc->free_async_space < size + sizeof(struct binder_buffer)) {
 		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC,
@@ -459,10 +458,10 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 			      alloc->pid, size);
 		return ERR_PTR(-ENOSPC);
 	}
-
+	
 	/* Pad 0-size buffers so they get assigned unique addresses */
 	size = max(size, sizeof(void *));
-
+	
 	while (n) {
 		buffer = rb_entry(n, struct binder_buffer, rb_node);
 		BUG_ON(!buffer->free);
@@ -728,7 +727,6 @@ static void binder_free_buf_locked(struct binder_alloc *alloc,
 
 	if (buffer->async_transaction) {
 		alloc->free_async_space += buffer_size + sizeof(struct binder_buffer);
-
 		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC_ASYNC,
 			     "%d: binder_free_buf size %zd async free %zd\n",
 			      alloc->pid, size, alloc->free_async_space);
