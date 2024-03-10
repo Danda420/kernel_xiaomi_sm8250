@@ -101,7 +101,7 @@ config LOCALVERSION
 config MIHW
 	bool "XiaoMi kernel optimization"
 	default n
-	sselect BINDER_OPT
+	select BINDER_OPT
 	select CAM_RECLAIM
 	select LAST_TOUCH_EVENTS
 	select MI_FRAGMENTION
