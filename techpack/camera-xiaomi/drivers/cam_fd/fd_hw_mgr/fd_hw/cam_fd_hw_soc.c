@@ -135,7 +135,6 @@ uint32_t cam_fd_soc_register_read(struct cam_hw_soc_info *soc_info,
 	return reg_value;
 }
 
-
 int cam_fd_soc_enable_resources(struct cam_hw_soc_info *soc_info)
 {
 	struct cam_fd_soc_private *soc_private = soc_info->soc_private;

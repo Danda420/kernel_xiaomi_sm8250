@@ -81,7 +81,7 @@ enum cam_csid_path_halt_mode {
 };
 
 /**
- *enum cam_csid_path_timestamp_stb_sel - select the sof/eofmiui.com strobes used to
+ *enum cam_csid_path_timestamp_stb_sel - select the sof/eof strobes used to
  *        capture the timestamp
  */
 enum cam_csid_path_timestamp_stb_sel {
@@ -545,7 +545,7 @@ struct cam_ife_csid_path_cfg {
  * @clk_rate                  Clock rate
  * @sof_irq_triggered:        Flag is set on receiving event to enable sof irq
  *                            incase of SOF freeze.
- * @is_resetting: informs whether reset is started or not.
+ * @is_resetting:             informs whether reset is started or not.
  * @irq_debug_cnt:            Counter to track sof irq's when above flag is set.
  * @error_irq_count           Error IRQ count, if continuous error irq comes
  *                            need to stop the CSID and mask interrupts.

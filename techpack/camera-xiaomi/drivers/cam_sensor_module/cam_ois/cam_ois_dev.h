@@ -27,6 +27,7 @@
 
 #define ENABLE_OIS_EIS
 #define OIS_DATA_ADDR 0x8A
+#define OIS_TELE_DATA_ADDR 0x1100
 
 enum cam_ois_state {
 	CAM_OIS_INIT,
@@ -89,6 +90,11 @@ struct ois_data_eis_t {
     uint64_t data_timestamp;
     uint8_t  data[52];
 };
+
+struct ois_tele_data_eis_t {
+    uint64_t data_timestamp;
+    uint8_t  data[48];
+};
 #endif
 /**
  * struct cam_ois_ctrl_t - OIS ctrl private data
@@ -102,7 +108,6 @@ struct ois_data_eis_t {
  * @bridge_intf     :   bridge interface params
  * @i2c_init_data   :   ois i2c init settings
  * @i2c_mode_data   :   ois i2c mode settings
- * @i2c_time_data   :   ois i2c time write settings
  * @i2c_calib_data  :   ois i2c calib settings
  * @ois_device_type :   ois device type
  * @cam_ois_state   :   ois_device_state
@@ -112,8 +117,6 @@ struct ois_data_eis_t {
  * @device_name     :   Device name
  * @i2c_pre_init_data:  ois i2c pre init settings
  * @is_ois_pre_init :   flag for pre init settings
- * @i2c_pre_init_data:  ois i2c post init settings
- * @is_ois_post_init :   flag for post init settings
  *
  */
 struct cam_ois_ctrl_t {
@@ -129,19 +132,18 @@ struct cam_ois_ctrl_t {
 	struct i2c_settings_array i2c_init_data;
 	struct i2c_settings_array i2c_calib_data;
 	struct i2c_settings_array i2c_mode_data;
-	struct i2c_settings_array i2c_time_data;
 	enum msm_camera_device_type_t ois_device_type;
 	enum cam_ois_state cam_ois_state;
 	char ois_name[32];
 	uint8_t ois_fw_flag;
 	uint8_t is_ois_calib;
 	struct cam_ois_opcode opcode;
-	//xiaomi add begin
 	struct i2c_settings_array i2c_pre_init_data;
 	uint8_t is_ois_pre_init;
-	struct i2c_settings_array i2c_post_init_data;
-	uint8_t is_ois_post_init;
-	//xiaomi add end
+#ifdef ENABLE_OIS_EIS
+    struct ois_data_eis_t ois_data;
+    struct ois_tele_data_eis_t ois_tele_data;
+#endif
 };
 
 #endif /*_CAM_OIS_DEV_H_ */

@@ -691,7 +691,6 @@ map_hw_fail:
 	cam_mem_put_slot(idx);
 slot_fail:
 	dma_buf_put(dmabuf);
-	// xiaomi add
 	fput(dmabuf->file);
 	put_unused_fd(fd);
 	return rc;
@@ -816,7 +815,7 @@ static int cam_mem_util_unmap_hw_va(int32_t idx,
 	fd = tbl.bufq[idx].fd;
 
 	CAM_DBG(CAM_MEM,
-		"unmap_hw_va : idx=%d, fd=%x, flags=0x%x, num_hdls=%d, client=%d",
+		"unmap_hw_va : idx=%d, fd=%d, flags=0x%x, num_hdls=%d, client=%d",
 		idx, fd, flags, num_hdls, client);
 
 	if (flags & CAM_MEM_FLAG_PROTECTED_MODE) {
