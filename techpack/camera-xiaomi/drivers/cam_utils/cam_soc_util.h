@@ -30,7 +30,7 @@
 #define CAM_SOC_MAX_BASE            CAM_SOC_MAX_BLOCK
 
 /* maximum number of device regulator */
-#define CAM_SOC_MAX_REGULATOR       10//xiaomi add liuqinhong@xiaomi.com
+#define CAM_SOC_MAX_REGULATOR       10
 
 /* maximum number of device clock */
 #define CAM_SOC_MAX_CLK             32

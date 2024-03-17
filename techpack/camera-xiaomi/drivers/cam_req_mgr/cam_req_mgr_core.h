@@ -35,9 +35,6 @@
 
 #define MAXIMUM_RETRY_ATTEMPTS 3
 
-#define MINIMUM_WORKQUEUE_SCHED_TIME_IN_MS 5
-
-
 #define VERSION_1  1
 #define VERSION_2  2
 
@@ -256,14 +253,12 @@ struct cam_req_mgr_slot {
  * @slot        : request slot holding incoming request id and bubble info.
  * @rd_idx      : indicates slot index currently in process.
  * @wr_idx      : indicates slot index to hold new upcoming req.
- * @last_applied_idx : indicates slot index last applied successfully.
  */
 struct cam_req_mgr_req_queue {
 	int32_t                     num_slots;
 	struct cam_req_mgr_slot     slot[MAX_REQ_SLOTS];
 	int32_t                     rd_idx;
 	int32_t                     wr_idx;
-	int32_t                     last_applied_idx;
 };
 
 /**
@@ -348,7 +343,6 @@ struct cam_req_mgr_connected_device {
  *                         as part of shutdown.
  * @sof_timestamp_value  : SOF timestamp value
  * @prev_sof_timestamp   : Previous SOF timestamp value
- * @last_applied_jiffies : Record the jiffies of last applied req
  */
 struct cam_req_mgr_core_link {
 	int32_t                              link_hdl;
@@ -379,7 +373,6 @@ struct cam_req_mgr_core_link {
 	bool                                 is_shutdown;
 	uint64_t                             sof_timestamp;
 	uint64_t                             prev_sof_timestamp;
-	uint64_t                             last_applied_jiffies;
 };
 
 /**

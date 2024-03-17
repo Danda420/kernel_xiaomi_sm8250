@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
 #include "cam_cci_core.h"
 #include "cam_cci_dev.h"
+
 
 static int disable_optmz;
 module_param(disable_optmz, int, 0644);
@@ -473,25 +474,26 @@ static int32_t cam_cci_calc_cmd_len(struct cci_device *cci_dev,
 		len = data_len + addr_len;
 		pack_max_len = size < (cci_dev->payload_size-len) ?
 			size : (cci_dev->payload_size-len);
-		/* xiaomi add a flag to disable this optimization*/
-		if ((!c_ctrl->cci_info->disable_optmz) && (!disable_optmz)) {
-		for (i = 0; i < pack_max_len;) {
-			if (cmd->delay || ((cmd - i2c_cmd) >= (cmd_size - 1)))
-				break;
-			if (cmd->reg_addr + 1 ==
-				(cmd+1)->reg_addr) {
-				len += data_len;
-				if (len > cci_dev->payload_size) {
-					len = len - data_len;
+		if ((!c_ctrl->cci_info->disable_optmz) && (!disable_optmz))
+		{
+			CAM_DBG(CAM_CCI, "enable writing optimization for 0x%02X", c_ctrl->cci_info->sid<<1);
+			for (i = 0; i < pack_max_len;) {
+				if (cmd->delay || ((cmd - i2c_cmd) >= (cmd_size - 1)))
+					break;
+				if (cmd->reg_addr + 1 ==
+					(cmd+1)->reg_addr) {
+					len += data_len;
+					if (len > cci_dev->payload_size) {
+						len = len - data_len;
+						break;
+					}
+					(*pack)++;
+				} else {
 					break;
 				}
-				(*pack)++;
-			} else {
-				break;
+				i += data_len;
+				cmd++;
 			}
-			i += data_len;
-			cmd++;
-		}
 		}
 	}
 
@@ -866,7 +868,8 @@ static int32_t cam_cci_data_queue(struct cci_device *cci_dev,
 
 	rc = cam_cci_transfer_end(cci_dev, master, queue);
 	if (rc < 0) {
-		CAM_ERR(CAM_CCI, "failed rc %d", rc);
+		CAM_ERR(CAM_CCI, "Slave: 0x%x failed rc %d",
+			(c_ctrl->cci_info->sid << 1), rc);
 		return rc;
 	}
 
@@ -1732,7 +1735,6 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	int32_t rc = 0;
 	struct cci_device *cci_dev = v4l2_get_subdevdata(sd);
 	enum cci_i2c_master_t master = MASTER_MAX;
-	CAM_DBG(CAM_CCI, "cmd %d", cci_ctrl->cmd);
 
 	if (!cci_dev) {
 		CAM_ERR(CAM_CCI, "CCI_DEV IS NULL");
@@ -1754,6 +1756,7 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 		CAM_WARN(CAM_CCI, "CCI hardware is resetting");
 		return -EAGAIN;
 	}
+	CAM_DBG(CAM_CCI, "master = %d, cmd = %d", master, cci_ctrl->cmd);
 
 	switch (cci_ctrl->cmd) {
 	case MSM_CCI_INIT:
@@ -1769,7 +1772,6 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	case MSM_CCI_I2C_READ:
 		mutex_lock(&cci_dev->init_mutex);
 		rc = cam_cci_read_bytes(sd, cci_ctrl);
-		/* Added by qudao1@xiaomi.com */
 		if (rc < 0) {
 			CAM_ERR(CAM_CCI, "cam cci err %d , read, slav 0x%x on dev/master %d/%d",
 				rc, cci_ctrl->cci_info->sid << 1,
@@ -1777,7 +1779,6 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 				cci_ctrl->cci_info->cci_i2c_master);
 		}
 		mutex_unlock(&cci_dev->init_mutex);
-		/* End of Added by qudao1@xiaomi.com */
 		break;
 	case MSM_CCI_I2C_WRITE:
 	case MSM_CCI_I2C_WRITE_SEQ:
@@ -1787,7 +1788,6 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	case MSM_CCI_I2C_WRITE_SYNC_BLOCK:
 		mutex_lock(&cci_dev->init_mutex);
 		rc = cam_cci_write(sd, cci_ctrl);
-		/* Added by qudao1@xiaomi.com */
 		if (rc < 0) {
 			CAM_ERR(CAM_CCI, "cam cci err %d , write type %d , slav 0x%x on dev/master %d/%d",
 				rc, cci_ctrl->cmd,
@@ -1796,7 +1796,6 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 				cci_ctrl->cci_info->cci_i2c_master);
 		}
 		mutex_unlock(&cci_dev->init_mutex);
-		/* End of Added by qudao1@xiaomi.com */
 		break;
 	case MSM_CCI_GPIO_WRITE:
 		break;
