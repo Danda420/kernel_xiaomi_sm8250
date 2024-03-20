@@ -66,7 +66,7 @@ set_perm_recursive() {
 ### dump_boot functions:
 # split_boot (dump and split image only)
 split_boot() {
-  local splitfail;
+  local dumpfail;
 
   if [ ! -e "$(echo $block | cut -d\  -f1)" ]; then
     abort "Invalid partition. Aborting...";
@@ -82,9 +82,7 @@ split_boot() {
   else
     dd if=$block of=$bootimg $customdd;
   fi;
-  if [ $? != 0 ]; then
-    abort "Dumping image failed. Aborting...";
-  fi;
+  [ $? != 0 ] && dumpfail=1;
 
   mkdir -p $split_img;
   cd $split_img;
@@ -94,7 +92,7 @@ split_boot() {
       $bin/elftool unpack -i $bootimg -o elftool_out;
     fi;
     $bin/unpackelf -i $bootimg;
-    [ $? != 0 ] && splitfail=1;
+    [ $? != 0 ] && dumpfail=1;
     mv -f boot.img-kernel kernel.gz;
     mv -f boot.img-ramdisk ramdisk.cpio.gz;
     mv -f boot.img-cmdline cmdline.txt 2>/dev/null;
@@ -121,7 +119,7 @@ split_boot() {
     grep "Address:" header | cut -c15- > boot.img-addr;
     grep "Point:" header | cut -c15- > boot.img-ep;
     $bin/dumpimage -p 0 -o kernel.gz boot-trimmed.img;
-    [ $? != 0 ] && splitfail=1;
+    [ $? != 0 ] && dumpfail=1;
     case $(cat boot.img-type) in
       Multi) $bin/dumpimage -p 1 -o ramdisk.cpio.gz boot-trimmed.img;;
       RAMDisk) mv -f kernel.gz ramdisk.cpio.gz;;
@@ -131,13 +129,13 @@ split_boot() {
   else
     (set -o pipefail; $bin/magiskboot unpack -h $bootimg 2>&1 | tee infotmp >&2);
     case $? in
-      1) splitfail=1;;
+      1) dumpfail=1;;
       2) touch chromeos;;
     esac;
   fi;
 
-  if [ $? != 0 -o "$splitfail" ]; then
-    abort "Splitting image failed. Aborting...";
+  if [ $? != 0 -o "$dumpfail" ]; then
+    abort "Dumping/splitting image failed. Aborting...";
   fi;
   cd $home;
 }
@@ -570,7 +568,6 @@ write_boot() {
   flash_generic vendor_boot; # temporary until hdr v4 can be unpacked/repacked fully by magiskboot
   flash_generic vendor_kernel_boot; # temporary until hdr v4 can be unpacked/repacked fully by magiskboot
   flash_generic vendor_dlkm;
-  flash_generic system_dlkm;
   flash_generic dtbo;
 }
 ###
