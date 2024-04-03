@@ -880,7 +880,12 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 	if (likely(is_zygote_child)) {
 		// if spawned process is non user app process, run ksu_try_umount()
 		if (unlikely(new_uid.val < 10000 && new_uid.val >= 1000)) {
-			goto out_ksu_try_umount;
+			struct path path;
+			// umount for the system process if path "/data/adb/susfs_umount_for_zygote_system_process" exists
+			if (!kern_path("/data/adb/susfs_umount_for_zygote_system_process", 0, &path)) {
+				path_put(&path);
+				goto out_ksu_try_umount;
+			}
 		}
 	}
 #endif
