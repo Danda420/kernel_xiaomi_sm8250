@@ -49,7 +49,7 @@
 
 #define TASK_STRUCT_NON_ROOT_USER_APP_PROC BIT(24)
 
-
+#define MAGIC_MOUNT_WORKDIR "/debug_ramdisk/workdir"
 
 
 #endif
