@@ -537,24 +537,24 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 			return 0;
 		}
 #endif //#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-#ifdef CONFIG_KSU_SUSFS_SPOOF_PROC_CMDLINE
-		if (arg2 == CMD_SUSFS_SET_PROC_CMDLINE) {
+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+		if (arg2 == CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG) {
 			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, SUSFS_FAKE_PROC_CMDLINE_SIZE)) {
-				pr_err("susfs: CMD_SUSFS_SET_PROC_CMDLINE -> arg3 is not accessible\n");
+			if (!ksu_access_ok((void __user*)arg3, SUSFS_FAKE_CMDLINE_OR_BOOTCONFIG_SIZE)) {
+				pr_err("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> arg3 is not accessible\n");
 				return 0;
 			}
 			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_SET_PROC_CMDLINE -> arg5 is not accessible\n");
+				pr_err("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> arg5 is not accessible\n");
 				return 0;
 			}
-			error = susfs_set_proc_cmdline((char __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_SET_PROC_CMDLINE -> ret: %d\n", error);
+			error = susfs_set_cmdline_or_bootconfig((char __user*)arg3);
+			pr_info("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> ret: %d\n", error);
 			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
 				pr_info("susfs: copy_to_user() failed\n");
 			return 0;
 		}
-#endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_PROC_CMDLINE
+#endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 		if (arg2 == CMD_SUSFS_ADD_OPEN_REDIRECT) {
 			int error = 0;
@@ -635,7 +635,7 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 #ifdef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
 			enabled_features |= (1 << 10);
 #endif
-#ifdef CONFIG_KSU_SUSFS_SPOOF_PROC_CMDLINE
+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
 			enabled_features |= (1 << 11);
 #endif
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
