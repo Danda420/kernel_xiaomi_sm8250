@@ -14,31 +14,30 @@
 #include <linux/fdtable.h>
 #include <linux/statfs.h>
 #include <linux/susfs.h>
-#ifdef CONFIG_KSU_SUSFS_SUS_SU
-#include <linux/sus_su.h>
-#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,15,0)
 #include "pnode.h"
+#endif
 
-spinlock_t susfs_spin_lock;
+static spinlock_t susfs_spin_lock;
 
 extern bool susfs_is_current_ksu_domain(void);
 
 #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-bool is_log_enable __read_mostly = true;
-#define SUSFS_LOGI(fmt, ...) if (is_log_enable) pr_info("susfs:[%u][%d][%s] " fmt, current_uid().val, current->pid, __func__, ##__VA_ARGS__)
-#define SUSFS_LOGE(fmt, ...) if (is_log_enable) pr_err("susfs:[%u][%d][%s]" fmt, current_uid().val, current->pid, __func__, ##__VA_ARGS__)
+bool susfs_is_log_enabled __read_mostly = true;
+#define SUSFS_LOGI(fmt, ...) if (susfs_is_log_enabled) pr_info("susfs:[%u][%d][%s] " fmt, current_uid().val, current->pid, __func__, ##__VA_ARGS__)
+#define SUSFS_LOGE(fmt, ...) if (susfs_is_log_enabled) pr_err("susfs:[%u][%d][%s]" fmt, current_uid().val, current->pid, __func__, ##__VA_ARGS__)
 #else
 #define SUSFS_LOGI(fmt, ...) 
 #define SUSFS_LOGE(fmt, ...) 
 #endif
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-extern void try_umount(const char *mnt, bool check_mnt, int flags);
+extern void ksu_try_umount(const char *mnt, bool check_mnt, int flags);
 #endif
 
 /* sus_path */
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-DEFINE_HASHTABLE(SUS_PATH_HLIST, 10);
+static DEFINE_HASHTABLE(SUS_PATH_HLIST, 10);
 static int susfs_update_sus_path_inode(char *target_pathname) {
 	struct path p;
 	struct inode *inode = NULL;
@@ -132,7 +131,7 @@ int susfs_sus_ino_for_filldir64(unsigned long ino) {
 
 /* sus_mount */
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-LIST_HEAD(LH_SUS_MOUNT);
+static LIST_HEAD(LH_SUS_MOUNT);
 static void susfs_update_sus_mount_inode(char *target_pathname) {
 	struct path p;
 	struct inode *inode = NULL;
@@ -260,7 +259,7 @@ set_inode_sus_mount:
 
 /* sus_kstat */
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-DEFINE_HASHTABLE(SUS_KSTAT_HLIST, 10);
+static DEFINE_HASHTABLE(SUS_KSTAT_HLIST, 10);
 static int susfs_update_sus_kstat_inode(char *target_pathname) {
 	struct path p;
 	struct inode *inode = NULL;
@@ -459,7 +458,7 @@ void susfs_sus_ino_for_show_map_vma(unsigned long ino, dev_t *out_dev, unsigned 
 
 /* try_umount */
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-LIST_HEAD(LH_TRY_UMOUNT_PATH);
+static LIST_HEAD(LH_TRY_UMOUNT_PATH);
 int susfs_add_try_umount(struct st_susfs_try_umount* __user user_info) {
 	struct st_susfs_try_umount_list *cursor = NULL, *temp = NULL;
 	struct st_susfs_try_umount_list *new_list = NULL;
@@ -499,9 +498,9 @@ void susfs_try_umount(uid_t target_uid) {
 	list_for_each_entry_safe(cursor, temp, &LH_TRY_UMOUNT_PATH, list) {
 		SUSFS_LOGI("umounting '%s' for uid: %d\n", cursor->info.target_pathname, target_uid);
 		if (cursor->info.mnt_mode == TRY_UMOUNT_DEFAULT) {
-			try_umount(cursor->info.target_pathname, false, 0);
+			ksu_try_umount(cursor->info.target_pathname, false, 0);
 		} else if (cursor->info.mnt_mode == TRY_UMOUNT_DETACH) {
-			try_umount(cursor->info.target_pathname, false, MNT_DETACH);
+			ksu_try_umount(cursor->info.target_pathname, false, MNT_DETACH);
 		} else {
 			SUSFS_LOGE("failed umounting '%s' for uid: %d, mnt_mode '%d' not supported\n",
 							cursor->info.target_pathname, target_uid, cursor->info.mnt_mode);
@@ -556,8 +555,8 @@ out_free_pathname:
 
 /* spoof_uname */
 #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-spinlock_t susfs_uname_spin_lock;
-struct st_susfs_uname my_uname;
+static spinlock_t susfs_uname_spin_lock;
+static struct st_susfs_uname my_uname;
 static void susfs_my_uname_init(void) {
 	memset(&my_uname, 0, sizeof(my_uname));
 }
@@ -604,9 +603,9 @@ int susfs_spoof_uname(struct new_utsname* tmp) {
 #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
 void susfs_set_log(bool enabled) {
 	spin_lock(&susfs_spin_lock);
-	is_log_enable = enabled;
+	susfs_is_log_enabled = enabled;
 	spin_unlock(&susfs_spin_lock);
-	if (is_log_enable) {
+	if (susfs_is_log_enabled) {
 		pr_info("susfs: enable logging to kernel");
 	} else {
 		pr_info("susfs: disable logging to kernel");
@@ -614,9 +613,9 @@ void susfs_set_log(bool enabled) {
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
 
-/* spoof_bootconfig */
+/* spoof_proc_cmdline */
 #ifdef CONFIG_KSU_SUSFS_SPOOF_PROC_CMDLINE
-char *fake_proc_cmdline = NULL;
+static char *fake_proc_cmdline = NULL;
 int susfs_set_proc_cmdline(char* __user user_fake_proc_cmdline) {
 	int res;
 
@@ -653,7 +652,7 @@ int susfs_spoof_proc_cmdline(struct seq_file *m) {
 
 /* open_redirect */
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-DEFINE_HASHTABLE(OPEN_REDIRECT_HLIST, 10);
+static DEFINE_HASHTABLE(OPEN_REDIRECT_HLIST, 10);
 static int susfs_update_open_redirect_inode(struct st_susfs_open_redirect_hlist *new_entry) {
 	struct path path_target;
 	struct inode *inode_target;
@@ -748,47 +747,58 @@ struct filename* susfs_get_redirected_path(unsigned long ino) {
 /* sus_su */
 #ifdef CONFIG_KSU_SUSFS_SUS_SU
 bool susfs_is_sus_su_hooks_enabled __read_mostly = false;
+static int susfs_sus_su_working_mode = 0;
 extern void ksu_susfs_enable_sus_su(void);
 extern void ksu_susfs_disable_sus_su(void);
+
+int susfs_get_sus_su_working_mode(void) {
+	return susfs_sus_su_working_mode;
+}
+
 int susfs_sus_su(struct st_sus_su* __user user_info) {
 	struct st_sus_su info;
+	int last_working_mode = susfs_sus_su_working_mode;
 
 	if (copy_from_user(&info, user_info, sizeof(struct st_sus_su))) {
 		SUSFS_LOGE("failed copying from userspace\n");
 		return 1;
 	}
 
-	if (info.mode == SUS_SU_WITH_OVERLAY) {
-		sus_su_fifo_init(&info.maj_dev_num, info.drv_path);
-		ksu_susfs_enable_sus_su();
-		if (info.maj_dev_num < 0) {
-			SUSFS_LOGI("failed to get proper info.maj_dev_num: %d\n", info.maj_dev_num);
+	if (info.mode == SUS_SU_WITH_HOOKS) {
+		if (last_working_mode == SUS_SU_WITH_HOOKS) {
+			SUSFS_LOGE("current sus_su mode is already %d\n", SUS_SU_WITH_HOOKS);
 			return 1;
 		}
-		SUSFS_LOGI("core kprobe hooks for ksu are disabled!\n");
-		SUSFS_LOGI("sus_su driver '%s' is enabled!\n", info.drv_path);
-		if (copy_to_user(user_info, &info, sizeof(info)))
-			SUSFS_LOGE("copy_to_user() failed\n");
-		return 0;
-	} else if (info.mode == SUS_SU_WITH_HOOKS) {
+		if (last_working_mode != SUS_SU_DISABLED) {
+			SUSFS_LOGE("please make sure the current sus_su mode is %d first\n", SUS_SU_DISABLED);
+			return 2;
+		}
 		ksu_susfs_enable_sus_su();
+		susfs_sus_su_working_mode = SUS_SU_WITH_HOOKS;
 		susfs_is_sus_su_hooks_enabled = true;
 		SUSFS_LOGI("core kprobe hooks for ksu are disabled!\n");
 		SUSFS_LOGI("non-kprobe hook sus_su is enabled!\n");
-		SUSFS_LOGI("sus_su mode: SUS_SU_WITH_HOOKS\n");
+		SUSFS_LOGI("sus_su mode: %d\n", SUS_SU_WITH_HOOKS);
 		return 0;
-	} else if (info.mode == 0) {
-		susfs_is_sus_su_hooks_enabled = false;
-		ksu_susfs_disable_sus_su();
-		sus_su_fifo_exit(&info.maj_dev_num, info.drv_path);
-		if (info.maj_dev_num != -1) {
-			SUSFS_LOGI("failed to set proper info.maj_dev_num to '-1'\n");
+	} else if (info.mode == SUS_SU_DISABLED) {
+		if (last_working_mode == SUS_SU_DISABLED) {
+			SUSFS_LOGE("current sus_su mode is already %d\n", SUS_SU_DISABLED);
 			return 1;
 		}
-		SUSFS_LOGI("core kprobe hooks for ksu are enabled! sus_su driver '%s' is disabled!\n", info.drv_path);
+		susfs_is_sus_su_hooks_enabled = false;
+		ksu_susfs_disable_sus_su();
+		susfs_sus_su_working_mode = SUS_SU_DISABLED;
+		if (last_working_mode == SUS_SU_WITH_HOOKS) {
+			SUSFS_LOGI("core kprobe hooks for ksu are enabled!\n");
+			goto out;
+		}
+out:
 		if (copy_to_user(user_info, &info, sizeof(info)))
 			SUSFS_LOGE("copy_to_user() failed\n");
 		return 0;
+	} else if (info.mode == SUS_SU_WITH_OVERLAY) {
+		SUSFS_LOGE("sus_su mode %d is deprecated\n", SUS_SU_WITH_OVERLAY);
+		return 1;
 	}
 	return 1;
 }
@@ -801,7 +811,7 @@ void susfs_init(void) {
 	spin_lock_init(&susfs_uname_spin_lock);
 	susfs_my_uname_init();
 #endif
-	SUSFS_LOGI("susfs is initialized!\n");
+	SUSFS_LOGI("susfs is initialized! version: " SUSFS_VERSION " \n");
 }
 
 /* No module exit is needed becuase it should never be a loadable kernel module */

@@ -82,19 +82,19 @@ config KSU_SUSFS_SUS_OVERLAYFS
       - Effective on all processes.
 
 config KSU_SUSFS_TRY_UMOUNT
-    bool "Enable to use ksu's try_umount"
+    bool "Enable to use ksu's ksu_try_umount"
     depends on KSU_SUSFS
     default n
     help
-      - Allow using ksu's umount to umount other user-defined mount paths prior to ksu's default umount paths.
+      - Allow using ksu_try_umount to umount other user-defined mount paths prior to ksu's default umount paths.
       - Effective on all NO-root-access-granted processes.
 
 config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
-    bool "Enable to add bind mounts to ksu's try_umount automatically (experimental)"
+    bool "Enable to add bind mounts to ksu's ksu_try_umount automatically (experimental)"
     depends on KSU_SUSFS_TRY_UMOUNT
     default y
     help
-      - Automatically add binded mounts to ksu's try_umount.
+      - Automatically add binded mounts to ksu's ksu_try_umount.
       - No susfs command is needed in userspace.
       - Only mount operation from process with ksu domain will be checked.
 
@@ -143,17 +143,12 @@ config KSU_SUSFS_SUS_SU
     depends on KSU_SUSFS && KPROBES && HAVE_KPROBES && KPROBE_EVENTS
     default y
     help
-      - Allow user to enable or disable core ksu kprobes hooks temporarily in runtime. There are 2 modes for sus_su.
-      - Mode 1: when enabling sus_su, ksu kprobes will be disabled, and a fifo driver will be created in
-        /dev/[random_string] (for first time only), then user needs to mount the 'sus_su' to /system/bin/su using overlayfs or whatever
-        techniques, and run 'su' to get root shell from the fifo driver. Or, refer to the method in service.sh from module template.
-        ** sus_su userspace tool and an overlay mount is required **
-      - Mode 2: When enabling sus_su, ksu kprobes will be disabled, and the kernel inline hooks will be enabled,
-        just same as the su implementaion of non-gki kernel without kprobe supported.
-        ** Needs no extra userspace tools and mounts **
-      - When disabling sus_su, ksu kprobes will be enabled again, and the fifo driver will be deleted.
+      - Allow user to enable or disable core ksu kprobes hooks temporarily in runtime. There are 2 working modes for sus_su.
+      - Mode 0 (default): Disable sus_su, and enable ksu kprobe hooks for su instead.
+      - Mode 1 (deprecated): 
+      - Mode 2: Enable sus_su, and disable ksu kprobe hooks for su, which means the kernel inline hooks are enabled,
+                the same as the su implementaion of non-gki kernel without kprobe supported.
       - Only apps with root access granted by ksu manager are allowed to get root.
-      - Also overlayfs is required.
 
 endmenu
 
