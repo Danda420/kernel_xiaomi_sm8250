@@ -2862,9 +2862,6 @@ long do_mount(const char *dev_name, const char __user *dir_name,
 	struct path path;
 	unsigned int mnt_flags = 0, sb_flags;
 	int retval = 0;
-#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
-	char *tmp_dir_name;
-#endif
 
 	/* Discard magic */
 	if ((flags & MS_MGC_MSK) == MS_MGC_VAL)
@@ -2936,25 +2933,17 @@ long do_mount(const char *dev_name, const char __user *dir_name,
 	else if (flags & (MS_SHARED | MS_PRIVATE | MS_SLAVE | MS_UNBINDABLE))
 		retval = do_change_type(&path, flags);
 	else if (flags & MS_MOVE)
-#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
-	{
 		retval = do_move_mount(&path, dev_name);
-		if (!retval && susfs_is_current_ksu_domain()) {
-			tmp_dir_name = kmalloc(PAGE_SIZE, GFP_KERNEL);
-			if (tmp_dir_name) {
-				if (strncpy_from_user(tmp_dir_name, dir_name, PAGE_SIZE-1) > 0) {
-					susfs_auto_add_sus_ksu_default_mount(tmp_dir_name);
-				}
-				kfree(tmp_dir_name);
-			}
-		}
-	}
-#else
-		retval = do_move_mount(&path, dev_name);
-#endif
 	else
 		retval = do_new_mount(&path, type_page, sb_flags, mnt_flags,
 				      dev_name, data_page);
+#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
+	if (!retval && (!(flags & (MS_REMOUNT | MS_BIND | MS_SHARED | MS_PRIVATE | MS_SLAVE | MS_UNBINDABLE)))) {
+		if (susfs_is_current_ksu_domain()) {
+			susfs_auto_add_sus_ksu_default_mount(dir_name);
+		}
+	}
+#endif
 dput_out:
 	path_put(&path);
 	return retval;

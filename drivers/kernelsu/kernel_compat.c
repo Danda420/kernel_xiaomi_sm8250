@@ -82,7 +82,7 @@ struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
 ssize_t ksu_kernel_read_compat(struct file *p, void *buf, size_t count,
 			       loff_t *pos)
 {
- 	return kernel_read(p, buf, count, pos);
+	return kernel_read(p, buf, count, pos);
 }
 
 ssize_t ksu_kernel_write_compat(struct file *p, const void *buf, size_t count,
