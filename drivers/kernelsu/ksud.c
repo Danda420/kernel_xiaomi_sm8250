@@ -57,6 +57,10 @@ bool ksu_execveat_hook __read_mostly = true;
 bool ksu_input_hook __read_mostly = true;
 #endif
 
+#ifdef CONFIG_KSU_SUSFS_SUS_SU
+bool ksu_devpts_hook = false;
+#endif
+
 u32 ksu_devpts_sid;
 
 void on_post_fs_data(void)
@@ -486,6 +490,17 @@ static int sys_execve_handler_pre(struct kprobe *p, struct pt_regs *regs)
 					NULL);
 }
 
+// remove this later!
+__maybe_unused static int vfs_read_handler_pre(struct kprobe *p,
+					       struct pt_regs *regs)
+{
+	struct file **file_ptr = (struct file **)&PT_REGS_PARM1(regs);
+	char __user **buf_ptr = (char **)&PT_REGS_PARM2(regs);
+	size_t *count_ptr = (size_t *)&PT_REGS_PARM3(regs);
+	loff_t **pos_ptr = (loff_t **)&PT_REGS_CCALL_PARM4(regs);
+	return ksu_handle_vfs_read(file_ptr, buf_ptr, count_ptr, pos_ptr);
+}
+
 static int sys_read_handler_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	struct pt_regs *real_regs = PT_REAL_REGS(regs);
@@ -514,7 +529,6 @@ static struct kprobe vfs_read_kp = {
 	.symbol_name = SYS_READ_SYMBOL,
 	.pre_handler = sys_read_handler_pre,
 };
-
 
 static struct kprobe input_event_kp = {
 	.symbol_name = "input_event",
