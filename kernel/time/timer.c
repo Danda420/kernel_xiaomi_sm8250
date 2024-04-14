@@ -1436,7 +1436,6 @@ int timer_delete_sync(struct timer_list *timer)
 	}
 }
 EXPORT_SYMBOL(timer_delete_sync);
-#endif
 
 static void call_timer_fn(struct timer_list *timer,
 			  void (*fn)(struct timer_list *),

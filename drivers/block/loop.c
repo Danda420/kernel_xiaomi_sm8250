@@ -1314,17 +1314,8 @@ static int loop_clr_fd(struct loop_device *lo)
 	return __loop_clr_fd(lo, false);
 }
 
-/**
- * loop_set_status_from_info - configure device from loop_info
- * @lo: struct loop_device to configure
- * @info: struct loop_info64 to configure the device with
- *
- * Configures the loop device parameters according to the passed
- * in loop_info64 configuration.
- */
 static int
-loop_set_status_from_info(struct loop_device *lo,
-			  const struct loop_info64 *info)
+loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
 {
 	int err;
 	struct block_device *bdev;
@@ -1370,7 +1361,7 @@ loop_set_status_from_info(struct loop_device *lo,
 
 	err = loop_set_status_from_info(lo, info);
 	if (err)
-		return err;
+		goto out_unfreeze;
 
 	/* Mask out flags that can't be set using LOOP_SET_STATUS. */
 	lo->lo_flags &= LOOP_SET_STATUS_SETTABLE_FLAGS;
@@ -1385,8 +1376,7 @@ loop_set_status_from_info(struct loop_device *lo,
 		loop_set_size(lo, new_size);
 	}
 
-	lo->lo_offset = info->lo_offset;
-	lo->lo_sizelimit = info->lo_sizelimit;
+	loop_config_discard(lo);
 
 	/* update dio if lo_offset or transfer is changed */
 	__loop_update_dio(lo, lo->use_dio);
