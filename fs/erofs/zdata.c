@@ -284,15 +284,8 @@ int erofs_try_to_free_cached_page(struct address_space *mapping,
 		}
 		erofs_workgroup_unfreeze(&pcl->obj, 1);
 
-<<<<<<< HEAD
-		if (ret) {
-			ClearPagePrivate(page);
-			put_page(page);
-		}
-=======
 		if (ret)
 			detach_page_private(page);
->>>>>>> 959804efaf77 (erofs: Switch to attach/detach_page_private)
 	}
 	return ret;
 }
@@ -1147,16 +1140,10 @@ out_to_managed_cache:
 		page->mapping = Z_EROFS_MAPPING_STAGING;
 		goto out;
 	}
-<<<<<<< HEAD
-
-	set_page_private(page, (unsigned long)pcl);
-	SetPagePrivate(page);
-=======
 	attach_page_private(page, pcl);
 	/* drop a refcount added by allocpage (then we have 2 refs here) */
 	put_page(page);
 
->>>>>>> 959804efaf77 (erofs: Switch to attach/detach_page_private)
 out:	/* the only exit (for tracing and debugging) */
 	return page;
 }
@@ -1238,16 +1225,20 @@ static void move_to_bypass_jobqueue(struct z_erofs_pcluster *pcl,
 	qtail[JQ_BYPASS] = &pcl->next;
 }
 
-static bool postsubmit_is_all_bypassed(struct z_erofs_unzip_io *q[],
-				       unsigned int nr_bios,
-				       bool force_fg)
+static void z_erofs_submit_queue(struct super_block *sb,
+				 z_erofs_next_pcluster_t owned_head,
+				 struct list_head *pagepool,
+				 struct z_erofs_decompressqueue *fgq,
+				 bool *force_fg)
 {
-	/*
-	 * although background is preferred, no one is pending for submission.
-	 * don't issue workqueue for decompression but drop it directly instead.
-	 */
-	if (force_fg || nr_bios)
-		return false;
+	struct erofs_sb_info *const sbi = EROFS_SB(sb);
+	z_erofs_next_pcluster_t qtail[NR_JOBQUEUES];
+	struct z_erofs_decompressqueue *q[NR_JOBQUEUES];
+	void *bi_private;
+	/* since bio will be NULL, no need to initialize last_index */
+	pgoff_t last_index;
+	unsigned int nr_bios = 0;
+	struct bio *bio = NULL;
 
 	kvfree(container_of(q[JQ_SUBMIT], struct z_erofs_unzip_io_sb, io));
 	return true;
@@ -1322,12 +1313,14 @@ submit_bio_retry:
 		if (!bio) {
 			bio = bio_alloc(GFP_NOIO, BIO_MAX_PAGES);
 
-			bio->bi_end_io = z_erofs_vle_read_endio;
-			bio_set_dev(bio, sb->s_bdev);
-			bio->bi_iter.bi_sector = (sector_t)(first_index + i) <<
-				LOG_SECTORS_PER_BLOCK;
-			bio->bi_private = bi_private;
-			bio->bi_opf = REQ_OP_READ;
+				bio->bi_end_io = z_erofs_decompressqueue_endio;
+				bio_set_dev(bio, sb->s_bdev);
+				bio->bi_iter.bi_sector = (sector_t)cur <<
+					LOG_SECTORS_PER_BLOCK;
+				bio->bi_private = bi_private;
+				bio->bi_opf = REQ_OP_READ;
+				++nr_bios;
+			}
 
 			++nr_bios;
 		}
@@ -1358,16 +1351,15 @@ skippage:
 	return true;
 }
 
-static void z_erofs_submit_and_unzip(struct super_block *sb,
-				     struct z_erofs_collector *clt,
-				     struct list_head *pagepool,
-				     bool force_fg)
+static void z_erofs_runqueue(struct super_block *sb,
+			     struct z_erofs_collector *clt,
+			     struct list_head *pagepool, bool force_fg)
 {
 	struct z_erofs_unzip_io io[NR_JOBQUEUES];
 
-	if (!z_erofs_vle_submit_all(sb, clt->owned_head,
-				    pagepool, io, force_fg))
+	if (clt->owned_head == Z_EROFS_PCLUSTER_TAIL)
 		return;
+	z_erofs_submit_queue(sb, clt->owned_head, pagepool, io, &force_fg);
 
 	/* decompress no I/O pclusters immediately */
 	z_erofs_vle_unzip_all(sb, &io[JQ_BYPASS], pagepool);
@@ -1398,7 +1390,7 @@ static int z_erofs_vle_normalaccess_readpage(struct file *file,
 	(void)z_erofs_collector_end(&f.clt);
 
 	/* if some compressed cluster ready, need submit them anyway */
-	z_erofs_submit_and_unzip(inode->i_sb, &f.clt, &pagepool, false);
+	z_erofs_runqueue(inode->i_sb, &f.clt, &pagepool, true);
 
 	if (err)
 		erofs_err(inode->i_sb, "failed to read, err [%d]", err);
@@ -1475,7 +1467,7 @@ static int z_erofs_vle_normalaccess_readpages(struct file *filp,
 
 	(void)z_erofs_collector_end(&f.clt);
 
-	z_erofs_submit_and_unzip(inode->i_sb, &f.clt, &pagepool, false);
+	z_erofs_runqueue(inode->i_sb, &f.clt, &pagepool, sync);
 
 	if (f.map.mpage)
 		put_page(f.map.mpage);
