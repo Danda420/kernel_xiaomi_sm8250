@@ -1,8 +1,8 @@
 #ifndef __KSU_H_KSU
 #define __KSU_H_KSU
 
-#include "linux/types.h"
-#include "linux/workqueue.h"
+#include <linux/types.h>
+#include <linux/workqueue.h>
 
 #ifdef CONFIG_GIT_VERSION
 #define KSU_GIT_VERSION CONFIG_GIT_VERSION
