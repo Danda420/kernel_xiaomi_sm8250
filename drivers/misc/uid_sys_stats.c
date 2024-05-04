@@ -43,7 +43,7 @@ DECLARE_HASHTABLE(app_hash_table, UID_HASH_BITS);
  * uid_lock[bkt] ensure consistency of hash_table[bkt]
  */
 spinlock_t uid_lock[UID_HASH_NUMS];
-static DEFINE_RT_MUTEX(pid_lock);
+spinlock_t pid_lock[UID_HASH_NUMS];
 
 static struct proc_dir_entry *cpu_parent;
 static struct proc_dir_entry *io_parent;
@@ -139,6 +139,26 @@ static inline void lock_uid_by_bkt(u32 bkt)
 static inline void unlock_uid_by_bkt(u32 bkt)
 {
 	spin_unlock(&uid_lock[bkt]);
+}
+
+static inline void lock_pid(uid_t uid)
+{
+	spin_lock(&pid_lock[hash_min(uid, HASH_BITS(hash_table))]);
+}
+
+static inline void unlock_pid(uid_t uid)
+{
+	spin_unlock(&pid_lock[hash_min(uid, HASH_BITS(hash_table))]);
+}
+
+static inline void lock_pid_by_bkt(u32 bkt)
+{
+	spin_lock(&pid_lock[bkt]);
+}
+
+static inline void unlock_pid_by_bkt(u32 bkt)
+{
+	spin_unlock(&pid_lock[bkt]);
 }
 
 static u64 compute_write_bytes(struct task_io_accounting *ioac)
@@ -499,7 +519,7 @@ static int sys_app_cputime_show(struct seq_file *m, void *v)
 	struct pid_entry *pid_entry = NULL;
 	struct task_struct *task, *temp;
 	struct user_namespace *user_ns = current_user_ns();
-	unsigned long bkt;
+	u32 bkt;
 	uid_t uid;
 	u64 sum_utime;
 	u64 sum_stime;
@@ -509,16 +529,21 @@ static int sys_app_cputime_show(struct seq_file *m, void *v)
 	const char *package_name;
 	u64 tmp_hash;
 
-	rt_mutex_lock(&pid_lock);
-
-	hash_for_each(app_hash_table, bkt, pid_entry, hash) {
-		pid_entry->active_stime = 0;
-		pid_entry->active_utime = 0;
+	for (bkt = 0, pid_entry = NULL; pid_entry == NULL &&
+		bkt < HASH_SIZE(hash_table); bkt++) {
+		lock_pid_by_bkt(bkt);
+		hlist_for_each_entry(pid_entry, &hash_table[bkt], hash) {
+			pid_entry->active_stime = 0;
+			pid_entry->active_utime = 0;
+		}
+		unlock_pid_by_bkt(bkt);
 	}
 
 	read_lock(&tasklist_lock);
 	do_each_thread(temp, task) {
 		uid = from_kuid_munged(user_ns, task_uid(task));
+		lock_pid(uid);
+
 		package_name = task->group_leader->comm;
 		tmp_hash = hash_string(package_name);
 		pid = task->tgid;
@@ -528,7 +553,7 @@ static int sys_app_cputime_show(struct seq_file *m, void *v)
 							package_name, pid);
 			if (!pid_entry) {
 				read_unlock(&tasklist_lock);
-				rt_mutex_unlock(&pid_lock);
+				unlock_pid(uid);
 				pr_err("%s: failed to the pid_entry for pid %d\n",
 					__func__, pid);
 				break;
@@ -537,23 +562,28 @@ static int sys_app_cputime_show(struct seq_file *m, void *v)
 			pid_entry->active_utime += utime;
 			pid_entry->active_stime += stime;
 		}
+		unlock_pid(uid);
 	} while_each_thread(temp, task);
 	read_unlock(&tasklist_lock);
 	sum_utime = 0;
 	sum_stime = 0;
-	hash_for_each(app_hash_table, bkt, pid_entry, hash) {
-		u64 total_utime = pid_entry->utime +
+	for (bkt = 0, pid_entry = NULL; pid_entry == NULL &&
+		bkt < HASH_SIZE(hash_table); bkt++) {
+		lock_uid_by_bkt(bkt);
+		hlist_for_each_entry(pid_entry, &hash_table[bkt], hash) {
+			u64 total_utime = pid_entry->utime +
 						pid_entry->active_utime;
-		u64 total_stime = pid_entry->stime +
+			u64 total_stime = pid_entry->stime +
 						pid_entry->active_stime;
-		seq_printf(m, "%s %llu %llu\n", pid_entry->package,
-			   ktime_to_us(total_utime), ktime_to_us(total_stime));
-		sum_utime += total_utime;
-		sum_stime += total_stime;
+			seq_printf(m, "%d: %llu %llu\n", pid_entry->pid,
+				ktime_to_us(total_utime), ktime_to_us(total_stime));
+			sum_utime += total_utime;
+			sum_stime += total_stime;
+		}
+		unlock_uid_by_bkt(bkt);
 	}
 	seq_printf(m, "total %llu %llu\n",
 			ktime_to_us(sum_utime), ktime_to_us(sum_stime));
-	rt_mutex_unlock(&pid_lock);
 	return 0;
 }
 
@@ -923,7 +953,7 @@ static int process_notifier(struct notifier_block *self,
 
 	add_uid_io_stats(uid_entry, task, UID_STATE_DEAD_TASKS);
 
-	rt_mutex_lock(&pid_lock);
+	lock_pid(uid);
 	uid = from_kuid_munged(current_user_ns(), task_uid(task));
 	pid = task->tgid;
 
@@ -942,7 +972,7 @@ static int process_notifier(struct notifier_block *self,
 	}
 
 pid_exit:
-	rt_mutex_unlock(&pid_lock);
+	unlock_pid(uid);
 
 exit:
 	unlock_uid(uid);
