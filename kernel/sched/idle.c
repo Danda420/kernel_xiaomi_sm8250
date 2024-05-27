@@ -423,12 +423,14 @@ static void check_preempt_curr_idle(struct rq *rq, struct task_struct *p, int fl
 
 static void put_prev_task_idle(struct rq *rq, struct task_struct *prev)
 {
+	dl_server_update_idle_time(rq, prev);
 }
 
 static void set_next_task_idle(struct rq *rq, struct task_struct *next)
 {
 	update_idle_core(rq);
 	schedstat_inc(rq->sched_goidle);
+	next->se.exec_start = rq_clock_task(rq);
 }
 
 #ifdef CONFIG_SMP
