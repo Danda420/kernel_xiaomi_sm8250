@@ -142,5 +142,6 @@ log.txt
 build
 build_munch
 build.sh
+moveall
 out/
 *.zip
