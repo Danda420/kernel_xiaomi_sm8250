@@ -96,7 +96,6 @@
 #ifndef WEAK
 #define WEAK(name)	   \
 	.weak name ASM_NL   \
-	ALIGN ASM_NL \
 	name:
 #endif
 
