@@ -4428,7 +4428,7 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 		 * comment for __cpuset_node_allowed().
 		 */
 		alloc_flags &= ~ALLOC_CPUSET;
-	} else if (unlikely(rt_task(current)) && !in_interrupt())
+	} else if (unlikely(realtime_task(current)) && !in_interrupt())
 		alloc_flags |= ALLOC_HARDER;
 
 	if (gfp_mask & __GFP_KSWAPD_RECLAIM)

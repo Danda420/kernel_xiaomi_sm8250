@@ -1821,7 +1821,7 @@ long hrtimer_nanosleep(const struct timespec64 *rqtp,
 	u64 slack;
 
 	slack = current->timer_slack_ns;
-	if (dl_task(current) || rt_task(current))
+	if (dl_task(current) || realtime_task(current))
 		slack = 0;
 
 	hrtimer_init_on_stack(&t.timer, clockid, mode);
