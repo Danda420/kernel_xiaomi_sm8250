@@ -1,0 +1,7 @@
+menu "MSM DRM driver"
+
+config DRM_DYNAMIC_REFRESH_RATE
+	bool
+	default y if ARCH_KONA || ARCH_LITO
+
+endmenu

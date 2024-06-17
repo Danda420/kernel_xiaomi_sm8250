@@ -1,6 +1,7 @@
 menu "Tech packages"
 
 source "techpack/data/Kconfig"
+source "techpack/display/Kconfig"
 source "techpack/wlan/Kconfig"
 
 menu "Camera packages"
