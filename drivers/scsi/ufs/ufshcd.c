@@ -6427,46 +6427,6 @@ static void ufshcd_slave_destroy(struct scsi_device *sdev)
 }
 
 /**
- * ufshcd_task_req_compl - handle task management request completion
- * @hba: per adapter instance
- * @index: index of the completed request
- * @resp: task management service response
- *
- * Returns non-zero value on error, zero on success
- */
-static int ufshcd_task_req_compl(struct ufs_hba *hba, u32 index, u8 *resp)
-{
-	struct utp_task_req_desc *task_req_descp;
-	struct utp_upiu_task_rsp *task_rsp_upiup;
-	unsigned long flags;
-	int ocs_value;
-	int task_result;
-
-	ufs_spin_lock_irqsave(hba->host->host_lock, flags);
-
-	/* Clear completed tasks from outstanding_tasks */
-	__clear_bit(index, &hba->outstanding_tasks);
-
-	task_req_descp = hba->utmrdl_base_addr;
-	ocs_value = ufshcd_get_tmr_ocs(&task_req_descp[index]);
-
-	if (ocs_value == OCS_SUCCESS) {
-		task_rsp_upiup = (struct utp_upiu_task_rsp *)
-				task_req_descp[index].task_rsp_upiu;
-		task_result = be32_to_cpu(task_rsp_upiup->output_param1);
-		task_result = task_result & MASK_TM_SERVICE_RESP;
-		if (resp)
-			*resp = (u8)task_result;
-	} else {
-		dev_err(hba->dev, "%s: failed, ocs = 0x%x\n",
-				__func__, ocs_value);
-	}
-	ufs_spin_unlock_irqrestore(hba->host->host_lock, flags);
-
-	return ocs_value;
-}
-
-/**
  * ufshcd_scsi_cmd_status - Update SCSI command result based on SCSI status
  * @lrbp: pointer to local reference block of completed command
  * @scsi_status: SCSI command status
@@ -7959,17 +7919,6 @@ static int __ufshcd_issue_tm_cmd(struct ufs_hba *hba,
 	ufshcd_hold_all(hba);
 
 	ufs_spin_lock_irqsave(host->host_lock, flags);
-	task_req_descp = hba->utmrdl_base_addr;
-	task_req_descp += free_slot;
-
-	/* Configure task request descriptor */
-	task_req_descp->header.dword_0 = cpu_to_le32(UTP_REQ_DESC_INT_CMD);
-	task_req_descp->header.dword_2 =
-			cpu_to_le32(OCS_INVALID_COMMAND_STATUS);
-
-	/* Configure task request UPIU */
-	task_req_upiup =
-		(struct utp_upiu_task_req *) task_req_descp->task_req_upiu;
 	task_tag = hba->nutrs + free_slot;
 
 	treq->req_header.dword_0 |= cpu_to_be32(task_tag);
