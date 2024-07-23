@@ -23,6 +23,10 @@
 #include <linux/interrupt.h>
 #include <linux/irqdesc.h>
 
+#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
+#include <oplus/oplus_wakelock_profiler.h>
+#endif
+
 #include "power.h"
 
 #ifndef CONFIG_SUSPEND
@@ -554,6 +558,9 @@ static void wakeup_source_activate(struct wakeup_source *ws)
 	if (WARN_ONCE(wakeup_source_not_registered(ws),
 			"unregistered wakeup source\n"))
 		return;
+#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
+        wakeup_get_start_time();
+#endif
 
 	ws->active = true;
 	ws->active_count++;
@@ -762,8 +769,12 @@ static void wakeup_source_deactivate(struct wakeup_source *ws)
 	trace_wakeup_source_deactivate(ws->name, cec);
 
 	split_counters(&cnt, &inpr);
-	if (!inpr && waitqueue_active(&wakeup_count_wait_queue))
+	if (!inpr && waitqueue_active(&wakeup_count_wait_queue)) {
+#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
+		wakeup_get_end_hold_time();
+#endif
 		wake_up(&wakeup_count_wait_queue);
+	}
 }
 
 /**
@@ -937,9 +948,12 @@ void pm_print_active_wakeup_sources(void)
 	srcuidx = srcu_read_lock(&wakeup_srcu);
 	list_for_each_entry_rcu(ws, &wakeup_sources, entry) {
 		if (ws->active) {
-			pr_debug("active wakeup source: %s\n", ws->name);
+#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
+                        pr_info("active wakeup source: %s\n", ws->name);
+#else
+                        pr_debug("active wakeup source: %s\n", ws->name);
+#endif
 			active = 1;
-			pr_info("active wakeup source: %s\n", ws->name);
 #ifdef CONFIG_BOEFFLA_WL_BLOCKER
 			if (!check_for_block(ws))	// AP: check if wakelock is on wakelock blocker list
 #endif
@@ -952,12 +966,45 @@ void pm_print_active_wakeup_sources(void)
 		}
 	}
 
-	if (!active && last_activity_ws)
-		pr_debug("last active wakeup source: %s\n",
-			last_activity_ws->name);
+	if (!active && last_activity_ws) {
+#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
+                pr_info("last active wakeup source: %s\n",
+                        last_activity_ws->name);
+#else
+                pr_debug("last active wakeup source: %s\n",
+                        last_activity_ws->name);
+#endif
+	}
 	srcu_read_unlock(&wakeup_srcu, srcuidx);
 }
 EXPORT_SYMBOL_GPL(pm_print_active_wakeup_sources);
+
+#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
+void get_ws_listhead(struct list_head **ws)
+{
+        if (ws)
+                *ws = &wakeup_sources;
+}
+
+void wakeup_srcu_read_lock(int *srcuidx)
+{
+        *srcuidx = srcu_read_lock(&wakeup_srcu);
+}
+
+void wakeup_srcu_read_unlock(int srcuidx)
+{
+        srcu_read_unlock(&wakeup_srcu, srcuidx);
+}
+
+bool ws_all_release(void)
+{
+        unsigned int cnt, inpr;
+
+        pr_info("Enter: %s\n", __func__);
+        split_counters(&cnt, &inpr);
+        return (!inpr) ? true : false;
+}
+#endif
 
 /**
  * pm_wakeup_pending - Check if power transition in progress should be aborted.
@@ -984,6 +1031,12 @@ bool pm_wakeup_pending(void)
 	raw_spin_unlock_irqrestore(&events_lock, flags);
 
 	if (ret) {
+#ifndef CONFIG_OPLUS_WAKELOCK_PROFILER
+                pr_debug("PM: Wakeup pending, aborting suspend\n");
+#else
+                pr_info("PM: Wakeup pending, aborting suspend\n");
+                wakeup_reasons_statics(IRQ_NAME_ABORT, WS_CNT_ABORT);
+#endif
 		pm_get_active_wakeup_sources(suspend_abort,
 					     MAX_SUSPEND_ABORT_LEN);
 		log_suspend_abort_reason(suspend_abort);
@@ -1025,6 +1078,11 @@ void pm_system_irq_wakeup(unsigned int irq_number)
 
 		log_irq_wakeup_reason(irq_number);
 		pr_warn("%s: %d triggered %s\n", __func__, irq_number, name);
+
+#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
+                pr_info("%s: resume caused by irq=%d, name=%s\n", __func__, irq_number, name);
+                wakeup_reasons_statics(name, WS_CNT_POWERKEY|WS_CNT_RTCALARM);
+#endif
 
 		pm_wakeup_irq = irq_number;
 		pm_system_wakeup();
