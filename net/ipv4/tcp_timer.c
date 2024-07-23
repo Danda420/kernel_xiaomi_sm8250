@@ -22,6 +22,9 @@
 #include <linux/gfp.h>
 #include <net/tcp.h>
 
+extern int ipv6_rto_encounter(kuid_t uid, struct in6_addr v6_saddr);
+extern int ipv4_rto_encounter(kuid_t uid, unsigned int v4_saddr);
+
 static u32 tcp_clamp_rto_to_user_timeout(const struct sock *sk)
 {
 	struct inet_connection_sock *icsk = inet_csk(sk);
@@ -290,6 +293,17 @@ static int tcp_write_timeout(struct sock *sk)
 				  icsk->icsk_rto, (int)expired);
 
 	if (expired) {
+		if (((1 << sk->sk_state) & (TCPF_SYN_SENT | TCPF_ESTABLISHED))
+				&& !((1 << sk->sk_state) & (TCPF_SYN_RECV | TCPF_FIN_WAIT1 | TCPF_FIN_WAIT2 | TCPF_TIME_WAIT))) {
+				if(sk->sk_family == AF_INET6) {
+#if IS_ENABLED(CONFIG_IPV6)
+					ipv6_rto_encounter(sk->sk_uid, sk->__sk_common.skc_v6_rcv_saddr);
+#endif /* IS_ENABLED(CONFIG_IPV6) */
+				} else if (sk->sk_family == AF_INET) {
+					ipv4_rto_encounter(sk->sk_uid, sk->__sk_common.skc_rcv_saddr);
+				}
+			}
+
 		/* Has it gone just too far? */
 		tcp_write_err(sk);
 		return 1;

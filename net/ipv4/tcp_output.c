@@ -45,6 +45,8 @@
 
 #include <trace/events/tcp.h>
 
+#include <net/oplus_nwpower.h>
+
 /* Refresh clocks of a TCP socket,
  * ensuring monotically increasing values.
  */
@@ -1321,6 +1323,8 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 			       sizeof(struct inet6_skb_parm)));
 
 	err = icsk->icsk_af_ops->queue_xmit(sk, skb, &inet->cork.fl);
+
+	oplus_match_tcp_output(sk);
 
 	if (unlikely(err > 0)) {
 		tcp_enter_cwr(sk);
@@ -3168,6 +3172,7 @@ start:
 
 	if (likely(!err)) {
 		TCP_SKB_CB(skb)->sacked |= TCPCB_EVER_RETRANS;
+		oplus_match_tcp_output_retrans(sk);
 		trace_tcp_retransmit_skb(sk, skb);
 	} else if (err != -EBUSY) {
 		NET_ADD_STATS(sock_net(sk), LINUX_MIB_TCPRETRANSFAIL, segs);
