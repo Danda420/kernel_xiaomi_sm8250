@@ -113,12 +113,10 @@ config EXT4_FS_ENCRYPTION
 
 config OPLUS_OEXT4
 	bool "OEXT4 independent repo"
-	default n
-	depends on EXT4_FS
+	default y
 	help
 	  define this config to switch ext4 repo.
 
-#//add for ext4 async discard suppot
 config OPLUS_EXT4_ASYNC_DISCARD
 	bool "OEXT4 async discard Support"
 	default y

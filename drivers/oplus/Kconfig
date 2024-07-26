@@ -2,14 +2,16 @@
 # Copyright (C) 2018-2020 Oplus. All rights reserved.
 
 config OPLUS_OPROJECT
-  bool "oplus project"
-  default n
-  help
-    define this config to define oplus project
+	bool "oplus project"
+	depends on OPLUS
+	default y
+	help
+	 define this config to define oplus project
 	  
 config OPLUS_NANDSWAP
 	bool "nandswap feature"
-	default n
+	depends on OPLUS
+	default y
 	help
 	 nandswap feature
 
@@ -22,12 +24,15 @@ config OPLUS_NANDSWAP_DEBUG
 
 config OPLUS_SUBSYS_SLEEP_MONITOR
 	bool "monitor Qualcomm subsystem sleep"
-	default n
+	depends on OPLUS
+	default y
 	help
 	  This selects to get sleep info for Qualcomm subsystem
 
 config OPLUS_WAKELOCK_PROFILER
 	bool "config oplus wakelock profiler"
+	depends on OPLUS
+	default y
 	help
 		Select this config to enable oplus wakelock profiler
 

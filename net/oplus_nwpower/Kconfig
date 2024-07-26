@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2020-2022 Oplus. All rights reserved.
+
+config OPLUS_NWPOWER
+    bool "OPLUS NWPOWER"
+    default y
+    depends on OPLUS
+    help
+	 add for oplus wakelock_profiler
+
