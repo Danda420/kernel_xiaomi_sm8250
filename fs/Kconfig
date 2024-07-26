@@ -14,7 +14,7 @@ config FS_IOMAP
 	bool
 
 source "fs/ext2/Kconfig"
-#ifdef CONFIG_OPLUS_OEXT4
+#ifdef CONFIG_OPLUS
 source "fs/oext4/Kconfig"
 #else
 source "fs/ext4/Kconfig"

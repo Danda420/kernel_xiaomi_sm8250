@@ -1155,6 +1155,14 @@ config SCHED_CORE_CTL
 
 	  If unsure, say N here.
 
+config OPLUS
+        bool "enable oplus optimization"
+        default n
+        help
+          This adds support for enabling miui specific optimization.
+
+          If unsure, say N here.'
+          
 config PERF_HUMANTASK
        bool "enable feature humantask"
        default n

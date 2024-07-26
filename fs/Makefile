@@ -67,7 +67,7 @@ obj-$(CONFIG_DLM)		+= dlm/
 # Do not add any filesystems before this line
 obj-$(CONFIG_FSCACHE)		+= fscache/
 obj-$(CONFIG_REISERFS_FS)	+= reiserfs/
-ifeq ($(CONFIG_OPLUS_OEXT4),y)
+ifeq ($(CONFIG_OPLUS),y)
 obj-$(CONFIG_EXT4_FS)		+= oext4/
 else
 obj-$(CONFIG_EXT4_FS)		+= ext4/

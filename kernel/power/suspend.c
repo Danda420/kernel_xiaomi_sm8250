@@ -336,8 +336,8 @@ static int suspend_test(int level)
 #ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
 	pr_info("%s pm_test_level:%d, level:%d\n", __func__,
                 pm_test_level, level);
-	if (pm_test_level == level) {
 #endif
+	if (pm_test_level == level) {
 #ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
 		pr_info("suspend debug: Waiting for %d second(s).\n",
 				pm_test_delay);
