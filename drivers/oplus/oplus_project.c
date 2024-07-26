@@ -14,7 +14,7 @@
 #include <linux/of.h>
 #include <linux/syscalls.h>
 
-#include <soc/oplus/system/oplus_project.h>
+#include <oplus/system/oplus_project.h>
 
 #ifdef CONFIG_MTK_SECURITY_SW_SUPPORT
 #include <sec_boot_lib.h>
@@ -116,7 +116,7 @@ static void init_project_version(void)
         }
 
         do {
-            if(pcb_str[index].version == g_project->nDataSCDT.PCB){
+            if(pcb_str[index].version == T6){
                 PCB_version_name = pcb_str[index].str;
                 break;
             }
@@ -178,7 +178,7 @@ unsigned int get_project(void)
 {
     init_project_version();
 
-    return g_project? g_project->nDataBCDT.ProjectNo : 0;
+    return g_project? PROJECT : 0;
 }
 EXPORT_SYMBOL(get_project);
 
@@ -193,17 +193,14 @@ EXPORT_SYMBOL(is_project);
 unsigned int is_new_cdt(void)/*Q and R is new*/
 {
 	init_project_version();
-    if(get_cdt_version() == OCDT_VERSION_1_0)
-        return 1;
-    else
-        return 0;
+    return 1;
 }
 
 unsigned int get_PCB_Version(void)
 {
     init_project_version();
 
-    return g_project? g_project->nDataSCDT.PCB:-EINVAL;
+    return g_project? T6:-EINVAL;
 }
 EXPORT_SYMBOL(get_PCB_Version);
 
@@ -211,7 +208,7 @@ unsigned int get_Oplus_Boot_Mode(void)
 {
     init_project_version();
 
-    return g_project?g_project->nDataSCDT.OplusBootMode:0;
+    return g_project?NORMAL_MODE:0;
 }
 EXPORT_SYMBOL(get_Oplus_Boot_Mode);
 
@@ -219,8 +216,8 @@ int32_t get_Modem_Version(void)
 {
     init_project_version();
 
-    /*cdt return modem,ocdt return RF*/
-    return g_project?g_project->nDataSCDT.RF:-EINVAL;
+    // 13 - INDIA
+    return g_project?13:-EINVAL;
 }
 EXPORT_SYMBOL(get_Modem_Version);
 
@@ -273,7 +270,7 @@ unsigned int get_eng_version(void)
 {
     init_project_version();
 
-    return g_project?g_project->nDataECDT.Version:-EINVAL;
+    return g_project?OEM_RELEASE:-EINVAL;
 }
 EXPORT_SYMBOL(get_eng_version);
 
