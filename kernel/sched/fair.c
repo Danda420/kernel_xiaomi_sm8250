@@ -5678,6 +5678,11 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 				(schedtune_prefer_idle(p) > 0) : 0;
 	int task_new = !(flags & ENQUEUE_WAKEUP);
 
+	if(p->group_leader && (!strncmp(p->group_leader->comm, "surfaceflinger", 14) ||
+			!strncmp(p->group_leader->comm, "ndroid.systemui", 15))){
+		p->prio = 30;
+	}
+
 	/*
 	 * The code below (indirectly) updates schedutil which looks at
 	 * the cfs_rq utilization to select a frequency.
