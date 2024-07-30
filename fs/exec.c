@@ -93,6 +93,8 @@ static LIST_HEAD(formats);
 static DEFINE_RWLOCK(binfmt_lock);
 
 #define SURFACEFLINGER_BIN "/system/bin/surfaceflinger"
+#define CAMERA "com.android.camera"
+#define SYSTEMUI "com.android.systemui"
 
 void __register_binfmt(struct linux_binfmt * fmt, int insert)
 {
@@ -1901,6 +1903,16 @@ static int __do_execve_file(int fd, struct filename *filename,
 		else if (unlikely(!strncmp(filename->name,
 					   SURFACEFLINGER_BIN,
 					   strlen(SURFACEFLINGER_BIN)))) {
+			current->flags |= PF_PERF_CRITICAL;
+			set_cpus_allowed_ptr(current, cpu_perf_mask);
+		} else if (unlikely(!strncmp(filename->name,
+					   CAMERA,
+					   strlen(CAMERA)))) {
+			current->flags |= PF_PERF_CRITICAL;
+			set_cpus_allowed_ptr(current, cpu_perf_mask);
+		} else if (unlikely(!strncmp(filename->name,
+					   SYSTEMUI,
+					   strlen(SYSTEMUI)))) {
 			current->flags |= PF_PERF_CRITICAL;
 			set_cpus_allowed_ptr(current, cpu_perf_mask);
 		}
