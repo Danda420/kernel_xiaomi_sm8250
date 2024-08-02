@@ -239,6 +239,8 @@ source "drivers/mihw/Kconfig"
 
 source "drivers/fragmention/Kconfig"
 
+source "drivers/oplus/Kconfig"
+
 source "drivers/kernelsu/Kconfig"
 
 endmenu
