@@ -195,5 +195,5 @@ obj-$(CONFIG_GNSS)		+= gnss/
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
 obj-$(CONFIG_MIHW)		+= mihw/
 obj-$(CONFIG_MI_FRAGMENTION)	+= fragmention/
+obj-y				+= oplus/
 obj-$(CONFIG_KSU)		+= kernelsu/
->>>>>>> f6c8beddea62 (kernel: Implement xiaomi MIUI user experience optimizations)

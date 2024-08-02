@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2018-2020 Oplus. All rights reserved.
+
+config OPLUS_OPROJECT
+  bool "oplus project"
+  default n
+  help
+    define this config to define oplus project
+	  
+config OPLUS_NANDSWAP
+	bool "nandswap feature"
+	default n
+	help
+	 nandswap feature
+
+config OPLUS_NANDSWAP_DEBUG
+	bool "nandswap debug"
+	depends on F2FS_FS
+	default n
+	help
+	 nandswap debug
+
