@@ -2360,6 +2360,9 @@ static void set_next_task_dl(struct rq *rq, struct task_struct *p)
 		update_dl_rq_load_avg(rq_clock_pelt(rq), rq, 0);
 
 	deadline_queue_push_tasks(rq);
+
+	if (hrtick_enabled(rq))
+		start_hrtick_dl(rq, &p->dl);
 }
 
 static struct sched_dl_entity *pick_next_dl_entity(struct dl_rq *dl_rq)
@@ -2428,9 +2431,6 @@ static struct task_struct *pick_next_task_dl(struct rq *rq)
 
 	if (!p->dl_server)
 		set_next_task_dl(rq, p);
-
-	if (hrtick_enabled(rq))
-		start_hrtick_dl(rq, &p->dl);
 
 	return p;
 }
