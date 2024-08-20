@@ -5152,6 +5152,13 @@ static inline void ufshcd_add_delay_before_dme_cmd(struct ufs_hba *hba)
 	hba->last_dme_cmd_tstamp = ktime_get();
 }
 
+static inline void ufshcd_save_tstamp_of_last_dme_cmd(
+			struct ufs_hba *hba)
+{
+	if (hba->quirks & UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS)
+		hba->last_dme_cmd_tstamp = ktime_get();
+}
+
 /**
  * ufshcd_dme_set_attr - UIC command for DME_SET, DME_PEER_SET
  * @hba: per adapter instance
