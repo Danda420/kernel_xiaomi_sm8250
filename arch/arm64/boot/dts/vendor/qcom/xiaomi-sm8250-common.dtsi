@@ -689,6 +689,7 @@
 	qcom,mdss-brightness-init-level = <410>;
 	qcom,platform-te-gpio = <&tlmm 66 0>;
 	qcom,platform-reset-gpio = <&tlmm 12 0>;
+	qcom,ulps-enabled;
 };
 
 &dsi_k81_42_02_0a_dual_cphy_video {
