@@ -140,9 +140,8 @@ kernel/configs/android-*.cfg
 build.log
 log.txt
 build
-build_munch
+batch_build
 build.sh
-moveall
 out/
 AnyKernel3/anykernel.sh
 *.zip
