@@ -3053,11 +3053,13 @@ static inline int sched_boost(void)
 	return sched_boost_type;
 }
 
+#if IS_ENABLED(CONFIG_MIHW)
 extern unsigned int mi_sched_boost;
 static inline int sched_mi_boost(void)
 {
 	return mi_sched_boost;
 }
+#endif
 
 static inline bool rt_boost_on_big(void)
 {
