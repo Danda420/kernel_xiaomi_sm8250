@@ -6405,7 +6405,6 @@ long schedtune_task_margin(struct task_struct *task)
 	return margin;
 }
 
-#ifdef CONFIG_SCHED_WALT
 unsigned long
 stune_util(int cpu, unsigned long other_util,
 		 struct sched_walt_cpu_load *walt_load)
@@ -6418,7 +6417,6 @@ stune_util(int cpu, unsigned long other_util,
 
 	return util + margin;
 }
-#endif
 
 #else /* CONFIG_SCHED_TUNE */
 
