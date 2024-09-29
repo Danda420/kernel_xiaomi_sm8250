@@ -59,8 +59,6 @@ struct sugov_cpu {
 	unsigned int		iowait_boost;
 	u64			last_update;
 
-	struct sched_walt_cpu_load walt_load;
-
 	unsigned long		util;
 	unsigned long		bw_min;
 };
@@ -114,15 +112,6 @@ static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
 	return !sugov_should_rate_limit(sg_policy, time);
 }
 
-static inline bool use_pelt(void)
-{
-#ifdef CONFIG_SCHED_WALT
-	return false;
-#else
-	return true;
-#endif
-}
-
 static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 				   unsigned int next_freq)
 {
@@ -171,8 +160,7 @@ static void sugov_deferred_update(struct sugov_policy *sg_policy, u64 time,
 	if (!sugov_update_next_freq(sg_policy, time, next_freq))
 		return;
 
-	if (use_pelt())
-		sg_policy->work_in_progress = true;
+	sg_policy->work_in_progress = true;
 	irq_work_queue(&sg_policy->irq_work);
 }
 
@@ -264,9 +252,6 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	return l_freq;
 }
 
-extern long
-schedtune_cpu_margin_with(unsigned long util, int cpu, struct task_struct *p);
-
 /*
  * This function computes an effective utilization for the given CPU, to be
  * used for frequency selection given the linear relation: f = u * f_max.
@@ -330,7 +315,6 @@ unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
 			*min = max(*min, scale);
 	}
 
-
 	/*
 	 * Because the time spend on RT/DL tasks is visible as 'lost' time to
 	 * CFS tasks and we use the same metric to track the effective
@@ -373,11 +357,10 @@ unsigned long apply_dvfs_headroom(int cpu, unsigned long util, unsigned long max
 	if (!util || util >= max_cap)
 		return util;
 
-	if (cpumask_test_cpu(cpu, cpu_lp_mask)) {
+	if (cpumask_test_cpu(cpu, cpu_lp_mask))
 		headroom = util + (util >> 1);
-	} else {
+	else
 		headroom = util + (util >> 2);
-	}
 
 	return headroom;
 }
@@ -399,16 +382,6 @@ unsigned long sugov_effective_cpu_perf(int cpu, unsigned long actual,
 	return max(min, max);
 }
 
-#ifdef CONFIG_SCHED_WALT
-static unsigned long sugov_get_util(struct sugov_cpu *sg_cpu)
-{
-	struct rq *rq = cpu_rq(sg_cpu->cpu);
-
-	sg_cpu->bw_min = cpu_bw_dl(rq);
-
-	return stune_util(sg_cpu->cpu, 0, &sg_cpu->walt_load);
-}
-#else
 static void sugov_get_util(struct sugov_cpu *sg_cpu, unsigned long boost)
 {
 	struct rq *rq = cpu_rq(sg_cpu->cpu);
@@ -419,7 +392,6 @@ static void sugov_get_util(struct sugov_cpu *sg_cpu, unsigned long boost)
 	sg_cpu->bw_min = min;
 	sg_cpu->util = sugov_effective_cpu_perf(sg_cpu->cpu, util, min, max);
 }
-#endif
 
 /**
  * sugov_iowait_reset() - Reset the IO boost status of a CPU.
@@ -555,9 +527,8 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 {
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
-	unsigned long max_cap;
+	unsigned long max_cap, boost;
 	unsigned int next_f;
-    unsigned long boost;
 
 	if (flags & SCHED_CPUFREQ_PL)
 		return;
@@ -602,7 +573,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 
 	for_each_cpu(j, policy->cpus) {
 		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
-	        unsigned long boost;
+		unsigned long boost;
 
 		boost = sugov_iowait_apply(j_sg_cpu, time, max_cap);
 		sugov_get_util(j_sg_cpu, boost);
@@ -652,11 +623,11 @@ static void sugov_work(struct kthread_work *work)
 	/*
 	 * Hold sg_policy->update_lock shortly to handle the case where:
 	 * incase sg_policy->next_freq is read here, and then updated by
-	 * sugov_update_shared just before work_in_progress is set to false
+	 * sugov_deferred_update() just before work_in_progress is set to false
 	 * here, we may miss queueing the new update.
 	 *
 	 * Note: If a work was queued after the update_lock is released,
-	 * sugov_work will just be called again by kthread_work code; and the
+	 * sugov_work() will just be called again by kthread_work code; and the
 	 * request will be proceed before the sugov thread sleeps.
 	 */
 	raw_spin_lock_irqsave(&sg_policy->update_lock, flags);
