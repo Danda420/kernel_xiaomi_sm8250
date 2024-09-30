@@ -723,12 +723,6 @@ static void set_load_weight(struct task_struct *p, bool update_load)
 	}
 }
 
-void __weak migt_monitor_hook(int enqueue, int cpu,
-		struct task_struct *p, u64 walltime)
-{
-	/*do nothing*/
-}
-
 #ifdef CONFIG_UCLAMP_TASK
 /*
  * Serializes updates of utilization clamp values
@@ -1549,7 +1543,6 @@ static inline void enqueue_task(struct rq *rq, struct task_struct *p, int flags)
 	uclamp_rq_inc(rq, p);
 	p->sched_class->enqueue_task(rq, p, flags);
 	walt_update_last_enqueue(p);
-	migt_monitor_hook(1, rq->cpu, p, sched_ktime_clock());
 	trace_sched_enq_deq_task(p, 1, cpumask_bits(&p->cpus_allowed)[0]);
 }
 
@@ -1569,15 +1562,11 @@ static inline void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
 	if (p == rq->ed_task)
 		early_detection_notify(rq, sched_ktime_clock());
 #endif
-	migt_monitor_hook(0, rq->cpu, p, sched_ktime_clock());
 	trace_sched_enq_deq_task(p, 0, cpumask_bits(&p->cpus_allowed)[0]);
 }
 
 void activate_task(struct rq *rq, struct task_struct *p, int flags)
 {
-	if (task_contributes_to_load(p))
-		rq->nr_uninterruptible--;
-
 	enqueue_task(rq, p, flags);
 }
 
