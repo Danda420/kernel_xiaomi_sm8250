@@ -7068,7 +7068,7 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 				bool empty = !cpumask_and(new_mask, new_mask,
 							  ac.user_mask);
 
-				if (WARN_ON_ONCE(empty))
+				if (empty)
 					cpumask_copy(new_mask, cpus_allowed);
 			}
 			__set_cpus_allowed_ptr(p, &ac);
