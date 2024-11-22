@@ -952,7 +952,7 @@ static void qrtr_fwd_ctrl_pkt(struct qrtr_node *src, struct sk_buff *skb)
 		if (!qrtr_must_forward(src, node, cb->type))
 			continue;
 
-		skbn = skb_clone(skb, GFP_KERNEL);
+		skbn = pskb_copy(skb, GFP_KERNEL);
 		if (!skbn)
 			break;
 
@@ -1392,7 +1392,7 @@ static void qrtr_send_del_client(struct qrtr_sock *ipc)
 		if (!node)
 			goto exit;
 
-		skbn = skb_clone(skb, GFP_KERNEL);
+		skbn = pskb_copy(skb, GFP_KERNEL);
 		if (!skbn) {
 			qrtr_node_release(node);
 			goto exit;

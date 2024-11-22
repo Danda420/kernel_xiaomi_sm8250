@@ -247,8 +247,7 @@ enum {
 	ORPHAN_INO,		/* for orphan ino list */
 	APPEND_INO,		/* for append ino list */
 	UPDATE_INO,		/* for update ino list */
-	TRANS_DIR_INO,		/* for transactions dir ino list */
-	XATTR_DIR_INO,		/* for xattr updated dir ino list */
+	TRANS_DIR_INO,		/* for trasactions dir ino list */
 	FLUSH_INO,		/* for multiple device flushing */
 	MAX_INO_ENTRY,		/* max. list */
 };
@@ -1159,7 +1158,8 @@ enum cp_reason_type {
 	CP_FASTBOOT_MODE,
 	CP_SPEC_LOG_NUM,
 	CP_RECOVER_DIR,
-	CP_XATTR_DIR,
+	CP_PARENT_XATTR_SET,
+	NR_CP_REASON_TYPE,
 };
 
 enum iostat_type {
@@ -1588,6 +1588,7 @@ struct f2fs_sb_info {
 	unsigned int io_skip_bggc;		/* skip background gc for in-flight IO */
 	unsigned int other_skip_bggc;		/* skip background gc for other reasons */
 	unsigned int ndirty_inode[NR_INODE_TYPE];	/* # of dirty inodes */
+	atomic64_t cp_reason_count[NR_CP_REASON_TYPE];	/* # of checkpoint reason */
 #endif
 	spinlock_t stat_lock;			/* lock for stat operations */
 
@@ -3557,6 +3558,7 @@ struct f2fs_stat_info {
 	int all_area_segs, sit_area_segs, nat_area_segs, ssa_area_segs;
 	int main_area_segs, main_area_sections, main_area_zones;
 	unsigned long long hit_largest, hit_cached, hit_rbtree, sync_file_total;
+	unsigned long long cp_reason_total[NR_CP_REASON_TYPE];
 	unsigned long long hit_total, total_ext;
 	int ext_tree, zombie_tree, ext_node;
 	int ndirty_node, ndirty_dent, ndirty_meta, ndirty_imeta;
@@ -3784,6 +3786,7 @@ static inline void f2fs_destroy_root_stats(void) { }
 static inline void f2fs_update_sit_info(struct f2fs_sb_info *sbi) {}
 #endif
 
+extern const char *f2fs_cp_reasons[NR_CP_REASON_TYPE];
 extern const struct file_operations f2fs_dir_operations;
 extern const struct file_operations f2fs_file_operations;
 extern const struct inode_operations f2fs_file_inode_operations;
