@@ -58,12 +58,27 @@
 
 #else
 
+#ifdef CONFIG_ANDROID_KABI_RESERVE
+#define _ANDROID_KABI_REPLACE(_orig, _new)			\
+	union {							\
+		_new;						\
+		struct {					\
+			_orig;					\
+		};						\
+		__ANDROID_KABI_CHECK_SIZE_ALIGN(_orig, _new);	\
+	}
+#else
 #define _ANDROID_KABI_REPLACE(_orig, _new)			\
 	_new
+#endif
 
 #endif /* __GENKSYMS__ */
 
+#ifdef CONFIG_ANDROID_KABI_RESERVE
+#define _ANDROID_KABI_RESERVE(n)		u64 android_kabi_reserved##n
+#else
 #define _ANDROID_KABI_RESERVE(n)
+#endif
 
 
 /*
