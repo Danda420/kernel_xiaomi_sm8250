@@ -723,7 +723,7 @@ bool sched_can_stop_tick(struct rq *rq)
 	 * if there's more than one we need the tick for involuntary
 	 * preemption.
 	 */
-	if (rq->nr_running > 1)
+	if (rq->cfs.h_nr_queued > 1)
 		return false;
 
 	return true;
