@@ -21,8 +21,7 @@ struct binder_context {
 };
 /**
  * struct binder_device - information about a binder device node
- * @hlist:          list of binder devices (only used for devices requested via
- *                  CONFIG_ANDROID_BINDER_DEVICES)
+ * @hlist:          list of binder devices
  * @miscdev:        information about a binder character device node
  * @context:        binder context information
  * @binderfs_inode: This is the inode of the root dentry of the super block
@@ -620,6 +619,18 @@ struct binder_object {
 		struct binder_fd_array_object fdao;
 	};
 };
+
+/**
+ * Add a binder device to binder_devices
+ * @device: the new binder device to add to the global list
+ *
+ * Not reentrant as the list is not protected by any locks
+ */
+void binder_add_device(struct binder_device *device);
+
+#ifdef CONFIG_ANDROID_BINDER_LOGS
 extern struct binder_transaction_log binder_transaction_log;
 extern struct binder_transaction_log binder_transaction_log_failed;
+#endif
+
 #endif /* _LINUX_BINDER_INTERNAL_H */
