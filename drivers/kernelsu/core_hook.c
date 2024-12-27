@@ -167,6 +167,10 @@ void ksu_escape_to_root(void)
 	       sizeof(cred->cap_bset));
 	memcpy(&cred->cap_ambient, &profile->capabilities.effective,
 	       sizeof(cred->cap_ambient));
+	// set ambient caps to all-zero
+	// fixes "operation not permitted" on dbus cap dropping
+	memset(&cred->cap_ambient, 0,
+			sizeof(cred->cap_ambient));
 
 	// disable seccomp
 #if defined(CONFIG_GENERIC_ENTRY) &&                                           \
