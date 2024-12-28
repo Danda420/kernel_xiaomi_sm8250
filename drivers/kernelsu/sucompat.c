@@ -303,5 +303,5 @@ void ksu_susfs_enable_sus_su(void) {
 	disable_kprobe(&pts_unix98_lookup_kp);
 	ksu_devpts_hook = true;
 }
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_SU
 
