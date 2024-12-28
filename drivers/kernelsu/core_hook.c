@@ -52,7 +52,7 @@
 #ifdef CONFIG_KSU_SUSFS
 bool susfs_is_allow_su(void)
 {
-	if (is_manager()) {
+	if (ksu_is_manager()) {
 		// we are manager, allow!
 		return true;
 	}
@@ -63,7 +63,7 @@ extern u32 susfs_zygote_sid;
 extern void susfs_run_try_umount_for_current_mnt_ns(void);
 #ifdef CONFIG_KSU_SUSFS_SUS_SU
 extern bool susfs_is_sus_su_ready;
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_SU
 #endif // #ifdef CONFIG_KSU_SUSFS
 
 static bool ksu_module_mounted = false;
@@ -72,7 +72,7 @@ extern int ksu_handle_sepolicy(unsigned long arg3, void __user *arg4);
 
 static inline bool is_allow_su()
 {
-	if (is_manager()) {
+	if (ksu_is_manager()) {
 		// we are manager, allow!
 		return true;
 	}
@@ -246,7 +246,7 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 	}
 
 	bool from_root = 0 == current_uid().val;
-	bool from_manager = is_manager();
+	bool from_manager = ksu_is_manager();
 
 	if (!from_root && !from_manager) {
 		// only root or manager can access this interface
@@ -660,6 +660,9 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 #ifdef CONFIG_KSU_SUSFS_SUS_SU
 			enabled_features |= (1 << 13);
 #endif
+#ifdef CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
+			enabled_features |= (1 << 14);
+#endif
 			error = copy_to_user((void __user*)arg3, (void*)&enabled_features, sizeof(enabled_features));
 			pr_info("susfs: CMD_SUSFS_SHOW_ENABLED_FEATURES -> ret: %d\n", error);
 			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
@@ -836,6 +839,7 @@ void susfs_try_umount_all(uid_t uid) {
 	ksu_try_umount("/system_ext", true, 0);
 	ksu_try_umount("/vendor", true, 0);
 	ksu_try_umount("/product", true, 0);
+	ksu_try_umount("/odm", true, 0);
 	ksu_try_umount("/data/adb/modules", false, MNT_DETACH);
 	ksu_try_umount("/debug_ramdisk", false, MNT_DETACH);
 }
@@ -887,6 +891,9 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 	}
 #endif
 
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+out_ksu_try_umount:
+#endif
 	if (!ksu_uid_should_umount(new_uid.val)) {
 		return 0;
 	} else {
@@ -913,9 +920,6 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 		current->pid);
 #endif
 
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-out_ksu_try_umount:
-#endif
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 	// susfs come first, and lastly umount by ksu, make sure umount in reversed order
 	susfs_try_umount_all(new_uid.val);

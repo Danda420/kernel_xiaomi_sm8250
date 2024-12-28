@@ -1531,10 +1531,6 @@ struct task_struct {
 	/* 095444fad7e3 ("futex: Replace PF_EXITPIDONE with a state") */
 	ANDROID_KABI_USE(2, unsigned int futex_state);
 
-
-#if defined(CONFIG_KSU_SUSFS) && !defined(ANDROID_KABI_RESERVE)
-	u64 android_kabi_reserved8;
-#endif
 	/*
 	 * f9b0c6c556db ("futex: Add mutex around futex exit")
 	 * A struct mutex takes 32 bytes, or 4 64bit entries, so pick off
@@ -1570,6 +1566,9 @@ struct package_runtime_info pkg;
 	 * New fields for task_struct should be added above here, so that
 	 * they are included in the randomized portion of task_struct.
 	 */
+#if defined(CONFIG_KSU_SUSFS) && !defined(ANDROID_KABI_RESERVE)
+	u64 android_kabi_reserved8;
+#endif
 	randomized_struct_fields_end
 
 	/* CPU-specific state of this task: */
