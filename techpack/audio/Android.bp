@@ -1,6 +1,6 @@
 gensrcs {
     name: "qcom-audio-kernel-includes",
-    cmd: "$(location headers_install.sh) `dirname $(out)` `dirname $(in)` `basename $(in)`",
+    cmd: "$(location headers_install.sh) dirname $(out) dirname $(in) basename $(in)",
     tools: ["headers_install.sh"],
     export_include_dirs: ["include/uapi"],
     srcs: [
