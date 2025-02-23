@@ -194,16 +194,13 @@ static void disable_seccomp()
 #endif
 }
 
-void escape_to_root(void)
+void ksu_escape_to_root(void)
 {
 	struct cred *cred;
-
+	
 	rcu_read_lock();
 
-	do {
-		cred = (struct cred *)__task_cred((current));
-		BUG_ON(!cred);
-	} while (!get_cred_rcu(cred));
+	cred = (struct cred *)__task_cred(current);
 
 	if (cred->euid.val == 0) {
 		pr_warn("Already root, don't escape!\n");
@@ -254,7 +251,7 @@ void escape_to_root(void)
 	disable_seccomp();
 	spin_unlock_irq(&current->sighand->siglock);
 
-	setup_selinux(profile->selinux_domain);
+	ksu_setup_selinux(profile->selinux_domain);
 }
 
 int ksu_handle_rename(struct dentry *old_dentry, struct dentry *new_dentry)
