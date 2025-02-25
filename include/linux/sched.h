@@ -135,7 +135,6 @@ enum fps {
 	FPS144 = 144,
 };
 
-#ifdef CONFIG_DEBUG_ATOMIC_SLEEP
 
 /*
  * Special states are those that do not use the normal wait-loop pattern. See
@@ -143,6 +142,8 @@ enum fps {
  */
 #define is_special_task_state(state)				\
 	((state) & (__TASK_STOPPED | __TASK_TRACED | TASK_PARKED | TASK_DEAD))
+
+#ifdef CONFIG_DEBUG_ATOMIC_SLEEP
 
 #define __set_current_state(state_value)			\
 	do {							\
