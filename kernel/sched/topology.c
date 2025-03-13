@@ -2440,6 +2440,7 @@ match3:
 	ndoms_cur = ndoms_new;
 
 	register_sched_domain_sysctl();
+	dl_rebuild_rd_accounting();
 }
 
 /*
