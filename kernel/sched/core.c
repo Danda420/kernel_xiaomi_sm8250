@@ -8520,9 +8520,9 @@ void __init sched_init_smp(void)
 	 * but there won't be any contention on it.
 	 */
 	cpus_read_lock();
-	mutex_lock(&sched_domains_mutex);
+	sched_domains_mutex_lock();
 	sched_init_domains(cpu_active_mask);
-	mutex_unlock(&sched_domains_mutex);
+	sched_domains_mutex_unlock();
 	cpus_read_unlock();
 
 	/* Move init over to a non-isolated CPU */
