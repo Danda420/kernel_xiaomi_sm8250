@@ -183,10 +183,6 @@ static inline struct cpumask *sched_domain_span(struct sched_domain *sd)
 
 extern void dl_rebuild_rd_accounting(void);
 
-extern void partition_sched_domains_locked(int ndoms_new,
-					   cpumask_var_t doms_new[],
-					   struct sched_domain_attr *dattr_new);
-
 extern void partition_sched_domains(int ndoms_new, cpumask_var_t doms_new[],
 				    struct sched_domain_attr *dattr_new);
 
@@ -241,12 +237,6 @@ unsigned long arch_scale_cpu_capacity(struct sched_domain *sd, int cpu)
 #else /* CONFIG_SMP */
 
 struct sched_domain_attr;
-
-static inline void
-partition_sched_domains_locked(int ndoms_new, cpumask_var_t doms_new[],
-			       struct sched_domain_attr *dattr_new)
-{
-}
 
 static inline void
 partition_sched_domains(int ndoms_new, cpumask_var_t doms_new[],
