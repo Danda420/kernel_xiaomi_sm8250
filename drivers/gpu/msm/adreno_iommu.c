@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2002,2007-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -480,7 +480,6 @@ void adreno_iommu_init(struct adreno_device *adreno_dev)
 
 /**
  * adreno_iommu_set_pt_ctx() - Change the pagetable of the current RB
- * @device: Pointer to device to which the rb belongs
  * @rb: The RB pointer on which pagetable is to be changed
  * @new_pt: The new pt the device will change to
  * @drawctxt: The context whose pagetable the ringbuffer is switching to,
@@ -495,21 +494,35 @@ int adreno_iommu_set_pt_ctx(struct adreno_ringbuffer *rb,
 	struct adreno_device *adreno_dev = ADRENO_RB_DEVICE(rb);
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct kgsl_pagetable *cur_pt = device->mmu.defaultpagetable;
+	unsigned int *cmds = NULL, count = 0;
 	int result = 0;
+
+	cmds = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (cmds == NULL)
+		return -ENOMEM;
 
 	/* Switch the page table if a MMU is attached */
 	if (kgsl_mmu_get_mmutype(device) != KGSL_MMU_TYPE_NONE) {
 		if (rb->drawctxt_active)
 			cur_pt = rb->drawctxt_active->base.proc_priv->pagetable;
 
-		/* Pagetable switch */
+		/* Add commands for pagetable switch */
 		if (new_pt != cur_pt)
-			result = _set_pagetable_gpu(rb, new_pt);
+			count += adreno_iommu_set_pt_generate_cmds(rb,
+					cmds, new_pt);
 
-		if (result)
-			return result;
 	}
 
-	/* Context switch */
-	return _set_ctxt_gpu(rb, drawctxt);
+	/* Add commands to set the current context in memstore */
+	count += __add_curr_ctxt_cmds(rb, cmds + count, drawctxt);
+
+	WARN(count > (PAGE_SIZE / sizeof(unsigned int)),
+			"Temp command buffer overflow\n");
+
+	result = adreno_ringbuffer_issue_internal_cmds(rb, KGSL_CMD_FLAGS_PMODE,
+			cmds, count);
+
+	kfree(cmds);
+	return result;
+
 }
