@@ -193,10 +193,7 @@ extern struct timer_base timer_base_deferrable;
  *
  * Do not use in new code. Use timer_delete_sync() instead.
  */
-static inline int del_timer_sync(struct timer_list *timer)
-{
-	return timer_delete_sync(timer);
-}
+extern int del_timer_sync(struct timer_list *timer);
 
 #define del_singleshot_timer_sync(t) del_timer_sync(t)
 

@@ -264,6 +264,7 @@ static void maybe_deliver_addr(struct net_bridge_port *p, struct sk_buff *skb,
 	nskb = pskb_copy(skb, GFP_ATOMIC);
 	__skb_pull(skb, ETH_HLEN);
 	if (!nskb) {
+		dev->stats.tx_dropped++;
 		return;
 	}
 
