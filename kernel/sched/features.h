@@ -92,11 +92,6 @@
 #define SCHED_FEAT_UTIL_EST_FASTUP 1
 
 /*
- * Fast pre-selection of CPU candidates for EAS.
- */
-#define SCHED_FEAT_FIND_BEST_TARGET 1
-
-/*
  * Energy aware scheduling algorithm choices:
  * EAS_PREFER_IDLE
  *   Direct tasks in a schedtune.prefer_idle=1 group through
