@@ -319,9 +319,3 @@ config ARM_QCOM_CPUFREQ_HW_DEBUG
 	 various clock domain and trace type could be set to periodic and
 	 xor if applicable.
 	 Say Y if you want to support CPUFreq HW Trace.
-
-config CPU_FREQ_MSM
-	bool "MSM CPUFreq support"
-	depends on CPU_FREQ
-	help
-	  This enables the CPUFreq driver for Qualcomm Technologies, Inc. CPUs.

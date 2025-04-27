@@ -796,8 +796,8 @@ DEFINE_EVENT(sched_stat_runtime, sched_stat_runtime,
 
 /* debug sched event of EAS for tracer: nop  */
 TRACE_EVENT(sched_debug_einfo,
-		TP_PROTO(struct task_struct *tsk,const char *  flag1,const char *  flag2,unsigned int param1, unsigned int param2,u64 se_vr, u64 en_vr,u64 cfq_min_vr),
-		TP_ARGS(tsk,flag1,flag2,param1,param2, se_vr,en_vr,cfq_min_vr),
+		TP_PROTO(struct task_struct *tsk,const char *  flag1,const char *  flag2,unsigned int param1, unsigned int param2,u64 se_vr),
+		TP_ARGS(tsk,flag1,flag2,param1,param2, se_vr),
 		TP_STRUCT__entry(
 			__array( char,	comm,	TASK_COMM_LEN	)
 			__field( pid_t,	pid			)
@@ -806,8 +806,6 @@ TRACE_EVENT(sched_debug_einfo,
 			__field(unsigned int, param1    )
 			__field( unsigned int,	param2)
 			__field( u64,	se_vr )
-			__field( u64,	en_vr )
-			__field( u64,	cfq_min_vr )
 			),
 
 		TP_fast_assign(
@@ -818,18 +816,14 @@ TRACE_EVENT(sched_debug_einfo,
 			__entry->param1 = param1;
 			__entry->param2 = param2;
 			__entry->se_vr  = se_vr;
-			__entry->en_vr = en_vr;
-			__entry->cfq_min_vr = cfq_min_vr;
 			),
 
-		TP_printk("comm=%s pid=%d,  %s=%d  %s=%d ,  sv=%Lu [ns] ev=%Lu [ns] cv=%Lu [ns]", __entry->comm, __entry->pid,
+		TP_printk("comm=%s pid=%d,  %s=%d  %s=%d ,  sv=%Lu [ns]", __entry->comm, __entry->pid,
 				__entry->flag1,
 				__entry->param1,
 				__entry->flag2,
 				__entry->param2,
-				(unsigned long long)__entry->se_vr,
-				(unsigned long long)__entry->en_vr,
-				(unsigned long long)__entry->cfq_min_vr)
+				(unsigned long long)__entry->se_vr)
 		);
 
 
@@ -1090,10 +1084,6 @@ TRACE_EVENT(sched_load_rt_rq,
 		  __entry->util)
 );
 
-#ifdef CONFIG_SCHED_WALT
-extern unsigned int sched_ravg_window;
-#endif
-
 /*
  * Tracepoint for accounting cpu root cfs_rq
  */
@@ -1117,12 +1107,6 @@ TRACE_EVENT(sched_load_avg_cpu,
 		__entry->util_avg               = cfs_rq->avg.util_avg;
 		__entry->util_avg_pelt  = cfs_rq->avg.util_avg;
 		__entry->util_avg_walt  = 0;
-#ifdef CONFIG_SCHED_WALT
-		__entry->util_avg_walt  = div64_ul(cpu_rq(cpu)->prev_runnable_sum,
-					  sched_ravg_window >> SCHED_CAPACITY_SHIFT);
-
-		__entry->util_avg       = __entry->util_avg_walt;
-#endif
 	),
 
 	TP_printk("cpu=%d load_avg=%lu util_avg=%lu util_avg_pelt=%lu util_avg_walt=%u",
@@ -1359,13 +1343,11 @@ TRACE_EVENT(sched_task_util,
 
 	TP_PROTO(struct task_struct *p, unsigned long candidates,
 		int best_energy_cpu, bool sync, bool need_idle, int fastpath,
-		bool placement_boost, u64 start_t,
-		bool stune_boosted, bool is_rtg, bool rtg_skip_min,
+		u64 start_t, bool stune_boosted, bool rtg_skip_min,
 		int start_cpu),
 
 	TP_ARGS(p, candidates, best_energy_cpu, sync, need_idle, fastpath,
-		placement_boost, start_t, stune_boosted, is_rtg, rtg_skip_min,
-		start_cpu),
+		start_t, stune_boosted, rtg_skip_min, start_cpu),
 
 	TP_STRUCT__entry(
 		__field(int,		pid)
@@ -1381,7 +1363,6 @@ TRACE_EVENT(sched_task_util,
 		__field(int,		rtg_cpu)
 		__field(u64,		latency)
 		__field(bool,		stune_boosted)
-		__field(bool,		is_rtg)
 		__field(bool,		rtg_skip_min)
 		__field(int,		start_cpu)
 		__field(u32,		unfilter)
@@ -1399,28 +1380,21 @@ TRACE_EVENT(sched_task_util,
 		__entry->sync                   = sync;
 		__entry->need_idle              = need_idle;
 		__entry->fastpath               = fastpath;
-		__entry->placement_boost        = placement_boost;
 		__entry->latency                = (sched_clock() - start_t);
 		__entry->stune_boosted          = stune_boosted;
-		__entry->is_rtg                 = is_rtg;
 		__entry->rtg_skip_min		= rtg_skip_min;
 		__entry->start_cpu		= start_cpu;
-#ifdef CONFIG_SCHED_WALT
-		__entry->unfilter		= p->unfilter;
-		__entry->low_latency		= walt_low_latency_task(p);
-#else
 		__entry->unfilter		= 0;
 		__entry->low_latency		= 0;
-#endif
 		__entry->cpus_allowed           = cpumask_bits(&p->cpus_mask)[0];
 	),
 
-	TP_printk("pid=%d comm=%s util=%lu prev_cpu=%d candidates=%#lx best_energy_cpu=%d sync=%d need_idle=%d fastpath=%d placement_boost=%d latency=%llu stune_boosted=%d is_rtg=%d rtg_skip_min=%d start_cpu=%d unfilter=%u affine=%#lx low_latency=%d",
+	TP_printk("pid=%d comm=%s util=%lu prev_cpu=%d candidates=%#lx best_energy_cpu=%d sync=%d need_idle=%d fastpath=%d latency=%llu stune_boosted=%d rtg_skip_min=%d start_cpu=%d unfilter=%u affine=%#lx low_latency=%d",
 		__entry->pid, __entry->comm, __entry->util, __entry->prev_cpu,
 		__entry->candidates, __entry->best_energy_cpu, __entry->sync,
 		__entry->need_idle, __entry->fastpath, __entry->placement_boost,
 		__entry->latency, __entry->stune_boosted,
-		__entry->is_rtg, __entry->rtg_skip_min, __entry->start_cpu,
+		__entry->rtg_skip_min, __entry->start_cpu,
 		__entry->unfilter, __entry->cpus_allowed, __entry->low_latency)
 );
 
@@ -1831,7 +1805,6 @@ DECLARE_TRACE(pelt_thermal_tp,
 	TP_PROTO(struct rq *rq),
 	TP_ARGS(rq));
 
-#include "walt.h"
 #endif /* CONFIG_SMP */
 #endif /* _TRACE_SCHED_H */
 
