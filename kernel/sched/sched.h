@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+o/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Scheduler internal types and methods:
  */
@@ -83,8 +83,6 @@
 # define SCHED_WARN_ON(x)	({ (void)(x), 0; })
 #endif
 
-#include "tune.h"
-
 struct rq;
 struct cpuidle_state;
 
@@ -100,56 +98,6 @@ struct sched_walt_cpu_load {
 	bool rtgb_active;
 	u64 ws;
 };
-
-#ifdef CONFIG_SCHED_WALT
-extern unsigned int sched_ravg_window;
-
-struct walt_sched_stats {
-	int nr_big_tasks;
-	u64 cumulative_runnable_avg_scaled;
-	u64 pred_demands_sum_scaled;
-	unsigned int nr_rtg_high_prio_tasks;
-};
-
-struct group_cpu_time {
-	u64 curr_runnable_sum;
-	u64 prev_runnable_sum;
-	u64 nt_curr_runnable_sum;
-	u64 nt_prev_runnable_sum;
-};
-
-struct load_subtractions {
-	u64 window_start;
-	u64 subs;
-	u64 new_subs;
-};
-
-#define NUM_TRACKED_WINDOWS 2
-#define NUM_LOAD_INDICES 1000
-
-struct sched_cluster {
-	raw_spinlock_t load_lock;
-	struct list_head list;
-	struct cpumask cpus;
-	int id;
-	int max_power_cost;
-	int min_power_cost;
-	int max_possible_capacity;
-	int efficiency; /* Differentiate cpus with different IPC capability */
-	unsigned int exec_scale_factor;
-	/*
-	 * max_freq = user maximum
-	 * max_mitigated_freq = thermal defined maximum
-	 * max_possible_freq = maximum supported by hardware
-	 */
-	unsigned int cur_freq, max_freq, max_mitigated_freq, min_freq;
-	unsigned int max_possible_freq;
-	bool freq_init_done;
-	u64 aggr_grp_load;
-};
-
-extern cpumask_t asym_cap_sibling_cpus;
-#endif /* CONFIG_SCHED_WALT */
 
 /* task_struct::on_rq states: */
 #define TASK_ON_RQ_QUEUED	1
@@ -681,9 +629,6 @@ struct cfs_rq {
 	struct task_group	*tg;	/* group that "owns" this runqueue */
 
 #ifdef CONFIG_CFS_BANDWIDTH
-#ifdef CONFIG_SCHED_WALT
-	struct walt_sched_stats walt_stats;
-#endif
 	int			runtime_enabled;
 	s64			runtime_remaining;
 
@@ -934,14 +879,6 @@ struct root_domain {
 	 */
 	struct perf_domain	*pd;
 
-#ifdef CONFIG_SCHED_WALT
-	/* Vendor fields. */
-	/* First cpu with maximum and minimum original capacity */
-	int max_cap_orig_cpu, min_cap_orig_cpu;
-	/* First cpu with mid capacity */
-	int mid_cap_orig_cpu;
-#endif
-
 };
 
 extern struct root_domain def_root_domain;
@@ -1097,9 +1034,6 @@ struct rq {
 	/* For active balancing */
 	int			active_balance;
 	int			push_cpu;
-#ifdef CONFIG_SCHED_WALT
-	struct task_struct	*push_task;
-#endif
 	struct cpu_stop_work	active_balance_work;
 
 	/* CPU of this runqueue: */
@@ -1122,40 +1056,6 @@ struct rq {
 	/* This is used to determine avg_idle's max value */
 	u64			max_idle_balance_cost;
 #endif
-
-#ifdef CONFIG_SCHED_WALT
-	struct sched_cluster	*cluster;
-	struct cpumask		freq_domain_cpumask;
-	struct walt_sched_stats walt_stats;
-
-	u64			window_start;
-	u32			prev_window_size;
-	unsigned long		walt_flags;
-
-	u64			cur_irqload;
-	u64			avg_irqload;
-	u64			irqload_ts;
-	struct task_struct	*ed_task;
-	u64			task_exec_scale;
-	u64			old_busy_time, old_busy_time_group;
-	u64			old_estimated_time;
-	u64			curr_runnable_sum;
-	u64			prev_runnable_sum;
-	u64			nt_curr_runnable_sum;
-	u64			nt_prev_runnable_sum;
-	u64			cum_window_demand_scaled;
-	struct group_cpu_time	grp_time;
-	struct load_subtractions load_subs[NUM_TRACKED_WINDOWS];
-	DECLARE_BITMAP_ARRAY(top_tasks_bitmap,
-			NUM_TRACKED_WINDOWS, NUM_LOAD_INDICES);
-	u8			*top_tasks[NUM_TRACKED_WINDOWS];
-	u8			curr_table;
-	int			prev_top;
-	int			curr_top;
-	bool			notif_pending;
-	u64			last_cc_update;
-	u64			cycles;
-#endif /* CONFIG_SCHED_WALT */
 
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
 	u64			prev_irq_time;
@@ -1904,12 +1804,7 @@ struct sched_class {
 
 #ifdef CONFIG_SMP
 	int (*balance)(struct rq *rq, struct task_struct *prev, struct rq_flags *rf);
-#ifdef CONFIG_SCHED_WALT
-	int  (*select_task_rq)(struct task_struct *p, int task_cpu, int sd_flag, int flags,
-			       int subling_count_hint);
-#else
 	int  (*select_task_rq)(struct task_struct *p, int task_cpu, int sd_flag, int flags);
-#endif
 	struct task_struct * (*pick_task)(struct rq *rq);
 
 	void (*migrate_task_rq)(struct task_struct *p, int new_cpu);
@@ -1947,12 +1842,6 @@ struct sched_class {
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	void (*task_change_group)(struct task_struct *p, int type);
-#endif
-
-#ifdef CONFIG_SCHED_WALT
-	void (*fixup_walt_sched_stats)(struct rq *rq, struct task_struct *p,
-					u16 updated_demand_scaled,
-					u16 updated_pred_demand_scaled);
 #endif
 };
 
@@ -2195,14 +2084,8 @@ static inline int hrtick_enabled(struct rq *rq)
 
 #endif /* CONFIG_SCHED_HRTICK */
 
-#ifdef CONFIG_SCHED_WALT
-u64 sched_ktime_clock(void);
-unsigned long
-cpu_util_freq_walt(int cpu, struct sched_walt_cpu_load *walt_load);
-#else
 #define sched_ravg_window TICK_NSEC
 #define sched_ktime_clock ktime_get_ns
-#endif
 
 #ifndef arch_scale_freq_capacity
 static __always_inline
@@ -2234,9 +2117,6 @@ static inline unsigned long capacity_orig_of(int cpu)
 
 static inline unsigned long task_util(struct task_struct *p)
 {
-#ifdef CONFIG_SCHED_WALT
-	return p->ravg.demand_scaled;
-#endif
 	return READ_ONCE(p->se.avg.util_avg);
 }
 
@@ -2279,22 +2159,11 @@ static inline unsigned long task_util(struct task_struct *p)
  * Return: the (estimated) utilization for the specified CPU
  */
 
-#ifdef CONFIG_SCHED_WALT
-static inline unsigned long cpu_util(int cpu)
-#else
 static inline unsigned long cpu_util(int cpu);
 static inline unsigned long __cpu_util(int cpu)
-#endif
 {
 	struct cfs_rq *cfs_rq;
 	unsigned int util;
-
-#ifdef CONFIG_SCHED_WALT
-	u64 walt_cpu_util =
-		cpu_rq(cpu)->walt_stats.cumulative_runnable_avg_scaled;
-
-	return min_t(unsigned long, walt_cpu_util, capacity_orig_of(cpu));
-#endif
 
 	cfs_rq = &cpu_rq(cpu)->cfs;
 	util = READ_ONCE(cfs_rq->avg.util_avg);
@@ -2310,20 +2179,12 @@ static inline unsigned long cpu_util_cum(int cpu, int delta)
 	u64 util = cpu_rq(cpu)->cfs.avg.util_avg;
 	unsigned long capacity = capacity_orig_of(cpu);
 
-#ifdef CONFIG_SCHED_WALT
-	util = cpu_rq(cpu)->cum_window_demand_scaled;
-#endif
 	delta += util;
 	if (delta < 0)
 		return 0;
 
 	return (delta >= capacity) ? capacity : delta;
 }
-
-#ifdef CONFIG_SCHED_WALT
-extern unsigned long stune_util(int cpu, unsigned long other_util,
-				struct sched_walt_cpu_load *walt_load);
-#endif
 
 extern unsigned int capacity_margin_freq;
 
@@ -2634,13 +2495,7 @@ static inline void cpufreq_update_util(struct rq *rq, unsigned int flags)
 	struct update_util_data *data;
 	u64 clock;
 
-#ifdef CONFIG_SCHED_WALT
-	if (!(flags & SCHED_CPUFREQ_WALT))
-		return;
-	clock = sched_ktime_clock();
-#else
 	clock = rq_clock(rq);
-#endif
 
 	data = rcu_dereference_sched(*per_cpu_ptr(&cpufreq_update_util_data,
 					cpu_of(rq)));
@@ -2840,13 +2695,11 @@ static inline unsigned long cpu_util_rt(struct rq *rq)
 #endif /* CONFIG_CPU_FREQ_GOV_SCHEDUTIL */
 
 #ifdef CONFIG_SMP
-#ifndef CONFIG_SCHED_WALT
 static inline unsigned long cpu_util(int cpu)
 {
 	return min(__cpu_util(cpu) + cpu_util_rt(cpu_rq(cpu)),
 		   capacity_orig_of(cpu));
 }
-#endif
 #endif
 
 #ifdef CONFIG_HAVE_SCHED_AVG_IRQ
@@ -2891,6 +2744,7 @@ static inline bool sched_energy_enabled(void)
 static inline bool sched_energy_enabled(void) { return false; }
 #endif
 
+<<<<<<< HEAD
 enum sched_boost_policy {
 	SCHED_BOOST_NONE,
 	SCHED_BOOST_ON_BIG,
@@ -3376,6 +3230,8 @@ struct sched_avg_stats {
 };
 extern void sched_get_nr_running_avg(struct sched_avg_stats *stats);
 
+=======
+>>>>>>> 94d284125f23 (kernel/sched: Drop Everything SCHED WALT)
 extern u64 avg_vruntime(struct cfs_rq *cfs_rq);
 
 #ifdef CONFIG_SMP
