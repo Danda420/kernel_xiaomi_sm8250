@@ -91,6 +91,10 @@
 #include <linux/cache.h>
 #include <linux/rodata_test.h>
 #include <linux/jump_label.h>
+#ifdef CONFIG_SN_CHECKER
+#include <linux/printk.h>
+#include <linux/reboot.h>
+#endif
 
 #include <asm/io.h>
 #include <asm/setup.h>
@@ -555,6 +559,71 @@ static void __init mm_init(void)
 #endif
 }
 
+#ifdef CONFIG_SN_CHECKER
+// Allowed Serial number in here
+static const char *allowed_sn_list[] = {
+	"ABC1234567",
+	NULL,
+};
+
+// Blocked Serial number in here
+static const char *blocked_sn_list[] = {
+	NULL,
+};
+
+static const char *get_sn_from_cmdline(void)
+{
+	static char serialno[64];
+	const char *prefix = "androidboot.serialno=";
+	char *p, *end;
+
+	p = strstr(boot_command_line, prefix);
+	if (!p)
+		return NULL;
+
+	p += strlen(prefix);
+	sscanf(p, "%63s", serialno);
+
+	end = strchr(serialno, ' ');
+	if (end)
+		*end = '\0';
+
+	return serialno;
+}
+
+static void __init check_device_sn(void)
+{
+	const char *sn = get_sn_from_cmdline();
+	int i;
+
+	if (!sn) {
+		pr_info("SN Check: Cannot read serial number from cmdline.\\n");
+		goto out;
+	}
+
+	// Blocked serial number check
+	for (i = 0; blocked_sn_list[i] != NULL; i++) {
+		if (strcmp(sn, blocked_sn_list[i]) == 0) {
+			pr_info("SN Check: Serial number (%s) is blocked\\n", sn);
+			goto out;
+		}
+	}
+
+	// Allowed serial number check
+	for (i = 0; allowed_sn_list[i] != NULL; i++) {
+		if (strcmp(sn, allowed_sn_list[i]) == 0) {
+			pr_info("SN Check: Serial number valid (%s)\\n", sn);
+			return;
+		}
+	}
+
+	pr_info("SN Check: Serial numbe not in list.\\n");
+
+out:
+	kernel_restart("Boot aborted, serial number invalid.");
+}
+#endif
+
 asmlinkage __visible void __init start_kernel(void)
 {
 	char *command_line;
@@ -605,6 +674,10 @@ asmlinkage __visible void __init start_kernel(void)
 	if (!IS_ERR_OR_NULL(after_dashes))
 		parse_args("Setting init args", after_dashes, NULL, 0, -1, -1,
 			   NULL, set_init_arg);
+
+#ifdef CONFIG_SN_CHECKER
+	check_device_sn();
+#endif
 
 	/*
 	 * These use large bootmem allocations and must precede
