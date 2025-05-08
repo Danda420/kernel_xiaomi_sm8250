@@ -46,8 +46,9 @@
  * Do load balancing on this domain
  *
  * SHARED_CHILD: Set from the base domain up to cpuset.sched_relax_domain_level.
+ * NEEDS_GROUPS: Load balancing flag.
  */
-SD_FLAG(SD_LOAD_BALANCE, SDF_SHARED_CHILD)
+SD_FLAG(SD_LOAD_BALANCE, SDF_SHARED_CHILD | SDF_NEEDS_GROUPS)
 
 /*
  * Balance when about to become idle
