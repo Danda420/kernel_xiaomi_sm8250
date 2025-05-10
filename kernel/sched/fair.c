@@ -7921,9 +7921,6 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	}
 
 	if (boosted || per_task_boost(p) > 0 || __cpu_overutilized(prev_cpu, delta) ||
-#ifdef CONFIG_PACKAGE_RUNTIME_INFO
-	    game_vip_task(p) ||
-#endif
 	    !task_fits_max(p, prev_cpu)) {
 		best_energy_cpu = cpup;
 		goto unlock;
@@ -7981,14 +7978,6 @@ fail:
 eas_not_ready:
 	return -1;
 }
-
-#ifdef CONFIG_PACKAGE_RUNTIME_INFO
-static inline void wake_render(struct task_struct *p)
-{
-	if (is_render_thread(p))
-		current->pkg.migt.wake_render++;
-}
-#endif
 
 /*
  * select_task_rq_fair: Select target runqueue for the waking task in domains

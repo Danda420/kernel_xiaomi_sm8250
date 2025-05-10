@@ -93,13 +93,6 @@ extern __read_mostly bool sched_predl;
 extern unsigned int sched_capacity_margin_up[CPU_NR];
 extern unsigned int sched_capacity_margin_down[CPU_NR];
 
-struct sched_walt_cpu_load {
-	unsigned long nl;
-	unsigned long pl;
-	bool rtgb_active;
-	u64 ws;
-};
-
 /* task_struct::on_rq states: */
 #define TASK_ON_RQ_QUEUED	1
 #define TASK_ON_RQ_MIGRATING	2
@@ -2794,12 +2787,5 @@ static inline void sched_irq_work_queue(struct irq_work *work)
 		irq_work_queue(work);
 	else
 		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
-}
-#endif
-
-#ifdef CONFIG_PACKAGE_RUNTIME_INFO
-void __weak init_task_runtime_info(struct task_struct *tsk)
-{
-	return;
 }
 #endif

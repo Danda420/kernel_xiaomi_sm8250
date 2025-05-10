@@ -1927,10 +1927,6 @@ void set_cpus_allowed_common(struct task_struct *p, const struct cpumask *new_ma
 {
 	cpumask_copy(&p->cpus_mask, new_mask);
 	p->nr_cpus_allowed = cpumask_weight(new_mask);
-#ifdef CONFIG_PACKAGE_RUNTIME_INFO
-	p->pkg.migt.flag &= ~MINOR_TASK;
-	cpumask_copy(&p->pkg.migt.cpus_allowed, new_mask);
-#endif
 }
 
 void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
@@ -2966,10 +2962,6 @@ static void ttwu_queue(struct task_struct *p, int cpu, int wake_flags)
  * accesses to the task state; see try_to_wake_up() and set_current_state().
  */
 
-#ifdef CONFIG_SMP
-#define walt_try_to_wake_up(a) {}
-#endif
-
 /**
  * try_to_wake_up - wake up a thread
  * @p: the thread to be awakened
@@ -3146,8 +3138,6 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 	 */
 	smp_cond_load_acquire(&p->on_cpu, !VAL);
 
-	walt_try_to_wake_up(p);
-
 	cpu = select_task_rq(p, p->wake_cpu, SD_BALANCE_WAKE, wake_flags,
 			     sibling_count_hint);
 	if (task_cpu(p) != cpu) {
@@ -3310,10 +3300,6 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->se.vruntime			= 0;
 	p->se.vlag			= 0;
 	INIT_LIST_HEAD(&p->se.group_node);
-
-#ifdef CONFIG_PACKAGE_RUNTIME_INFO
-	init_task_runtime_info(p);
-#endif
 
 	/* A delayed task cannot be in clone(). */
 	SCHED_WARN_ON(p->se.sched_delayed);
@@ -6266,25 +6252,6 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 	retval = security_task_setscheduler(p);
 	if (retval)
 		goto out_free_new_mask;
-
-#ifdef CONFIG_PACKAGE_RUNTIME_INFO
-	if (minor_window_task(p)) {
-		retval = -EPERM;
-		cpuset_cpus_allowed(p, cpus_allowed);
-		cpumask_and(new_mask, in_mask, cpus_allowed);
-		cpumask_andnot(&allowed_mask, new_mask, cpu_isolated_mask);
-		dest_cpu = cpumask_any_and(cpu_active_mask, &allowed_mask);
-		if (dest_cpu < nr_cpu_ids) {
-			 cpuset_cpus_allowed(p, cpus_allowed);
-			  if (!cpumask_subset(new_mask, cpus_allowed))
-				  cpumask_copy(new_mask, cpus_allowed);
-			  cpumask_copy(&p->pkg.migt.cpus_allowed, new_mask);
-		}
-		p->pkg.migt.flag |= MINOR_TASK;
-		cpumask_copy(&p->pkg.migt.cpus_allowed, new_mask);
-		goto out_free_new_mask;
-	}
-#endif
 
 	cpuset_cpus_allowed(p, cpus_allowed);
 	cpumask_and(new_mask, in_mask, cpus_allowed);
