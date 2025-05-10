@@ -64,9 +64,7 @@
 #include <linux/mutex.h>
 #include <linux/cgroup.h>
 #include <linux/wait.h>
-#ifdef CONFIG_PACKAGE_RUNTIME_INFO
-#include <linux/pkg_stat.h>
-#endif
+#include <linux/binfmts.h>
 
 DEFINE_STATIC_KEY_FALSE(cpusets_pre_enable_key);
 DEFINE_STATIC_KEY_FALSE(cpusets_enabled_key);
@@ -2138,14 +2136,7 @@ static void cpuset_fork(struct task_struct *task)
 	if (task_css_is_root(task, cpuset_cgrp_id))
 		return;
 
-#ifdef CONFIG_PACKAGE_RUNTIME_INFO
-	if (current->pkg.migt.flag & MINOR_TASK)
-		set_cpus_allowed_ptr(task, current->pkg.migt.cpus_ptr);
-	else
-		set_cpus_allowed_ptr(task, current->cpus_ptr);
-#else
 	set_cpus_allowed_ptr(task, current->cpus_ptr);
-#endif
 
 	task->mems_allowed = current->mems_allowed;
 }
