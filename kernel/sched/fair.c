@@ -29,11 +29,6 @@
 #include <misc/d8g_helper.h>
 #endif
 
-#ifdef CONFIG_SMP
-static inline bool task_fits_max(struct task_struct *p, int cpu);
-static inline unsigned long boosted_task_util(struct task_struct *task);
-#endif /* CONFIG_SMP */
-
 unsigned int super_big_cpu = 7;
 
 /*
@@ -4395,16 +4390,6 @@ static inline int task_fits_cpu(struct task_struct *p, int cpu)
 	 * include the utilization but also the performance hints.
 	 */
 	return (util_fits_cpu(util, uclamp_min, uclamp_max, cpu) > 0);
-}
-
-static inline bool task_fits_max(struct task_struct *p, int cpu)
-{
-	return false;
-}
-
-static inline bool task_demand_fits(struct task_struct *p, int cpu)
-{
-	return false;
 }
 
 static inline void adjust_cpus_for_packing(struct task_struct *p,
