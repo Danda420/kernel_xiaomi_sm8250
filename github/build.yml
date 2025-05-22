@@ -1,0 +1,39 @@
+name: Build Kernel and Modules
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v3
+
+    - name: Download Proton Clang
+      run: |
+        wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/proton-clang-linux-x86.zip -O proton-clang.zip
+        unzip proton-clang.zip -d proton-clang
+        echo "$PWD/proton-clang/bin" >> $GITHUB_PATH
+
+    - name: Setup Kernel Config
+      run: make O=out ARCH=arm64 deconfig1
+
+    - name: Build Kernel and Modules
+      run: make -j$(nproc) O=out ARCH=arm64 CC=clang modules modules_install INSTALL_MOD_PATH=out/modules_install
+
+    - name: Upload Module.symvers
+      uses: actions/upload-artifact@v3
+      with:
+        name: module-symvers
+        path: out/Module.symvers
+
+    - name: Upload kernel modules (.ko)
+      uses: actions/upload-artifact@v3
+      with:
+        name: kernel-modules
+        path: out/modules_install/lib/modules/
