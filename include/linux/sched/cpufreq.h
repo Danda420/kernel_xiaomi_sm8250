@@ -29,8 +29,9 @@ void cpufreq_add_update_util_hook(int cpu, struct update_util_data *data,
 void cpufreq_remove_update_util_hook(int cpu);
 bool cpufreq_this_cpu_can_update(struct cpufreq_policy *policy);
 
+static bool last_exp_util;
 static inline unsigned long map_util_freq(unsigned long util,
-					unsigned long freq, unsigned long cap)
+					unsigned long freq, unsigned long cap, bool exp_util)
 {
        last_exp_util = exp_util;
        if(exp_util)

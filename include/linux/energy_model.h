@@ -119,7 +119,7 @@ static inline unsigned long em_cpu_energy(struct em_perf_domain *pd,
 	 * effective frequency.
 	 */
 	cpu = cpumask_first(to_cpumask(pd->cpus));
-	scale_cpu = arch_scale_cpu_capacity(NULL, cpu);
+	scale_cpu = arch_scale_cpu_capacity(cpu);
 	cs = &pd->table[pd->nr_cap_states - 1];
 
 	max_util = map_util_perf(max_util);
