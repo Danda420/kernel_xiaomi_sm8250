@@ -815,7 +815,11 @@ restart_now:
 
 	/* preload all compressed pages (maybe downgrade role if necessary) */
 	if (should_alloc_managed_pages(fe, sbi->cache_strategy, map->m_la))
+#if defined(CONFIG_OPLUS_FEATURE_EROFS)
 		cache_strategy = TRYALLOC;
+#else
+		cache_strategy = DELAYEDALLOC;
+#endif
 	else
 		cache_strategy = DONTALLOC;
 
@@ -912,14 +916,36 @@ static void z_erofs_decompress_kickoff(struct z_erofs_decompressqueue *io,
 	if (sync) {
 		if (!atomic_add_return(bios, &io->pending_bios))
 			complete(&io->u.done);
-
 		return;
 	}
 
 	if (atomic_add_return(bios, &io->pending_bios))
 		return;
+
 	/* Use workqueue and sync decompression for atomic contexts only */
 	if (in_atomic() || irqs_disabled()) {
+#ifdef CONFIG_OPLUS_FEATURE_EROFS
+		if (in_atomic() || irqs_disabled()) {
+#ifdef CONFIG_EROFS_FS_PCPU_KTHREAD
+			struct kthread_worker *worker;
+
+			rcu_read_lock();
+			worker = rcu_dereference(
+					z_erofs_pcpu_workers[raw_smp_processor_id()]);
+			if (!worker) {
+				INIT_WORK(&io->u.work, z_erofs_decompressqueue_work);
+				queue_work(z_erofs_workqueue, &io->u.work);
+			} else {
+				kthread_queue_work(worker, &io->u.kthread_work);
+			}
+			rcu_read_unlock();
+#else
+			queue_work(z_erofs_workqueue, &io->u.work);
+#endif
+		} else {
+			z_erofs_decompressqueue_work(&io->u.work);
+		}
+#else
 #ifdef CONFIG_EROFS_FS_PCPU_KTHREAD
 		struct kthread_worker *worker;
 
@@ -935,6 +961,7 @@ static void z_erofs_decompress_kickoff(struct z_erofs_decompressqueue *io,
 		rcu_read_unlock();
 #else
 		queue_work(z_erofs_workqueue, &io->u.work);
+#endif
 #endif
 		sbi->readahead_sync_decompress = true;
 		return;
