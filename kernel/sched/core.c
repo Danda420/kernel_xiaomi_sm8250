@@ -8350,11 +8350,7 @@ static int cpu_cgroup_css_online(struct cgroup_subsys_state *css)
 	rcu_read_unlock();
 	mutex_unlock(&uclamp_mutex);
 #ifdef CONFIG_UCLAMP_ASSIST
-<<<<<<< HEAD
-        uclamp_set(css);
-=======
 	uclamp_set(css);
->>>>>>> 7a3b0810af19 (sched/core: Introduce Uclamp Assist)
 #endif
 #endif
 
