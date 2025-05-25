@@ -450,18 +450,12 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 			split_huge_pmd(vma, old_pmd, old_addr);
 			if (pmd_trans_unstable(old_pmd))
 				continue;
-<<<<<<< HEAD
 		} else if (IS_ENABLED(CONFIG_HAVE_MOVE_PMD) &&
 			   extent == PMD_SIZE) {
-=======
-		} else if (extent == PMD_SIZE) {
-#ifdef CONFIG_HAVE_MOVE_PMD
->>>>>>> 5d9677c85e73 (mm: speed up mremap by 20x on large regions)
 			/*
 			 * If the extent is PMD-sized, try to speed the move by
 			 * moving at the PMD level if possible.
 			 */
-<<<<<<< HEAD
 			if (move_pgt_entry(NORMAL_PMD, vma, old_addr, new_addr,
 						old_end, old_pmd, new_pmd,
 						true))
@@ -469,22 +463,6 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 		}
 
 		if (pte_alloc(new_vma->vm_mm, new_pmd))
-=======
-			bool moved;
-
-			if (need_rmap_locks)
-				take_rmap_locks(vma);
-			moved = move_normal_pmd(vma, old_addr, new_addr,
-					old_end, old_pmd, new_pmd);
-			if (need_rmap_locks)
-				drop_rmap_locks(vma);
-			if (moved)
-				continue;
-#endif
-		}
-
-		if (pte_alloc(new_vma->vm_mm, new_pmd, new_addr))
->>>>>>> 5d9677c85e73 (mm: speed up mremap by 20x on large regions)
 			break;
 		move_ptes(vma, old_pmd, old_addr, old_addr + extent, new_vma,
 			  new_pmd, new_addr, need_rmap_locks);

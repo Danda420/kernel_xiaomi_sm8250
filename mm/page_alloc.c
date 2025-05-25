@@ -2797,12 +2797,9 @@ static int rmqueue_bulk(struct zone *zone, unsigned int order,
 				cond_resched();
 			spin_lock(&zone->lock);
 		}
-<<<<<<< HEAD
-=======
 
 		if (unlikely(check_pcp_refill(page)))
 			continue;
->>>>>>> f457df54ac7a (mm: Don't hog the CPU and zone lock in rmqueue_bulk())
 
 		/*
 		 * Split buddy pages returned by expand() are received here in
