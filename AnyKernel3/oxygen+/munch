@@ -4,7 +4,7 @@
 ## AnyKernel setup
 # global properties
 properties() { '
-kernel.string=Oxygen+ by Danda & Candy
+kernel.string=Oxygen+ by Danda
 do.devicecheck=1
 do.modules=0
 do.systemless=1
@@ -20,40 +20,45 @@ supported.patchlevels=
 supported.vendorpatchlevels=
 '; } # end properties
 
-# shell variables
-block=/dev/block/bootdevice/by-name/boot;
-is_slot_device=auto;
-ramdisk_compression=auto;
+### AnyKernel install
 
+## boot files attributes
+boot_attributes() {
+  set_perm_recursive 0 0 755 644 $RAMDISK/*;
+  set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+} # end attributes
 
-## AnyKernel methods (DO NOT CHANGE)
-# import patching functions/variables - see for reference
+# boot shell variables
+BLOCK=/dev/block/bootdevice/by-name/boot;
+IS_SLOT_DEVICE=auto;
+RAMDISK_COMPRESSION=auto;
+
+# import functions/variables and setup patching - see for reference (DO NOT REMOVE)
 . tools/ak3-core.sh;
 
-
-## AnyKernel file attributes
-# set permissions/ownership for included ramdisk files
-set_perm_recursive 0 0 750 750 $ramdisk/*;
-
-
-## AnyKernel install
+# boot install
 dump_boot;
 
 # Begin Ramdisk Changes
-
 # migrate from /overlay to /overlay.d to enable SAR Magisk
-if [ -d $ramdisk/overlay ]; then
-  rm -rf $ramdisk/overlay;
+if [ -d $RAMDISK/overlay ]; then
+  rm -rf $RAMDISK/overlay;
 fi;
 
 write_boot;
 ## end install
 
+## vendor_boot files attributes
+vendor_boot_attributes() {
+  set_perm_recursive 0 0 755 644 $RAMDISK/*;
+  set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+} # end attributes
+
 ## vendor_boot shell variables
-block=/dev/block/bootdevice/by-name/vendor_boot;
-is_slot_device=auto;
-ramdisk_compression=auto;
-patch_vbmeta_flag=auto;
+BLOCK=/dev/block/bootdevice/by-name/vendor_boot;
+IS_SLOT_DEVICE=auto;
+RAMDISK_COMPRESSION=auto;
+PATCH_VBMETA_FLAG=auto;
 
 # reset for vendor_boot patching
 reset_ak;
