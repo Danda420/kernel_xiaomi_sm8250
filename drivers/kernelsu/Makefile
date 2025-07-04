@@ -59,13 +59,20 @@ ifndef KSU_N3X7G3N_EXPECTED_HASH
 KSU_N3X7G3N_EXPECTED_HASH := bfddf83a559355b053187177775c39c639d2d2695163baa77253746dbf18098d
 endif
 
-
 ifndef KSU_DKM_EXPECTED_SIZE
 KSU_DKM_EXPECTED_SIZE := 0x387
 endif
 
 ifndef KSU_DKM_EXPECTED_HASH
 KSU_DKM_EXPECTED_HASH := 97075159a623c0c072da0918f61656fb1c70500638790926020be2a10820869b
+endif
+
+ifndef SUKISU_EXPECTED_SIZE
+SUKISU_EXPECTED_SIZE := 0x35c
+endif
+
+ifndef SUKISU_EXPECTED_HASH
+SUKISU_EXPECTED_HASH := 947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef
 endif
 
 ifdef KSU_MANAGER_PACKAGE
@@ -83,6 +90,8 @@ $(info -- KernelSU n3x7g3n Manager signature size: $(KSU_N3X7G3N_EXPECTED_SIZE))
 $(info -- KernelSU n3x7g3n Manager signature hash: $(KSU_N3X7G3N_EXPECTED_HASH))
 $(info -- DKM SU Manager signature size: $(KSU_DKM_EXPECTED_SIZE))
 $(info -- DKM SU Manager signature hash: $(KSU_DKM_EXPECTED_HASH))
+$(info -- SukiSU Manager signature size: $(SUKISU_EXPECTED_SIZE))
+$(info -- SukiSU Manager signature hash: $(SUKISU_EXPECTED_HASH))
 
 ccflags-y += -DEXPECTED_SIZE=$(KSU_EXPECTED_SIZE)
 ccflags-y += -DEXPECTED_HASH=\"$(KSU_EXPECTED_HASH)\"
@@ -94,6 +103,8 @@ ccflags-y += -DEXPECTED_N3X7G3N_SIZE=$(KSU_N3X7G3N_EXPECTED_SIZE)
 ccflags-y += -DEXPECTED_N3X7G3N_HASH=\"$(KSU_N3X7G3N_EXPECTED_HASH)\"
 ccflags-y += -DEXPECTED_DKM_SIZE=$(KSU_DKM_EXPECTED_SIZE)
 ccflags-y += -DEXPECTED_DKM_HASH=\"$(KSU_DKM_EXPECTED_HASH)\"
+ccflags-y += -DEXPECTED_SUKISU_SIZE=$(SUKISU_EXPECTED_SIZE)
+ccflags-y += -DEXPECTED_SUKISU_HASH=\"$(SUKISU_EXPECTED_HASH)\"
 
 ccflags-y += -Wno-implicit-function-declaration -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat
 ccflags-y += -Wno-declaration-after-statement -Wno-unused-function
