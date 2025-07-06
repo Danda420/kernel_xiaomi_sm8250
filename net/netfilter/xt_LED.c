@@ -111,9 +111,7 @@ static int led_tg_check(const struct xt_tgchk_param *par)
 	struct xt_led_info_internal *ledinternal;
 	int err;
 
-	/* Bail out if empty string or not a string at all. */
-	if (ledinfo->id[0] == '\0' ||
-	    !memchr(ledinfo->id, '\0', sizeof(ledinfo->id)))
+	if (ledinfo->id[0] == '\0')
 		return -EINVAL;
 
 	mutex_lock(&xt_led_mutex);

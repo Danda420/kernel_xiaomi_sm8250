@@ -117,7 +117,7 @@ static struct notifier_block hyperv_panic_block = {
 static const char *fb_mmio_name = "fb_range";
 static struct resource *fb_mmio;
 static struct resource *hyperv_mmio;
-static DEFINE_MUTEX(hyperv_mmio_lock);
+static DEFINE_SEMAPHORE(hyperv_mmio_lock);
 
 static int vmbus_exists(void)
 {
@@ -1180,6 +1180,8 @@ static struct kmsg_dumper hv_kmsg_dumper = {
 };
 
 static struct ctl_table_header *hv_ctl_table_hdr;
+static int zero;
+static int one = 1;
 
 /*
  * sysctl option to allow the user to control whether kmsg data should be
@@ -1192,8 +1194,8 @@ static struct ctl_table hv_ctl_table[] = {
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec_minmax,
-		.extra1		= SYSCTL_ZERO,
-		.extra2		= SYSCTL_ONE
+		.extra1		= &zero,
+		.extra2		= &one
 	},
 	{}
 };
@@ -1850,7 +1852,7 @@ int vmbus_allocate_mmio(struct resource **new, struct hv_device *device_obj,
 	int retval;
 
 	retval = -ENXIO;
-	mutex_lock(&hyperv_mmio_lock);
+	down(&hyperv_mmio_lock);
 
 	/*
 	 * If overlaps with frame buffers are allowed, then first attempt to
@@ -1905,7 +1907,7 @@ int vmbus_allocate_mmio(struct resource **new, struct hv_device *device_obj,
 	}
 
 exit:
-	mutex_unlock(&hyperv_mmio_lock);
+	up(&hyperv_mmio_lock);
 	return retval;
 }
 EXPORT_SYMBOL_GPL(vmbus_allocate_mmio);
@@ -1922,28 +1924,15 @@ void vmbus_free_mmio(resource_size_t start, resource_size_t size)
 {
 	struct resource *iter;
 
-	mutex_lock(&hyperv_mmio_lock);
-
-	/*
-	 * If all bytes of the MMIO range to be released are within the
-	 * special case fb_mmio shadow region, skip releasing the shadow
-	 * region since no corresponding __request_region() was done
-	 * in vmbus_allocate_mmio().
-	 */
-	if (fb_mmio && start >= fb_mmio->start &&
-	    (start + size - 1 <= fb_mmio->end))
-		goto skip_shadow_release;
-
+	down(&hyperv_mmio_lock);
 	for (iter = hyperv_mmio; iter; iter = iter->sibling) {
 		if ((iter->start >= start + size) || (iter->end <= start))
 			continue;
 
 		__release_region(iter, start, size);
 	}
-
-skip_shadow_release:
 	release_mem_region(start, size);
-	mutex_unlock(&hyperv_mmio_lock);
+	up(&hyperv_mmio_lock);
 
 }
 EXPORT_SYMBOL_GPL(vmbus_free_mmio);

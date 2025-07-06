@@ -301,6 +301,8 @@ bool nvme_change_ctrl_state(struct nvme_ctrl *ctrl,
 		break;
 	case NVME_CTRL_LIVE:
 		switch (old_state) {
+		case NVME_CTRL_NEW:
+		case NVME_CTRL_RESETTING:
 		case NVME_CTRL_CONNECTING:
 			changed = true;
 			/* FALLTHRU */
@@ -1095,13 +1097,7 @@ int nvme_set_queue_count(struct nvme_ctrl *ctrl, int *count)
 
 	status = nvme_set_features(ctrl, NVME_FEAT_NUM_QUEUES, q_count, NULL, 0,
 			&result);
-
-	/*
-	 * It's either a kernel error or the host observed a connection
-	 * lost. In either case it's not possible communicate with the
-	 * controller and thus enter the error code path.
-	 */
-	if (status < 0 || status == NVME_SC_HOST_PATH_ERROR)
+	if (status < 0)
 		return status;
 
 	/*

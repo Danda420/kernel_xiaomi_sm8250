@@ -43,7 +43,7 @@ struct string_list {
 
 struct symbol {
 	struct symbol *hash_next;
-	char *name;
+	const char *name;
 	enum symbol_type type;
 	struct string_list *defn;
 	struct symbol *expansion_trail;

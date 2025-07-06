@@ -426,13 +426,7 @@ static inline int ip_rt_proc_init(void)
 
 static inline bool rt_is_expired(const struct rtable *rth)
 {
-	bool res;
-
-	rcu_read_lock();
-	res = rth->rt_genid != rt_genid_ipv4(dev_net_rcu(rth->dst.dev));
-	rcu_read_unlock();
-
-	return res;
+	return rth->rt_genid != rt_genid_ipv4(dev_net(rth->dst.dev));
 }
 
 void rt_cache_flush(struct net *net)
