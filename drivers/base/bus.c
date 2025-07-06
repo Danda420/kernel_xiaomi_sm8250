@@ -921,8 +921,6 @@ bus_devices_fail:
 	bus_remove_file(bus, &bus_attr_uevent);
 bus_uevent_fail:
 	kset_unregister(&bus->p->subsys);
-	/* Above kset_unregister() will kfree @bus->p */
-	bus->p = NULL;
 out:
 	kfree(bus->p);
 	bus->p = NULL;

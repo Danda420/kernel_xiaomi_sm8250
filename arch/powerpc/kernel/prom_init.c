@@ -2742,7 +2742,7 @@ static void __init fixup_device_tree_chrp(void)
 #endif
 
 #if defined(CONFIG_PPC64) && defined(CONFIG_PPC_PMAC)
-static void __init fixup_device_tree_pmac64(void)
+static void __init fixup_device_tree_pmac(void)
 {
 	phandle u3, i2c, mpic;
 	u32 u3_rev;
@@ -2782,31 +2782,7 @@ static void __init fixup_device_tree_pmac64(void)
 		     &parent, sizeof(parent));
 }
 #else
-#define fixup_device_tree_pmac64()
-#endif
-
-#ifdef CONFIG_PPC_PMAC
-static void __init fixup_device_tree_pmac(void)
-{
-	__be32 val = 1;
-	char type[8];
-	phandle node;
-
-	// Some pmacs are missing #size-cells on escc nodes
-	for (node = 0; prom_next_node(&node); ) {
-		type[0] = '\0';
-		prom_getprop(node, "device_type", type, sizeof(type));
-		if (prom_strcmp(type, "escc"))
-			continue;
-
-		if (prom_getproplen(node, "#size-cells") != PROM_ERROR)
-			continue;
-
-		prom_setprop(node, NULL, "#size-cells", &val, sizeof(val));
-	}
-}
-#else
-static inline void fixup_device_tree_pmac(void) { }
+#define fixup_device_tree_pmac()
 #endif
 
 #ifdef CONFIG_PPC_EFIKA
@@ -3031,7 +3007,6 @@ static void __init fixup_device_tree(void)
 	fixup_device_tree_maple_memory_controller();
 	fixup_device_tree_chrp();
 	fixup_device_tree_pmac();
-	fixup_device_tree_pmac64();
 	fixup_device_tree_efika();
 	fixup_device_tree_pasemi();
 }

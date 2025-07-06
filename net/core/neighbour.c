@@ -1975,7 +1975,6 @@ static const struct nla_policy nl_neightbl_policy[NDTA_MAX+1] = {
 static const struct nla_policy nl_ntbl_parm_policy[NDTPA_MAX+1] = {
 	[NDTPA_IFINDEX]			= { .type = NLA_U32 },
 	[NDTPA_QUEUE_LEN]		= { .type = NLA_U32 },
-	[NDTPA_QUEUE_LENBYTES]		= { .type = NLA_U32 },
 	[NDTPA_PROXY_QLEN]		= { .type = NLA_U32 },
 	[NDTPA_APP_PROBES]		= { .type = NLA_U32 },
 	[NDTPA_UCAST_PROBES]		= { .type = NLA_U32 },
@@ -2890,12 +2889,10 @@ static inline size_t neigh_nlmsg_size(void)
 static void __neigh_notify(struct neighbour *n, int type, int flags,
 			   u32 pid)
 {
+	struct net *net = dev_net(n->dev);
 	struct sk_buff *skb;
 	int err = -ENOBUFS;
-	struct net *net;
 
-	rcu_read_lock();
-	net = dev_net_rcu(n->dev);
 	skb = nlmsg_new(neigh_nlmsg_size(), GFP_ATOMIC);
 	if (skb == NULL)
 		goto errout;
@@ -2908,11 +2905,10 @@ static void __neigh_notify(struct neighbour *n, int type, int flags,
 		goto errout;
 	}
 	rtnl_notify(skb, net, 0, RTNLGRP_NEIGH, NULL, GFP_ATOMIC);
-	goto out;
+	return;
 errout:
-	rtnl_set_sk_err(net, RTNLGRP_NEIGH, err);
-out:
-	rcu_read_unlock();
+	if (err < 0)
+		rtnl_set_sk_err(net, RTNLGRP_NEIGH, err);
 }
 
 void neigh_app_ns(struct neighbour *n)
@@ -2922,6 +2918,8 @@ void neigh_app_ns(struct neighbour *n)
 EXPORT_SYMBOL(neigh_app_ns);
 
 #ifdef CONFIG_SYSCTL
+static int zero;
+static int int_max = INT_MAX;
 static int unres_qlen_max = INT_MAX / SKB_TRUESIZE(ETH_FRAME_LEN);
 
 static int proc_unres_qlen(struct ctl_table *ctl, int write,
@@ -2930,7 +2928,7 @@ static int proc_unres_qlen(struct ctl_table *ctl, int write,
 	int size, ret;
 	struct ctl_table tmp = *ctl;
 
-	tmp.extra1 = SYSCTL_ZERO;
+	tmp.extra1 = &zero;
 	tmp.extra2 = &unres_qlen_max;
 	tmp.data = &size;
 
@@ -2995,8 +2993,8 @@ static int neigh_proc_dointvec_zero_intmax(struct ctl_table *ctl, int write,
 	struct ctl_table tmp = *ctl;
 	int ret;
 
-	tmp.extra1 = SYSCTL_ZERO;
-	tmp.extra2 = SYSCTL_INT_MAX;
+	tmp.extra1 = &zero;
+	tmp.extra2 = &int_max;
 
 	ret = proc_dointvec_minmax(&tmp, write, buffer, lenp, ppos);
 	neigh_proc_update(ctl, write);
@@ -3141,24 +3139,24 @@ static struct neigh_sysctl_table {
 			.procname	= "gc_thresh1",
 			.maxlen		= sizeof(int),
 			.mode		= 0644,
-			.extra1		= SYSCTL_ZERO,
-			.extra2		= SYSCTL_INT_MAX,
+			.extra1 	= &zero,
+			.extra2		= &int_max,
 			.proc_handler	= proc_dointvec_minmax,
 		},
 		[NEIGH_VAR_GC_THRESH2] = {
 			.procname	= "gc_thresh2",
 			.maxlen		= sizeof(int),
 			.mode		= 0644,
-			.extra1		= SYSCTL_ZERO,
-			.extra2		= SYSCTL_INT_MAX,
+			.extra1 	= &zero,
+			.extra2		= &int_max,
 			.proc_handler	= proc_dointvec_minmax,
 		},
 		[NEIGH_VAR_GC_THRESH3] = {
 			.procname	= "gc_thresh3",
 			.maxlen		= sizeof(int),
 			.mode		= 0644,
-			.extra1		= SYSCTL_ZERO,
-			.extra2		= SYSCTL_INT_MAX,
+			.extra1 	= &zero,
+			.extra2		= &int_max,
 			.proc_handler	= proc_dointvec_minmax,
 		},
 		{},

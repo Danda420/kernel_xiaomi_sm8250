@@ -77,8 +77,6 @@ struct netem_sched_data {
 	/* internal t(ime)fifo qdisc uses t_root and sch->limit */
 	struct rb_root t_root;
 
-	u32 t_len;
-
 	/* optional qdisc for classful handling (NULL at netem init) */
 	struct Qdisc	*qdisc;
 
@@ -371,8 +369,6 @@ static void tfifo_reset(struct Qdisc *sch)
 		rb_erase(&skb->rbnode, &q->t_root);
 		rtnl_kfree_skbs(skb, skb);
 	}
-
-	q->t_len = 0;
 }
 
 static void tfifo_enqueue(struct sk_buff *nskb, struct Qdisc *sch)
@@ -393,7 +389,6 @@ static void tfifo_enqueue(struct sk_buff *nskb, struct Qdisc *sch)
 	}
 	rb_link_node(&nskb->rbnode, parent, p);
 	rb_insert_color(&nskb->rbnode, &q->t_root);
-	q->t_len++;
 	sch->q.qlen++;
 }
 
@@ -522,7 +517,7 @@ static int netem_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 			1<<(prandom_u32() % 8);
 	}
 
-	if (unlikely(q->t_len >= sch->limit)) {
+	if (unlikely(sch->q.qlen >= sch->limit)) {
 		qdisc_drop_all(skb, sch, to_free);
 		return rc_drop;
 	}
@@ -650,8 +645,8 @@ static struct sk_buff *netem_dequeue(struct Qdisc *sch)
 tfifo_dequeue:
 	skb = __qdisc_dequeue_head(&sch->q);
 	if (skb) {
-deliver:
 		qdisc_qstats_backlog_dec(sch, skb);
+deliver:
 		qdisc_bstats_update(sch, skb);
 		return skb;
 	}
@@ -669,7 +664,8 @@ deliver:
 
 		if (time_to_send <= now &&  q->slot.slot_next <= now) {
 			rb_erase(p, &q->t_root);
-			q->t_len--;
+			sch->q.qlen--;
+			qdisc_qstats_backlog_dec(sch, skb);
 			skb->next = NULL;
 			skb->prev = NULL;
 			/* skb->dev shares skb->rbnode area,
@@ -704,22 +700,17 @@ deliver:
 				if (err != NET_XMIT_SUCCESS) {
 					if (net_xmit_drop_count(err))
 						qdisc_qstats_drop(sch);
-					sch->qstats.backlog -= pkt_len;
-					sch->q.qlen--;
 					qdisc_tree_reduce_backlog(sch, 1, pkt_len);
 				}
 				goto tfifo_dequeue;
 			}
-			sch->q.qlen--;
 			goto deliver;
 		}
 
 		if (q->qdisc) {
 			skb = q->qdisc->ops->dequeue(q->qdisc);
-			if (skb) {
-				sch->q.qlen--;
+			if (skb)
 				goto deliver;
-			}
 		}
 
 		qdisc_watchdog_schedule_ns(&q->watchdog,
@@ -729,10 +720,8 @@ deliver:
 
 	if (q->qdisc) {
 		skb = q->qdisc->ops->dequeue(q->qdisc);
-		if (skb) {
-			sch->q.qlen--;
+		if (skb)
 			goto deliver;
-		}
 	}
 	return NULL;
 }

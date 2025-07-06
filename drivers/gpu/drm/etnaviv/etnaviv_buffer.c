@@ -403,8 +403,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 	} else {
 		CMD_LOAD_STATE(buffer, VIVS_GL_FLUSH_CACHE,
 				       VIVS_GL_FLUSH_CACHE_DEPTH |
-				       VIVS_GL_FLUSH_CACHE_COLOR |
-					   VIVS_GL_FLUSH_CACHE_SHADER_L1);
+				       VIVS_GL_FLUSH_CACHE_COLOR);
 		CMD_LOAD_STATE(buffer, VIVS_TS_FLUSH_CACHE,
 				       VIVS_TS_FLUSH_CACHE_FLUSH);
 	}

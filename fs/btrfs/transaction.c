@@ -184,10 +184,8 @@ loop:
 	cur_trans = fs_info->running_transaction;
 	if (cur_trans) {
 		if (cur_trans->aborted) {
-			const int abort_error = cur_trans->aborted;
-
 			spin_unlock(&fs_info->trans_lock);
-			return abort_error;
+			return cur_trans->aborted;
 		}
 		if (btrfs_blocked_trans_types[cur_trans->state] & type) {
 			spin_unlock(&fs_info->trans_lock);

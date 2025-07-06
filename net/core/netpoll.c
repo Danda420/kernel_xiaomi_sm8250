@@ -70,11 +70,10 @@ module_param(carrier_timeout, uint, 0644);
 #define np_notice(np, fmt, ...)				\
 	pr_notice("%s: " fmt, np->name, ##__VA_ARGS__)
 
-static netdev_tx_t netpoll_start_xmit(struct sk_buff *skb,
-				      struct net_device *dev,
-				      struct netdev_queue *txq)
+static int netpoll_start_xmit(struct sk_buff *skb, struct net_device *dev,
+			      struct netdev_queue *txq)
 {
-	netdev_tx_t status = NETDEV_TX_OK;
+	int status = NETDEV_TX_OK;
 	netdev_features_t features;
 
 	features = netif_skb_features(skb);
@@ -323,24 +322,20 @@ static int netpoll_owner_active(struct net_device *dev)
 }
 
 /* call with IRQ disabled */
-static netdev_tx_t __netpoll_send_skb(struct netpoll *np, struct sk_buff *skb)
+void netpoll_send_skb_on_dev(struct netpoll *np, struct sk_buff *skb,
+			     struct net_device *dev)
 {
-	netdev_tx_t status = NETDEV_TX_BUSY;
-	netdev_tx_t ret = NET_XMIT_DROP;
-	struct net_device *dev;
+	int status = NETDEV_TX_BUSY;
 	unsigned long tries;
 	/* It is up to the caller to keep npinfo alive. */
 	struct netpoll_info *npinfo;
 
 	lockdep_assert_irqs_disabled();
 
-	dev = np->dev;
-	rcu_read_lock();
-	npinfo = rcu_dereference_bh(dev->npinfo);
-
+	npinfo = rcu_dereference_bh(np->dev->npinfo);
 	if (!npinfo || !netif_running(dev) || !netif_device_present(dev)) {
 		dev_kfree_skb_irq(skb);
-		goto out;
+		return;
 	}
 
 	/* don't get messages out of order, and no recursion */
@@ -379,23 +374,8 @@ static netdev_tx_t __netpoll_send_skb(struct netpoll *np, struct sk_buff *skb)
 		skb_queue_tail(&npinfo->txq, skb);
 		schedule_delayed_work(&npinfo->tx_work,0);
 	}
-	ret = NETDEV_TX_OK;
-out:
-	rcu_read_unlock();
-	return ret;
 }
-
-netdev_tx_t netpoll_send_skb(struct netpoll *np, struct sk_buff *skb)
-{
-	unsigned long flags;
-	netdev_tx_t ret;
-
-	local_irq_save(flags);
-	ret = __netpoll_send_skb(np, skb);
-	local_irq_restore(flags);
-	return ret;
-}
-EXPORT_SYMBOL(netpoll_send_skb);
+EXPORT_SYMBOL(netpoll_send_skb_on_dev);
 
 void netpoll_send_udp(struct netpoll *np, const char *msg, int len)
 {
@@ -636,7 +616,7 @@ int __netpoll_setup(struct netpoll *np, struct net_device *ndev)
 		goto out;
 	}
 
-	if (!rcu_access_pointer(ndev->npinfo)) {
+	if (!ndev->npinfo) {
 		npinfo = kmalloc(sizeof(*npinfo), GFP_KERNEL);
 		if (!npinfo) {
 			err = -ENOMEM;

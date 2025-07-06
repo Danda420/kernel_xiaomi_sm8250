@@ -371,7 +371,7 @@ irq_calc_affinity_vectors(int minvec, int maxvec, const struct irq_affinity *aff
 static inline void disable_irq_nosync_lockdep(unsigned int irq)
 {
 	disable_irq_nosync(irq);
-#if defined(CONFIG_LOCKDEP) && !defined(CONFIG_PREEMPT_RT)
+#ifdef CONFIG_LOCKDEP
 	local_irq_disable();
 #endif
 }
@@ -379,7 +379,7 @@ static inline void disable_irq_nosync_lockdep(unsigned int irq)
 static inline void disable_irq_nosync_lockdep_irqsave(unsigned int irq, unsigned long *flags)
 {
 	disable_irq_nosync(irq);
-#if defined(CONFIG_LOCKDEP) && !defined(CONFIG_PREEMPT_RT)
+#ifdef CONFIG_LOCKDEP
 	local_irq_save(*flags);
 #endif
 }
@@ -394,7 +394,7 @@ static inline void disable_irq_lockdep(unsigned int irq)
 
 static inline void enable_irq_lockdep(unsigned int irq)
 {
-#if defined(CONFIG_LOCKDEP) && !defined(CONFIG_PREEMPT_RT)
+#ifdef CONFIG_LOCKDEP
 	local_irq_enable();
 #endif
 	enable_irq(irq);
@@ -402,7 +402,7 @@ static inline void enable_irq_lockdep(unsigned int irq)
 
 static inline void enable_irq_lockdep_irqrestore(unsigned int irq, unsigned long *flags)
 {
-#if defined(CONFIG_LOCKDEP) && !defined(CONFIG_PREEMPT_RT)
+#ifdef CONFIG_LOCKDEP
 	local_irq_restore(*flags);
 #endif
 	enable_irq(irq);
@@ -538,9 +538,6 @@ static inline struct task_struct *this_cpu_ksoftirqd(void)
 
 /* Tasklets --- multithreaded analogue of BHs.
 
-   This API is deprecated. Please consider using threaded IRQs instead:
-   https://lore.kernel.org/lkml/20200716081538.2sivhkj4hcyrusem@linutronix.de
-
    Main feature differing them of generic softirqs: tasklet
    is running only on one CPU simultaneously.
 
@@ -564,42 +561,16 @@ struct tasklet_struct
 	struct tasklet_struct *next;
 	unsigned long state;
 	atomic_t count;
-	bool use_callback;
-	union {
-		void (*func)(unsigned long data);
-		void (*callback)(struct tasklet_struct *t);
-	};
+	void (*func)(unsigned long);
 	unsigned long data;
 };
 
-#define DECLARE_TASKLET(name, _callback)		\
-struct tasklet_struct name = {				\
-	.count = ATOMIC_INIT(0),			\
-	.callback = _callback,				\
-	.use_callback = true,				\
-}
+#define DECLARE_TASKLET(name, func, data) \
+struct tasklet_struct name = { NULL, 0, ATOMIC_INIT(0), func, data }
 
-#define DECLARE_TASKLET_DISABLED(name, _callback)	\
-struct tasklet_struct name = {				\
-	.count = ATOMIC_INIT(1),			\
-	.callback = _callback,				\
-	.use_callback = true,				\
-}
+#define DECLARE_TASKLET_DISABLED(name, func, data) \
+struct tasklet_struct name = { NULL, 0, ATOMIC_INIT(1), func, data }
 
-#define from_tasklet(var, callback_tasklet, tasklet_fieldname)	\
-	container_of(callback_tasklet, typeof(*var), tasklet_fieldname)
-
-#define DECLARE_TASKLET_OLD(name, _func)		\
-struct tasklet_struct name = {				\
-	.count = ATOMIC_INIT(0),			\
-	.func = _func,					\
-}
-
-#define DECLARE_TASKLET_DISABLED_OLD(name, _func)	\
-struct tasklet_struct name = {				\
-	.count = ATOMIC_INIT(1),			\
-	.func = _func,					\
-}
 
 enum
 {
@@ -668,8 +639,6 @@ extern void tasklet_kill(struct tasklet_struct *t);
 extern void tasklet_kill_immediate(struct tasklet_struct *t, unsigned int cpu);
 extern void tasklet_init(struct tasklet_struct *t,
 			 void (*func)(unsigned long), unsigned long data);
-extern void tasklet_setup(struct tasklet_struct *t,
-			  void (*callback)(struct tasklet_struct *));
 
 struct tasklet_hrtimer {
 	struct hrtimer		timer;
