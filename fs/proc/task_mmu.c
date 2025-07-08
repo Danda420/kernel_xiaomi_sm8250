@@ -22,6 +22,10 @@
 #include <linux/mm_inline.h>
 #include <linux/ctype.h>
 
+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+#include <linux/susfs_def.h>
+#endif
+
 #include <asm/elf.h>
 #include <asm/tlb.h>
 #include <asm/tlbflush.h>
@@ -384,7 +388,7 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
 	if (file) {
 		struct inode *inode = file_inode(vma->vm_file);
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-		if (unlikely(inode->i_state & 67108864)) {
+		if (unlikely(inode->i_state & INODE_STATE_SUS_KSTAT)) {
 			susfs_sus_ino_for_show_map_vma(inode->i_ino, &dev, &ino);
 			goto bypass_orig_flow;
 		}

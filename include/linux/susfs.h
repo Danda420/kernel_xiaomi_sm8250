@@ -8,7 +8,7 @@
 #include <linux/path.h>
 #include <linux/susfs_def.h>
 
-#define SUSFS_VERSION "v1.5.3"
+#define SUSFS_VERSION "v1.5.5"
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)
 #define SUSFS_VARIANT "NON-GKI"
 #else
@@ -159,7 +159,7 @@ void susfs_auto_add_try_umount_for_bind_mount(struct path *path);
 /* spoof_uname */
 #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 int susfs_set_uname(struct st_susfs_uname* __user user_info);
-int susfs_spoof_uname(struct new_utsname* tmp);
+void susfs_spoof_uname(struct new_utsname* tmp);
 #endif
 /* set_log */
 #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
