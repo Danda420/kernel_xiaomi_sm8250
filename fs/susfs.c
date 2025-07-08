@@ -14,19 +14,17 @@
 #include <linux/fdtable.h>
 #include <linux/statfs.h>
 #include <linux/susfs.h>
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,15,0)
-#include "pnode.h"
-#endif
+#include "mount.h"
 
 static spinlock_t susfs_spin_lock;
 
 extern bool susfs_is_current_ksu_domain(void);
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-extern void ksu_try_umount(const char *mnt, bool check_mnt, int flags);
+extern void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid);
 #endif
 
 #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-bool susfs_is_log_enabled __read_mostly = false;
+bool susfs_is_log_enabled __read_mostly = true;
 #define SUSFS_LOGI(fmt, ...) if (susfs_is_log_enabled) pr_info("susfs:[%u][%d][%s] " fmt, current_uid().val, current->pid, __func__, ##__VA_ARGS__)
 #define SUSFS_LOGE(fmt, ...) if (susfs_is_log_enabled) pr_err("susfs:[%u][%d][%s]" fmt, current_uid().val, current->pid, __func__, ##__VA_ARGS__)
 #else
@@ -71,10 +69,11 @@ static int susfs_update_sus_path_inode(char *target_pathname) {
 		return 1;
 	}
 
-	spin_lock(&inode->i_lock);
-	inode->i_state |= INODE_STATE_SUS_PATH;
-	spin_unlock(&inode->i_lock);
-
+	if (!(inode->i_state & INODE_STATE_SUS_PATH)) {
+		spin_lock(&inode->i_lock);
+		inode->i_state |= INODE_STATE_SUS_PATH;
+		spin_unlock(&inode->i_lock);
+	}
 	path_put(&p);
 	return 0;
 }
@@ -142,6 +141,7 @@ int susfs_sus_ino_for_filldir64(unsigned long ino) {
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 static LIST_HEAD(LH_SUS_MOUNT);
 static void susfs_update_sus_mount_inode(char *target_pathname) {
+	struct mount *mnt = NULL;
 	struct path p;
 	struct inode *inode = NULL;
 	int err = 0;
@@ -152,6 +152,18 @@ static void susfs_update_sus_mount_inode(char *target_pathname) {
 		return;
 	}
 
+	/* It is important to check if the mount has a legit peer group id, if so we cannot add them to sus_mount,
+	 * since there are chances that the mount is a legit mountpoint, and it can be misued by other susfs functions in future.
+	 * And by doing this it won't affect the sus_mount check as other susfs functions check by mnt->mnt_id
+	 * instead of INODE_STATE_SUS_MOUNT.
+	 */
+	mnt = real_mount(p.mnt);
+	if (mnt->mnt_group_id > 0 && // 0 means no peer group
+		mnt->mnt_group_id < DEFAULT_SUS_MNT_GROUP_ID) {
+		SUSFS_LOGE("skip setting SUS_MOUNT inode state for path '%s' since its source mount has a legit peer group id\n", target_pathname);
+		return;
+	}
+
 	inode = d_inode(p.dentry);
 	if (!inode) {
 		path_put(&p);
@@ -159,10 +171,11 @@ static void susfs_update_sus_mount_inode(char *target_pathname) {
 		return;
 	}
 
-	spin_lock(&inode->i_lock);
-	inode->i_state |= INODE_STATE_SUS_MOUNT;
-	spin_unlock(&inode->i_lock);
-
+	if (!(inode->i_state & INODE_STATE_SUS_MOUNT)) {
+		spin_lock(&inode->i_lock);
+		inode->i_state |= INODE_STATE_SUS_MOUNT;
+		spin_unlock(&inode->i_lock);
+	}
 	path_put(&p);
 }
 
@@ -218,27 +231,45 @@ int susfs_add_sus_mount(struct st_susfs_sus_mount* __user user_info) {
 
 #ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
 int susfs_auto_add_sus_bind_mount(const char *pathname, struct path *path_target) {
+	struct mount *mnt;
 	struct inode *inode;
 
+	mnt = real_mount(path_target->mnt);
+	if (mnt->mnt_group_id > 0 && // 0 means no peer group
+		mnt->mnt_group_id < DEFAULT_SUS_MNT_GROUP_ID) {
+		SUSFS_LOGE("skip setting SUS_MOUNT inode state for path '%s' since its source mount has a legit peer group id\n", pathname);
+		// return 0 here as we still want it to be added to try_umount list
+		return 0;
+	}
 	inode = path_target->dentry->d_inode;
 	if (!inode) return 1;
-	spin_lock(&inode->i_lock);
-	inode->i_state |= INODE_STATE_SUS_MOUNT;
-	SUSFS_LOGI("set SUS_MOUNT inode state for source bind mount path '%s'\n", pathname);
-	spin_unlock(&inode->i_lock);
+	if (!(inode->i_state & INODE_STATE_SUS_MOUNT)) {
+		spin_lock(&inode->i_lock);
+		inode->i_state |= INODE_STATE_SUS_MOUNT;
+		spin_unlock(&inode->i_lock);
+		SUSFS_LOGI("set SUS_MOUNT inode state for source bind mount path '%s'\n", pathname);
+	}
 	return 0;
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
 
 #ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
 void susfs_auto_add_sus_ksu_default_mount(const char __user *to_pathname) {
-	char pathname[SUSFS_MAX_LEN_PATHNAME];
+	char *pathname = NULL;
 	struct path path;
 	struct inode *inode;
 
-	// Here we need to re-retrieve the struct path as we want the new struct path, not the old one
-	if (strncpy_from_user(pathname, to_pathname, SUSFS_MAX_LEN_PATHNAME-1) < 0)
+	pathname = kmalloc(SUSFS_MAX_LEN_PATHNAME, GFP_KERNEL);
+	if (!pathname) {
+		SUSFS_LOGE("no enough memory\n");
 		return;
+	}
+	// Here we need to re-retrieve the struct path as we want the new struct path, not the old one
+	if (strncpy_from_user(pathname, to_pathname, SUSFS_MAX_LEN_PATHNAME-1) < 0) {
+		SUSFS_LOGE("strncpy_from_user()\n");
+		goto out_free_pathname;
+		return;
+	}
 	if ((!strncmp(pathname, "/data/adb/modules", 17) ||
 		 !strncmp(pathname, "/debug_ramdisk", 14) ||
 		 !strncmp(pathname, "/system", 7) ||
@@ -249,17 +280,23 @@ void susfs_auto_add_sus_ksu_default_mount(const char __user *to_pathname) {
 		 !kern_path(pathname, LOOKUP_FOLLOW, &path)) {
 		goto set_inode_sus_mount;
 	}
-	return;
+	goto out_free_pathname;
 set_inode_sus_mount:
 	inode = path.dentry->d_inode;
-	if (!inode) return;
-	spin_lock(&inode->i_lock);
+	if (!inode) {
+		goto out_path_put;
+		return;
+	}
 	if (!(inode->i_state & INODE_STATE_SUS_MOUNT)) {
+		spin_lock(&inode->i_lock);
 		inode->i_state |= INODE_STATE_SUS_MOUNT;
+		spin_unlock(&inode->i_lock);
 		SUSFS_LOGI("set SUS_MOUNT inode state for default KSU mount path '%s'\n", pathname);
 	}
-	spin_unlock(&inode->i_lock);
+out_path_put:
 	path_put(&path);
+out_free_pathname:
+	kfree(pathname);
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -293,10 +330,11 @@ static int susfs_update_sus_kstat_inode(char *target_pathname) {
 		return 1;
 	}
 
-	spin_lock(&inode->i_lock);
-	inode->i_state |= INODE_STATE_SUS_KSTAT;
-	spin_unlock(&inode->i_lock);
-
+	if (!(inode->i_state & INODE_STATE_SUS_KSTAT)) {
+		spin_lock(&inode->i_lock);
+		inode->i_state |= INODE_STATE_SUS_KSTAT;
+		spin_unlock(&inode->i_lock);
+	}
 	path_put(&p);
 	return 0;
 }
@@ -523,11 +561,10 @@ void susfs_try_umount(uid_t target_uid) {
 
 	// We should umount in reversed order
 	list_for_each_entry_reverse(cursor, &LH_TRY_UMOUNT_PATH, list) {
-		SUSFS_LOGI("umounting '%s' for uid: %d\n", cursor->info.target_pathname, target_uid);
 		if (cursor->info.mnt_mode == TRY_UMOUNT_DEFAULT) {
-			ksu_try_umount(cursor->info.target_pathname, false, 0);
+			ksu_try_umount(cursor->info.target_pathname, false, 0, target_uid);
 		} else if (cursor->info.mnt_mode == TRY_UMOUNT_DETACH) {
-			ksu_try_umount(cursor->info.target_pathname, false, MNT_DETACH);
+			ksu_try_umount(cursor->info.target_pathname, false, MNT_DETACH, target_uid);
 		} else {
 			SUSFS_LOGE("failed umounting '%s' for uid: %d, mnt_mode '%d' not supported\n",
 							cursor->info.target_pathname, target_uid, cursor->info.mnt_mode);
@@ -647,16 +684,11 @@ int susfs_set_uname(struct st_susfs_uname* __user user_info) {
 	return 0;
 }
 
-int susfs_spoof_uname(struct new_utsname* tmp) {
+void susfs_spoof_uname(struct new_utsname* tmp) {
 	if (unlikely(my_uname.release[0] == '\0' || spin_is_locked(&susfs_uname_spin_lock)))
-		return 1;
-	strncpy(tmp->sysname, utsname()->sysname, __NEW_UTS_LEN);
-	strncpy(tmp->nodename, utsname()->nodename, __NEW_UTS_LEN);
+		return;
 	strncpy(tmp->release, my_uname.release, __NEW_UTS_LEN);
 	strncpy(tmp->version, my_uname.version, __NEW_UTS_LEN);
-	strncpy(tmp->machine, utsname()->machine, __NEW_UTS_LEN);
-	strncpy(tmp->domainname, utsname()->domainname, __NEW_UTS_LEN);
-	return 0;
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 

@@ -31,6 +31,10 @@ static void proc_command_line_init(void) {
 extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
 #endif
 
+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
+#endif
+
 static int cmdline_proc_show(struct seq_file *m, void *v)
 {
 #ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
