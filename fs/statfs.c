@@ -76,7 +76,6 @@ int vfs_statfs(const struct path *path, struct kstatfs *buf)
 	int error;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	struct mount *mnt;
- 
 	mnt = real_mount(path->mnt);
 	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 		for (; mnt->mnt_id >= DEFAULT_SUS_MNT_ID; mnt = mnt->mnt_parent) {}
