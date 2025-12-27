@@ -3,6 +3,7 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/seq_file.h>
+#include <linux/export.h>
 #include <linux/printk.h>
 #include <linux/namei.h>
 #include <linux/list.h>
@@ -835,7 +836,8 @@ out_copy_to_user:
 
 /* susfs avc log spoofing */
 static DEFINE_SPINLOCK(susfs_spin_lock_set_avc_log_spoofing);
-extern bool susfs_is_avc_log_spoofing_enabled;
+bool susfs_is_avc_log_spoofing_enabled = false;
+EXPORT_SYMBOL(susfs_is_avc_log_spoofing_enabled);
 
 void susfs_set_avc_log_spoofing(void __user **user_info) {
 	struct st_susfs_avc_log_spoofing info = {0};
