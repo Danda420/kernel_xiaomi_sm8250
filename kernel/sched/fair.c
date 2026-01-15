@@ -11246,31 +11246,28 @@ static void nohz_balancer_kick(struct rq *rq)
 	 */
 	nohz_balance_exit_idle(rq);
 
-	/*
-	 * None are in tickless mode and hence no need for NOHZ idle load
-	 * balancing.
-	 */
-	cpumask_copy(&cpumask, nohz.idle_cpus_mask);
-	if (likely(!atomic_read(&nohz.nr_cpus)))
-		return;
-
 	if (READ_ONCE(nohz.has_blocked) &&
 	    time_after(now, READ_ONCE(nohz.next_blocked)))
 		flags = NOHZ_STATS_KICK;
 
+	/*
+	 * Most of the time system is not 100% busy. i.e nohz.nr_cpus > 0
+	 * Skip the read if time is not due.
+	 *
+	 * If none are in tickless mode, there maybe a narrow window
+	 * (28 jiffies, HZ=1000) where flags maybe set and kick_ilb called.
+	 * But idle load balancing is not done as find_new_ilb fails.
+	 * That's very rare. So read nohz.nr_cpus only if time is due.
+	 */
 	if (time_before(now, nohz.next_balance))
 		goto out;
 
 	/*
-	 * With EAS, no-hz idle balance is allowed only when the CPU
-	 * is overutilized and has 2 tasks. The misfit task migration
-	 * happens from the tickpath.
+	 * None are in tickless mode and hence no need for NOHZ idle load
+	 * balancing:
 	 */
-	if (static_branch_likely(&sched_energy_present)) {
-		if (rq->nr_running >= 2 && cpu_overutilized(cpu))
-			flags = NOHZ_KICK_MASK;
-		goto out;
-	}
+	if (likely(!atomic_read(&nohz.nr_cpus)))
+		return;
 
 	if (rq->nr_running >= 2) {
 		flags = NOHZ_KICK_MASK;
