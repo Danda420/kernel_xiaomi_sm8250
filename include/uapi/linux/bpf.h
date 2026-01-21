@@ -4682,6 +4682,8 @@ enum {
 					 */
 	BPF_SOCK_OPS_RTT_CB,		/* Called on every RTT.
 					 */
+	BPF_SOCK_OPS_VOIP_CB,		/* Called on every udp states.
+					 */
 	BPF_SOCK_OPS_PARSE_HDR_OPT_CB,	/* Parse the header option.
 					 * It will be called to handle
 					 * the packets received at

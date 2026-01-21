@@ -82,7 +82,6 @@ struct vfsmount {
 #if defined(CONFIG_KSU_SUSFS) && !defined(ANDROID_KABI_RESERVE)
 	u64 susfs_mnt_id_backup;
 #endif
-	void *data;
 } __randomize_layout;
 
 struct file; /* forward dec */

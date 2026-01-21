@@ -3065,7 +3065,7 @@ static ssize_t proc_pid_attr_read(struct file *file, char __user *buf,
 	if (!task)
 		return -ESRCH;
 
-	length = security_getprocattr(task,
+	length = security_getprocattr(task, PROC_I(inode)->op.lsm,
 				      (char *)file->f_path.dentry->d_name.name,
 				      &p);
 	put_task_struct(task);
@@ -3178,12 +3178,12 @@ LSM_DIR_OPS(smack);
 #endif
 
 static const struct pid_entry attr_dir_stuff[] = {
-	ATTR(NULL, "current",		0666, proc_pid_attr_operations),
-	ATTR(NULL, "prev",			0444, proc_pid_attr_operations),
-	ATTR(NULL, "exec",			0666, proc_pid_attr_operations),
-	ATTR(NULL, "fscreate",		0666, proc_pid_attr_operations),
-	ATTR(NULL, "keycreate",		0666, proc_pid_attr_operations),
-	ATTR(NULL, "sockcreate",	0666, proc_pid_attr_operations),
+	ATTR(NULL, "current",		0666),
+	ATTR(NULL, "prev",			0444),
+	ATTR(NULL, "exec",			0666),
+	ATTR(NULL, "fscreate",		0666),
+	ATTR(NULL, "keycreate",		0666),
+	ATTR(NULL, "sockcreate",	0666),
 #ifdef CONFIG_SECURITY_SMACK
 	DIR("smack",			0555,
 	    proc_smack_attr_dir_inode_ops, proc_smack_attr_dir_ops),
