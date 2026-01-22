@@ -2369,10 +2369,6 @@ source "kernel/Kconfig.locks"
 
 config ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE
 	bool
-	
-config GIT_VERSION
-	int "Default git verison"
-	default 0
 
 config ARCH_HAS_SYNC_CORE_BEFORE_USERMODE
 	bool
