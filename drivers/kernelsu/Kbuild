@@ -3,7 +3,6 @@ kernelsu-objs += allowlist.o
 kernelsu-objs += app_profile.o
 kernelsu-objs += apk_sign.o
 kernelsu-objs += sucompat.o
-kernelsu-objs += syscall_hook_manager.o
 kernelsu-objs += throne_tracker.o
 kernelsu-objs += pkg_observer.o
 kernelsu-objs += setuid_hook.o
@@ -28,7 +27,6 @@ ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
 ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
 
 obj-$(CONFIG_KSU) += kernelsu.o
-
 
 KSU_GIT_VERSION := $(shell cat ${PWD}/drivers/kernelsu/.git_version)
 KSU_GIT_TAG := $(shell cat ${PWD}/drivers/kernelsu/.git_tag)
@@ -107,6 +105,15 @@ ifndef SUKISU_EXPECTED_HASH
 SUKISU_EXPECTED_HASH := 947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef
 endif
 
+# yea i dont know.. im kinda behind on news lmao
+ifndef IDKWTFISTHIS_EXPECTED_SIZE
+IDKWTFISTHIS_EXPECTED_SIZE := 0x384
+endif
+
+ifndef IDKWTFISTHIS_EXPECTED_HASH
+IDKWTFISTHIS_EXPECTED_HASH := 7e0c6d7278a3bb8e364e0fcba95afaf3666cf5ff3c245a3b63c8833bd0445cc4
+endif
+
 ifdef KSU_MANAGER_PACKAGE
 ccflags-y += -DKSU_MANAGER_PACKAGE=\"$(KSU_MANAGER_PACKAGE)\"
 $(info -- KernelSU-Next Manager package name: $(KSU_MANAGER_PACKAGE))
@@ -124,6 +131,9 @@ $(info -- DKM SU Manager signature size: $(KSU_DKM_EXPECTED_SIZE))
 $(info -- DKM SU Manager signature hash: $(KSU_DKM_EXPECTED_HASH))
 $(info -- SukiSU Manager signature size: $(SUKISU_EXPECTED_SIZE))
 $(info -- SukiSU Manager signature hash: $(SUKISU_EXPECTED_HASH))
+# lmao
+$(info -- IDK What Manager is this signature size: $(IDKWTFISTHIS_EXPECTED_SIZE))
+$(info -- IDK What Manager is this signature hash: $(IDKWTFISTHIS_EXPECTED_HASH))
 
 # RKSU: checks for available hook
 ## Logic flipped for HAVE_KSU_HOOK: 0 is success, 1 is failure
@@ -306,8 +316,19 @@ ccflags-y += -DEXPECTED_DKM_SIZE=$(KSU_DKM_EXPECTED_SIZE)
 ccflags-y += -DEXPECTED_DKM_HASH=\"$(KSU_DKM_EXPECTED_HASH)\"
 ccflags-y += -DEXPECTED_SUKISU_SIZE=$(SUKISU_EXPECTED_SIZE)
 ccflags-y += -DEXPECTED_SUKISU_HASH=\"$(SUKISU_EXPECTED_HASH)\"
+# lmao
+ccflags-y += -DEXPECTED_IDKWTFISTHIS_SIZE=$(IDKWTFISTHIS_EXPECTED_SIZE)
+ccflags-y += -DEXPECTED_IDKWTFISTHIS_HASH=\"$(IDKWTFISTHIS_EXPECTED_HASH)\"
 
 ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat -Wno-missing-prototypes
 ccflags-y += -Wno-declaration-after-statement -Wno-unused-function -Wno-unused-variable
 
-# Keep a new line here!! Because someone may append config
+## For susfs stuff ##
+ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
+$(eval SUSFS_VERSION=$(shell cat $(srctree)/include/linux/susfs.h | grep -E '^#define SUSFS_VERSION' | cut -d' ' -f3 | sed 's/"//g'))
+$(info )
+$(info -- SUSFS_VERSION: $(SUSFS_VERSION))
+else
+$(info -- You have not integrated susfs in your kernel yet.)
+$(info -- Read: https://gitlab.com/simonpunk/susfs4ksu)
+endif

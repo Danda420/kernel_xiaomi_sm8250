@@ -25,7 +25,9 @@
 #include "klog.h" // IWYU pragma: keep
 #include "selinux/selinux.h"
 #include "su_mount_ns.h"
+#ifndef CONFIG_KSU_SUSFS
 #include "syscall_hook_manager.h"
+#endif // #ifndef CONFIG_KSU_SUSFS
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 static struct group_info root_groups = { .usage = REFCOUNT_INIT(2) };
@@ -321,13 +323,13 @@ void escape_with_root_profile(void)
 
 	setup_selinux(profile->selinux_domain);
 
-#ifdef KSU_KPROBES_HOOK
+#if defined(KSU_KPROBES_HOOK) && !defined(CONFIG_KSU_SUSFS)
 	struct task_struct *p = current;
 	struct task_struct *t;
 	for_each_thread (p, t) {
 		ksu_set_task_tracepoint_flag(t);
 	}
-#endif
+#endif // #if defined(KSU_KPROBES_HOOK) && !defined(CONFIG_KSU_SUSFS)
 
 	setup_mount_ns(profile->namespaces);
 }
