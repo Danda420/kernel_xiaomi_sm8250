@@ -770,6 +770,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 		magic2);
 #endif
 
+#ifdef CONFIG_KSU_SUSFS
     // If magic2 is susfs and current process is root
     if (magic2 == SUSFS_MAGIC && current_uid().val == 0) {
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
@@ -858,6 +859,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
         }
         return 0;
     }
+#endif // #ifdef CONFIG_KSU_SUSFS
 
     // Check if this is a request to install KSU fd
     if (magic2 == KSU_INSTALL_MAGIC2) {
