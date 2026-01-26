@@ -20,21 +20,27 @@ supported.patchlevels=
 supported.vendorpatchlevels=
 '; } # end properties
 
-### AnyKernel install
-
-## boot files attributes
-boot_attributes() {
-  set_perm_recursive 0 0 755 644 $RAMDISK/*;
-  set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
-} # end attributes
-
 # boot shell variables
+NO_BLOCK_DISPLAY=true
 BLOCK=/dev/block/bootdevice/by-name/boot;
 IS_SLOT_DEVICE=auto;
 RAMDISK_COMPRESSION=auto;
 
 # import functions/variables and setup patching - see for reference (DO NOT REMOVE)
 . tools/ak3-core.sh;
+. tools/oxygen.sh
+
+startinstall
+applyconfig
+
+ui_print " "
+ui_print "Installing..."
+
+## boot files attributes
+boot_attributes() {
+  set_perm_recursive 0 0 755 644 $RAMDISK/*;
+  set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+} # end attributes
 
 # boot install
 dump_boot;
