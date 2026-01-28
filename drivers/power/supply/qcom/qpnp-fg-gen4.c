@@ -2104,7 +2104,7 @@ static int fg_gen4_get_batt_profile(struct fg_dev *fg)
             /* Avoid retry queueing if verify/retry path exists */
             retry_batt_profile = BATT_PROFILE_RETRY_COUNT_MAX;
             profile_node = of_batterydata_get_best_profile(batt_node,
-                                g->batt_id_ohms / 1000,
+                                fg->batt_id_ohms / 1000,
                                 "j3ssun_5000mah");
         }
 		/* if cmdline battery profile vendor is passed to fg driver, use cmdline result */
