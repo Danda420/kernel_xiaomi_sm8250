@@ -8,6 +8,29 @@ is_sideload() {
   return 1
 }
 
+keycheck() {
+  ui_print " "
+  ui_print "Checking volume keys..."
+  ui_print "  Press (VOL +) or (VOL -) to confirm!"
+  ui_print "  Waiting 10 seconds..."
+
+  local timeout=10
+  local start=$(date +%s)
+
+  while true; do
+    case $(timeout 0.2 getevent -qlc 1 2>/dev/null | grep -m1 "KEY_VOLUME") in
+      *KEY_VOLUMEUP*|*KEY_VOLUMEDOWN*)
+        return 0
+        break;;
+    esac
+
+    local cur=$(date +%s)
+    if [[ $(($cur - $start)) -ge $timeout ]]; then
+      return 1
+    fi
+  done
+}
+
 # vol_selectopt <message> <1st opt> <2nd opt>
 vol_selectopt() {
   ui_print " "
@@ -109,10 +132,17 @@ autoinstall() {
 }
 
 selectorinstall() {
-  var_select
-  susfs_select
-  if [[ -f dtbo-5k.img ]]; then
-    dtbo_select_alioth
+  if keycheck; then
+    var_select
+    susfs_select
+    if [[ -f dtbo-5k.img ]]; then
+      dtbo_select_alioth
+    fi
+  else
+    ui_print " "
+    ui_print "Timed out! using autoinstall..."
+    ui_print " "
+    autoinstall
   fi
 }
 
