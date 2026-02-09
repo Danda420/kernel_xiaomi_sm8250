@@ -2643,8 +2643,8 @@ static void ufshcd_init_clk_gating(struct ufs_hba *hba)
 
 	gating->is_enabled = true;
 
-	gating->delay_ms_pwr_save = UFSHCD_CLK_GATING_DELAY_MS_PWR_SAVE;
-	gating->delay_ms_perf = UFSHCD_CLK_GATING_DELAY_MS_PERF;
+	gating->delay_ms_pwr_save = 150;
+	gating->delay_ms_perf = 150;
 
 	/* start with performance mode */
 	gating->delay_ms = gating->delay_ms_perf;
@@ -2964,7 +2964,7 @@ static ssize_t ufshcd_hibern8_on_idle_delay_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	hba->hibern8_on_idle.delay_ms = value;
+	hba->hibern8_on_idle.delay_ms = 140;
 	ufs_spin_unlock_irqrestore(hba->host->host_lock, flags);
 
 	return count;
