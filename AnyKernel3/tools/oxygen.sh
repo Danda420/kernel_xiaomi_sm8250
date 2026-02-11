@@ -33,6 +33,7 @@ keycheck() {
 
 # vol_selectopt <message> <1st opt> <2nd opt>
 vol_selectopt() {
+  sleep 0.5
   ui_print " "
   ui_print "$1"
   ui_print " - (VOL +) $2"
