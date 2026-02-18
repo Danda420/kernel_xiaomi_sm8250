@@ -216,8 +216,7 @@ int32_t get_Modem_Version(void)
 {
     init_project_version();
 
-    // 13 - INDIA
-    return g_project?13:-EINVAL;
+    return g_project?11:-EINVAL;
 }
 EXPORT_SYMBOL(get_Modem_Version);
 
@@ -518,7 +517,7 @@ static int __init oplus_project_init(void)
     if (!oplus_info) {
         goto error_init;
     }
-    
+
     p_entry = proc_create_data("prjName", S_IRUGO, oplus_info, &project_info_fops, UINT2Ptr(PROJECT_VERSION));
     if (!p_entry)
         goto error_init;

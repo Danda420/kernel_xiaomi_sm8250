@@ -4,4 +4,5 @@ obj-$(CONFIG_OPLUS_OPROJECT) 	+= oplus_project.o
 obj-$(CONFIG_OPLUS_NANDSWAP)	+= nandswap_core.o
 obj-$(CONFIG_OPLUS_WAKELOCK_PROFILER)	+= oplus_wakelock_profiler.o
 obj-$(CONFIG_OPLUS_SUBSYS_SLEEP_MONITOR)	+= oplus_subsys_sleep_monitor.o
+obj-$(CONFIG_OPLUS_STUB_NODES)	+= oplus_stub_nodes.o
 obj-y				+= oemports10t.o
