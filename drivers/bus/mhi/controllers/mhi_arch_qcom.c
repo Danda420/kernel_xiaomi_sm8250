@@ -306,8 +306,8 @@ static void mhi_arch_esoc_ops_mdm_error(void *priv)
 }
 
 #define SERIAL_NUM_LEN 64
-static char sdx55m_cpuid[SERIAL_NUM_LEN] = {"\0"};
-static char sdx55m_fuse[64] = {"\0"};
+static char sdx55m_cpuid[SERIAL_NUM_LEN]={"\0"};
+static char sdx55m_fuse[64]={"\0"};
 
 static int secureboot_proc_show(struct seq_file *m, void *v)
 {
@@ -375,17 +375,17 @@ static void mhi_bl_dl_cb(struct mhi_device *mhi_device,
 	/* force a null at last character */
 	buf[mhi_result->bytes_xferd - 1] = 0;
 
-	pSerial_number = strstr(buf, const_serial_number);
-	if (pSerial_number != NULL)
-		strscpy(sdx55m_cpuid,
-			pSerial_number + strlen(const_serial_number),
+	pSerial_number = strstr(buf,const_serial_number);
+	if (pSerial_number != NULL) {
+		strncpy(sdx55m_cpuid, pSerial_number + strlen(const_serial_number),
 			strlen("0x3de665bd"));
+	}
 
-	pSerial_number = strstr(buf, const_sdx55m_fuse);
-	if (pSerial_number != NULL)
-		strscpy(sdx55m_fuse,
-			pSerial_number + strlen(const_sdx55m_fuse),
+	pSerial_number = strstr(buf,const_sdx55m_fuse);
+	if (pSerial_number != NULL) {
+		strncpy(sdx55m_fuse, pSerial_number + strlen(const_sdx55m_fuse),
 			strlen("Off"));
+	}
 
 	if (mhi_result->bytes_xferd >= MAX_MSG_SIZE) {
 		do {
