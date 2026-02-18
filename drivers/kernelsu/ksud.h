@@ -21,7 +21,6 @@ extern bool ksu_module_mounted;
 extern bool ksu_boot_completed;
 
 extern bool ksu_execveat_hook __read_mostly;
-extern int ksu_handle_pre_ksud(const char *filename);
 
 #ifdef CONFIG_KSU_SUSFS
 #define MAX_ARG_STRINGS 0x7FFFFFFF

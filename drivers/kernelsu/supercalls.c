@@ -579,7 +579,7 @@ static int add_try_umount(void __user *arg)
             new_entry->umountable = kstrdup(buf, GFP_KERNEL);
             if (!new_entry->umountable) {
                 kfree(new_entry);
-                return -1;
+                return -ENOMEM;
             }
 
             down_write(&mount_list_lock);
@@ -592,7 +592,7 @@ static int add_try_umount(void __user *arg)
                     up_write(&mount_list_lock);
                     kfree(new_entry->umountable);
                     kfree(new_entry);
-                    return -1;
+                    return -EEXIST;
                 }
             }
 
@@ -1014,10 +1014,9 @@ void ksu_supercalls_init(void)
 	} else {
 		pr_info("reboot kprobe registered successfully\n");
 	}
-
-
-    sulog_init_heap(); // grab heap memory
 #endif // #if defined(KSU_KPROBES_HOOK) && !defined(CONFIG_KSU_SUSFS)
+
+	sulog_init_heap(); // grab heap memory
 }
 
 void ksu_supercalls_exit(void){
