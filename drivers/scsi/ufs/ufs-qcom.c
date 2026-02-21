@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2019, Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -856,10 +857,6 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 			ufs_qcom_config_vreg(hba->dev,
 					host->vccq_parent, false);
 
-		if (host->vccq2_parent && !hba->auto_bkops_enabled)
-			ufs_qcom_config_vreg(hba->dev,
-					host->vccq2_parent, false);
-
 		if (ufs_qcom_is_link_off(hba)) {
 			/* Assert PHY soft reset */
 			ufs_qcom_assert_reset(hba);
@@ -896,9 +893,6 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 
 	if (host->vccq_parent)
 		ufs_qcom_config_vreg(hba->dev, host->vccq_parent, true);
-
-	if (host->vccq2_parent)
-		ufs_qcom_config_vreg(hba->dev, host->vccq2_parent, true);
 
 	err = ufs_qcom_enable_lane_clks(host);
 	if (err)
@@ -1306,9 +1300,9 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 					usleep_range(50, 60);
 				else
 					udelay(50);
-			} else {
-				udelay(1);
 			}
+			else
+				udelay(1);
 		}
 
 		host->is_dev_ref_clk_enabled = enable;
@@ -1524,11 +1518,11 @@ void ufs_enter_h8_disable(struct Scsi_Host *shost)
 	hba = shost_priv(shost);
 	host = ufshcd_get_variant(hba);
 
-	pr_err("Long Press: Disable UFS enter in h8 state=%d and hba->caps =%x!",
-		hba->hibern8_on_idle.state, hba->caps);
+	printk(KERN_ERR "Long Press :Disable UFS enter in h8 state=%d and hba->caps =%x!", hba->hibern8_on_idle.state, hba->caps);
 
-	if (hba->hibern8_on_idle.state != HIBERN8_EXITED)
+	if (hba->hibern8_on_idle.state != HIBERN8_EXITED) {
 		return;
+	}
 
 	hba->caps &= ~UFSHCD_CAP_CLK_GATING;
 	hba->caps &= ~UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
@@ -1536,8 +1530,7 @@ void ufs_enter_h8_disable(struct Scsi_Host *shost)
 	hba->caps &= ~UFSHCD_CAP_POWER_COLLAPSE_DURING_HIBERN8;
 
 	hba->ahit = FIELD_PREP(UFSHCI_AHIBERN8_TIMER_MASK, 0);
-	__raw_writel(__cpu_to_le32(hba->ahit),
-		     hba->mmio_base + REG_AUTO_HIBERNATE_IDLE_TIMER);
+	__raw_writel(__cpu_to_le32(hba->ahit), hba->mmio_base + REG_AUTO_HIBERNATE_IDLE_TIMER);
 	hba->quirks |= UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8;
 	hba->hibern8_on_idle.state = HIBERN8_EXITED;
 }
@@ -1549,6 +1542,7 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 	if (!host->disable_lpm) {
 		hba->caps |= UFSHCD_CAP_CLK_GATING;
 		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
+		hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	}
 	hba->caps |= UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
 
@@ -1611,12 +1605,7 @@ static int ufs_qcom_setup_clocks(struct ufs_hba *hba, bool on,
 			atomic_set(&host->clks_on, on);
 
 	} else if (!on && (status == PRE_CHANGE)) {
-		/*
-		 * If auto hibern8 is enabled then the link will already
-		 * be in hibern8 state and the ref clock can be gated.
-		 */
-		if ((ufshcd_is_auto_hibern8_enabled(hba) ||
-		    !ufs_qcom_is_link_active(hba))) {
+		if (!ufs_qcom_is_link_active(hba)) {
 			/* disable device ref_clk */
 			ufs_qcom_dev_ref_clk_ctrl(host, false);
 
@@ -1676,9 +1665,13 @@ __setup("androidboot.bootdevice=", get_android_boot_dev);
  */
 static void ufs_qcom_parse_lpm(struct ufs_qcom_host *host)
 {
+#if IS_ENABLED(CONFIG_BOARD_UMI) || IS_ENABLED(CONFIG_BOARD_THYME)
+	host->disable_lpm = false;
+#else
 	struct device_node *node = host->hba->dev->of_node;
 
 	host->disable_lpm = of_property_read_bool(node, "qcom,disable-lpm");
+#endif
 	if (host->disable_lpm)
 		pr_info("%s: will disable all LPM modes\n", __func__);
 }
@@ -1739,8 +1732,6 @@ static int ufs_qcom_parse_reg_info(struct ufs_qcom_host *host, char *name,
 			vreg->min_uV = VDDP_REF_CLK_MIN_UV;
 		else if (!strcmp(name, "qcom,vccq-parent"))
 			vreg->min_uV = 0;
-		else if (!strcmp(name, "qcom,vccq2-parent"))
-			vreg->min_uV = 0;
 		ret = 0;
 	}
 
@@ -1752,8 +1743,6 @@ static int ufs_qcom_parse_reg_info(struct ufs_qcom_host *host, char *name,
 		if (!strcmp(name, "qcom,vddp-ref-clk"))
 			vreg->max_uV = VDDP_REF_CLK_MAX_UV;
 		else if (!strcmp(name, "qcom,vccq-parent"))
-			vreg->max_uV = 0;
-		else if (!strcmp(name, "qcom,vccq2-parent"))
 			vreg->max_uV = 0;
 		ret = 0;
 	}
@@ -1898,17 +1887,6 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 		}
 	}
 
-	err = ufs_qcom_parse_reg_info(host, "qcom,vccq2-parent",
-				      &host->vccq2_parent);
-	if (host->vccq2_parent) {
-		err = ufs_qcom_config_vreg(hba->dev, host->vccq2_parent, true);
-		if (err) {
-			dev_err(dev, "%s: failed vccq2-parent set load: %d\n",
-				__func__, err);
-			goto out_disable_vddp;
-		}
-	}
-
 	err = ufs_qcom_init_lane_clks(host);
 	if (err)
 		goto out_set_load_vccq_parent;
@@ -1941,8 +1919,6 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 out_set_load_vccq_parent:
 	if (host->vccq_parent)
 		ufs_qcom_config_vreg(hba->dev, host->vccq_parent, false);
-	if (host->vccq2_parent)
-		ufs_qcom_config_vreg(hba->dev, host->vccq2_parent, false);
 out_disable_vddp:
 	if (host->vddp_ref_clk)
 		ufs_qcom_disable_vreg(dev, host->vddp_ref_clk);
@@ -2398,30 +2374,15 @@ static void ufs_qcom_dump_dbg_regs(struct ufs_hba *hba, bool no_sleep)
 		return;
 
 	/* sleep a bit intermittently as we are dumping too much data */
-	if (!oops_in_progress)
-		usleep_range(1000, 1100);
-	else
-		udelay(1000);
+	udelay(1000);
 	ufs_qcom_testbus_read(hba);
-	if (!oops_in_progress)
-		usleep_range(1000, 1100);
-	else
-		udelay(1000);
+	udelay(1000);
 	ufs_qcom_print_unipro_testbus(hba);
-	if (!oops_in_progress)
-		usleep_range(1000, 1100);
-	else
-		udelay(1000);
+	udelay(1000);
 	ufs_qcom_print_utp_hci_testbus(hba);
-	if (!oops_in_progress)
-		usleep_range(1000, 1100);
-	else
-		udelay(1000);
+	udelay(1000);
 	ufs_qcom_phy_dbg_register_dump(phy);
-	if (!oops_in_progress)
-		usleep_range(1000, 1100);
-	else
-		udelay(1000);
+	udelay(1000);
 }
 
 static u32 ufs_qcom_get_user_cap_mode(struct ufs_hba *hba)
