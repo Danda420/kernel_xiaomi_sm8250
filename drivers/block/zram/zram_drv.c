@@ -425,7 +425,7 @@ static void reset_bdev(struct zram *zram)
 		return;
 
 	bdev = zram->bdev;
-	blkdev_put(bdev, zram);
+	blkdev_put(bdev, FMODE_READ | FMODE_WRITE | FMODE_EXCL);
 	/* hope filp_close flush all of IO */
 	filp_close(zram->backing_dev, NULL);
 	zram->backing_dev = NULL;
@@ -512,8 +512,8 @@ static ssize_t backing_dev_store(struct device *dev,
 		goto out;
 	}
 
-	bdev = blkdev_get_by_dev(inode->i_rdev, BLK_OPEN_READ | BLK_OPEN_WRITE,
-				 zram, NULL);
+	bdev = blkdev_get_by_dev(inode->i_rdev,
+			FMODE_READ | FMODE_WRITE | FMODE_EXCL, zram);
 	if (IS_ERR(bdev)) {
 		err = PTR_ERR(bdev);
 		bdev = NULL;
@@ -544,7 +544,7 @@ out:
 	kvfree(bitmap);
 
 	if (bdev)
-		blkdev_put(bdev, zram);
+		blkdev_put(bdev, FMODE_READ | FMODE_WRITE | FMODE_EXCL);
 
 	if (backing_dev)
 		filp_close(backing_dev, NULL);
@@ -586,7 +586,9 @@ static void read_from_bdev_async(struct zram *zram, struct page *page,
 {
 	struct bio *bio;
 
-	bio = bio_alloc(zram->bdev, 1, parent->bi_opf, GFP_NOIO);
+	bio = bio_alloc(GFP_NOIO, 1);
+	bio_set_dev(bio, zram->bdev);
+	bio->bi_opf = parent->bi_opf;
 	bio->bi_iter.bi_sector = entry * (PAGE_SIZE >> 9);
 	__bio_add_page(bio, page, PAGE_SIZE, 0);
 	bio_chain(bio, parent);
@@ -702,8 +704,9 @@ static ssize_t writeback_store(struct device *dev,
 			continue;
 		}
 
-		bio_init(&bio, zram->bdev, &bio_vec, 1,
-			 REQ_OP_WRITE | REQ_SYNC);
+		bio_init(&bio, &bio_vec, 1);
+		bio_set_dev(&bio, zram->bdev);
+		bio.bi_opf = REQ_OP_WRITE | REQ_SYNC;
 		bio.bi_iter.bi_sector = blk_idx * (PAGE_SIZE >> 9);
 		__bio_add_page(&bio, page, PAGE_SIZE, 0);
 
@@ -784,7 +787,9 @@ static void zram_sync_read(struct work_struct *work)
 	struct bio_vec bv;
 	struct bio bio;
 
-	bio_init(&bio, zw->zram->bdev, &bv, 1, REQ_OP_READ);
+	bio_init(&bio, &bv, 1);
+	bio_set_dev(&bio, zw->zram->bdev);
+	bio.bi_opf = REQ_OP_READ;
 	bio.bi_iter.bi_sector = zw->entry * (PAGE_SIZE >> 9);
 	__bio_add_page(&bio, zw->page, PAGE_SIZE, 0);
 	zw->error = submit_bio_wait(&bio);
@@ -1403,7 +1408,11 @@ static int zram_bvec_read_partial(struct zram *zram, struct bio_vec *bvec,
 		return -ENOMEM;
 	ret = zram_read_page(zram, page, index, NULL);
 	if (likely(!ret))
-		memcpy_to_bvec(bvec, page_address(page) + offset);
+	{
+		void *dst = kmap_atomic(bvec->bv_page);
+		memcpy(dst + bvec->bv_offset, page_address(page) + offset, bvec->bv_len);
+		kunmap_atomic(dst);
+	}
 	__free_page(page);
 	return ret;
 }
@@ -1471,15 +1480,13 @@ compress_again:
 				__GFP_NOWARN |
 				__GFP_HIGHMEM |
 				__GFP_MOVABLE |
-				__GFP_CMA |
-				__GFP_OFFLINABLE);
+				__GFP_CMA);
 	if (IS_ERR_VALUE(handle)) {
 		zcomp_stream_put(zram->comps[ZRAM_PRIMARY_COMP]);
 		atomic64_inc(&zram->stats.writestall);
 		handle = zs_malloc(zram->mem_pool, comp_len,
 				GFP_NOIO | __GFP_HIGHMEM |
-				__GFP_MOVABLE | __GFP_CMA |
-				__GFP_OFFLINABLE);
+				__GFP_MOVABLE | __GFP_CMA);
 		if (IS_ERR_VALUE(handle))
 			return PTR_ERR((void *)handle);
 
@@ -1558,8 +1565,9 @@ static int zram_bvec_write_partial(struct zram *zram, struct bio_vec *bvec,
 
 	ret = zram_read_page(zram, page, index, bio);
 	if (!ret) {
-		memcpy_from_bvec(page_address(page) + offset, bvec);
-		ret = zram_write_page(zram, page, index);
+        void *src = kmap_atomic(bvec->bv_page);
+        memcpy(page_address(page) + offset, src + bvec->bv_offset, bvec->bv_len);
+        kunmap_atomic(src);
 	}
 	__free_page(page);
 	return ret;
@@ -2285,7 +2293,8 @@ static int zram_add(void)
 		blk_queue_max_write_zeroes_sectors(zram->disk->queue, UINT_MAX);
 
 	zram->disk->queue->backing_dev_info->capabilities |= BDI_CAP_STABLE_WRITES;
-	device_add_disk(NULL, zram->disk, zram_disk_groups);
+	disk_to_dev(zram->disk)->groups = zram_disk_groups;
+	device_add_disk(NULL, zram->disk);
 
 	comp_algorithm_set(zram, ZRAM_PRIMARY_COMP, default_compressor);
 
