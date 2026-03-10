@@ -266,14 +266,6 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
         return 0;
     }
 	
-	#ifdef CONFIG_KSU_SUSFS
-	    if (!ksu_handle_execveat_init(filename)) {
-	        // - return non-zero here if ksu_handle_execveat_init() return success
-	        //   as we don't want it to execute ksu_handle_execveat_sucompat()
-	        return 1;
-	    }
-	#endif // #ifdef CONFIG_KSU_SUSFS
-	
     // https://cs.android.com/android/platform/superproject/+/android-16.0.0_r2:system/core/init/main.cpp;l=77
     if (unlikely(!memcmp(filename->name, system_bin_init,
                          sizeof(system_bin_init) - 1) &&
@@ -287,6 +279,14 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
             init_second_stage_executed = true;
         }
     }
+
+	#ifdef CONFIG_KSU_SUSFS
+	    if (!ksu_handle_execveat_init(filename)) {
+	        // - return non-zero here if ksu_handle_execveat_init() return success
+	        //   as we don't want it to execute ksu_handle_execveat_sucompat()
+	        return 1;
+	    }
+	#endif // #ifdef CONFIG_KSU_SUSFS
 
     if (unlikely(
             first_zygote &&
