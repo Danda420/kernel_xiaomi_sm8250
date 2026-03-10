@@ -19,5 +19,31 @@ aosp_build() {
 	sed -i "s/CONFIG_OPLUS_FEATURE_EROFS=y/# CONFIG_OPLUS_FEATURE_EROFS is not set/g" $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
 }
 
+ksu() {
+	sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_OVERLAY_FS_REDIRECT_DIR is not set/CONFIG_OVERLAY_FS_REDIRECT_DIR=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_OVERLAY_FS_INDEX is not set/CONFIG_OVERLAY_FS_INDEX=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+}
 
-aosp_build 
+susfs() {
+	sed -i 's/# CONFIG_KSU_SUSFS is not set/CONFIG_KSU_SUSFS=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_SUS_PATH is not set/CONFIG_KSU_SUSFS_SUS_PATH=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_SUS_MOUNT is not set/CONFIG_KSU_SUSFS_SUS_MOUNT=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_SUS_KSTAT is not set/CONFIG_KSU_SUSFS_SUS_KSTAT=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_SPOOF_UNAME is not set/CONFIG_KSU_SUSFS_SPOOF_UNAME=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_ENABLE_LOG is not set/CONFIG_KSU_SUSFS_ENABLE_LOG=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS is not set/CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG is not set/CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_OPEN_REDIRECT is not set/CONFIG_KSU_SUSFS_OPEN_REDIRECT=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+	sed -i 's/# CONFIG_KSU_SUSFS_SUS_MAP is not set/CONFIG_KSU_SUSFS_SUS_MAP=y/g' $KERNEL_DIR/arch/arm64/configs/vendor/${DEVICE}_defconfig
+}
+
+
+aosp_build
+
+if [[ $@ =~ "ksu" ]]; then
+	ksu
+fi
+if [[ $@ =~ "susfs" ]]; then
+	susfs
+fi
