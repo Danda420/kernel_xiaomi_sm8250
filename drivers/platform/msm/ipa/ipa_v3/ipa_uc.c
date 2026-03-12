@@ -1173,7 +1173,7 @@ free_coherent:
 int ipa3_uc_debug_stats_alloc(
 	struct IpaHwOffloadStatsAllocCmdData_t cmdinfo)
 {
-	int result;
+/*	int result;
 	struct ipa_mem_buffer cmd;
 	enum ipa_cpu_2_hw_offload_commands command;
 	struct IpaHwOffloadStatsAllocCmdData_t *cmd_data;
@@ -1208,6 +1208,8 @@ cleanup:
 	IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
 	IPADBG("exit\n");
 	return result;
+*/
+	return 0;
 }
 
 int ipa3_uc_debug_stats_dealloc(uint32_t prot_id)
