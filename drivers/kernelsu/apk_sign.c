@@ -15,6 +15,7 @@
 #endif
 
 #include "apk_sign.h"
+#include "app_profile.h"
 #include "klog.h" // IWYU pragma: keep
 #include "kernel_compat.h"
 
@@ -131,32 +132,81 @@ struct zip_entry_header {
 	uint16_t extra_field_length;
 } __attribute__((packed));
 
+struct ksu_buf_reader {
+	struct file *fp;
+	loff_t file_pos;
+	char buf[4096];
+	size_t buf_len;
+};
+
+static inline ssize_t ksu_bread(struct ksu_buf_reader *br, void *dst,
+				size_t count, loff_t *pos)
+{
+	if (*pos >= br->file_pos &&
+	    *pos + count <= br->file_pos + br->buf_len) {
+		memcpy(dst, br->buf + (*pos - br->file_pos), count);
+		*pos += count;
+		return count;
+	}
+
+	br->file_pos = *pos;
+	loff_t read_pos = br->file_pos;
+	ssize_t res = ksu_kernel_read_compat(br->fp, br->buf, sizeof(br->buf),
+					     &read_pos);
+	if (res <= 0) {
+		br->buf_len = 0;
+		return res;
+	}
+	br->buf_len = res;
+
+	if (count <= br->buf_len) {
+		memcpy(dst, br->buf, count);
+		*pos += count;
+		return count;
+	}
+
+	return 0;
+}
+
 // This is a necessary but not sufficient condition, but it is enough for us
 static bool has_v1_signature_file(struct file *fp)
 {
 	struct zip_entry_header header;
 	const char MANIFEST[] = "META-INF/MANIFEST.MF";
-
+	bool found = false;
 	loff_t pos = 0;
 
-	while (ksu_kernel_read_compat(fp, &header,
+	struct ksu_buf_reader *br =
+		kzalloc(sizeof(struct ksu_buf_reader), GFP_KERNEL);
+	if (!br) {
+		pr_err("ksu_buf_reader alloc failed\n");
+		return false;
+	}
+
+	br->fp = fp;
+	br->file_pos = 0;
+	br->buf_len = 0;
+	while (ksu_bread(br, &header,
 					sizeof(struct zip_entry_header), &pos) ==
 		sizeof(struct zip_entry_header)) {
 		if (header.signature != 0x04034b50) {
 			// ZIP magic: 'PK'
-			return false;
+			break;
 		}
 		// Read the entry file name
 		if (header.file_name_length == sizeof(MANIFEST) - 1) {
 			char fileName[sizeof(MANIFEST)];
-			ksu_kernel_read_compat(fp, fileName,
-						header.file_name_length, &pos);
-			fileName[header.file_name_length] = '\0';
+			if (ksu_bread(br, fileName, header.file_name_length,
+				      &pos) == header.file_name_length) {
+				fileName[header.file_name_length] = '\0';
 
-			// Check if the entry matches META-INF/MANIFEST.MF
-			if (strncmp(MANIFEST, fileName, sizeof(MANIFEST) - 1) ==
-				0) {
-				return true;
+				// Check if the entry matches META-INF/MANIFEST.MF
+				if (strncmp(MANIFEST, fileName, sizeof(MANIFEST) - 1) == 0) {
+					found = true;
+					break;
+				}
+			} else {
+				break;
 			}
 		} else {
 			// Skip the entry file name
@@ -167,7 +217,8 @@ static bool has_v1_signature_file(struct file *fp)
 		pos += header.extra_field_length + header.compressed_size;
 	}
 
-	return false;
+	kfree(br);
+	return found;
 }
 
 static __always_inline bool check_v2_signature(char *path,
@@ -196,24 +247,56 @@ static __always_inline bool check_v2_signature(char *path,
 	fp->f_mode |= FMODE_NONOTIFY;
 
 	// https://en.wikipedia.org/wiki/Zip_(file_format)#End_of_central_directory_record_(EOCD)
-	for (i = 0;; ++i) {
-		unsigned short n;
-		pos = generic_file_llseek(fp, -i - 2, SEEK_END);
-		ksu_kernel_read_compat(fp, &n, 2, &pos);
-		if (n == i) {
-			pos -= 22;
-			ksu_kernel_read_compat(fp, &size4, 4, &pos);
-			if ((size4 ^ 0xcafebabeu) == 0xccfbf1eeu) {
-				break;
+	{
+		unsigned char *eocd_buffer;
+		loff_t file_size;
+		long search_size;
+		long max_comment_size = 0xffff;
+		long eocd_min_size = 22;
+		long eocd_found = 0;
+
+		file_size = generic_file_llseek(fp, 0, SEEK_END);
+		search_size = max_comment_size + eocd_min_size;
+		if (search_size > file_size) {
+			search_size = file_size;
+		}
+
+		eocd_buffer = kvmalloc(search_size, GFP_KERNEL);
+		if (!eocd_buffer) {
+			pr_err("error: cannot allocate memory for eocd\n");
+			goto clean;
+		}
+
+		pos = file_size - search_size;
+		ksu_kernel_read_compat(fp, eocd_buffer, search_size, &pos);
+
+		if (search_size >= eocd_min_size) {
+			long j;
+			for (j = search_size - eocd_min_size; j >= 0; j--) {
+				if (eocd_buffer[j] == 0x50 &&
+				    eocd_buffer[j + 1] == 0x4b &&
+				    eocd_buffer[j + 2] == 0x05 &&
+				    eocd_buffer[j + 3] == 0x06) {
+					unsigned short comment_len = 
+						eocd_buffer[j + 20] | (eocd_buffer[j + 21] << 8);
+					if (comment_len == search_size - j - eocd_min_size) {
+						pos = file_size - search_size + j;
+						eocd_found = 1;
+						break;
+					}
+				}
 			}
 		}
-		if (i == 0xffff) {
+
+		kvfree(eocd_buffer);
+
+		if (!eocd_found) {
 			pr_info("error: cannot find eocd\n");
 			goto clean;
 		}
 	}
 
-	pos += 12;
+	pos += 16; // skip 4 bytes signature + 12 bytes
 	// offset
 	ksu_kernel_read_compat(fp, &size4, 0x4, &pos);
 	pos = size4 - 0x18;
@@ -313,8 +396,59 @@ module_param_cb(ksu_debug_manager_appid, &expected_size_ops,
 
 #endif
 
+int get_pkg_from_apk_path(char *pkg, const char *path)
+{
+	int len = strlen(path);
+	if (len >= KSU_MAX_PACKAGE_NAME || len < 1)
+		return -1;
+
+	const char *last_slash = NULL;
+	const char *second_last_slash = NULL;
+
+	int i;
+	for (i = len - 1; i >= 0; i--) {
+		if (path[i] == '/') {
+			if (!last_slash) {
+				last_slash = &path[i];
+			} else {
+				second_last_slash = &path[i];
+				break;
+			}
+		}
+	}
+
+	if (!last_slash || !second_last_slash)
+		return -1;
+
+	const char *last_hyphen = strchr(second_last_slash, '-');
+	if (!last_hyphen || last_hyphen > last_slash)
+		return -1;
+
+	int pkg_len = last_hyphen - second_last_slash - 1;
+	if (pkg_len >= KSU_MAX_PACKAGE_NAME || pkg_len <= 0)
+		return -1;
+
+	// Copying the package name
+	strncpy(pkg, second_last_slash + 1, pkg_len);
+	pkg[pkg_len] = '\0';
+
+	return 0;
+}
+
 bool is_manager_apk(char *path)
 {
+#ifdef KSU_MANAGER_PACKAGE
+	char pkg[KSU_MAX_PACKAGE_NAME];
+	if (get_pkg_from_apk_path(pkg, path) < 0) {
+		pr_err("Failed to get package name from apk path: %s\n", path);
+		return false;
+	}
+
+	// pkg is `<real package>`
+	if (strncmp(pkg, KSU_MANAGER_PACKAGE, sizeof(KSU_MANAGER_PACKAGE))) {
+		return false;
+	}
+#endif
 	return (check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH) 
 	|| check_v2_signature(path, EXPECTED_LEGACY_SIZE, EXPECTED_LEGACY_HASH) 
 	|| check_v2_signature(path, EXPECTED_NEXT_SIZE, EXPECTED_NEXT_HASH) 

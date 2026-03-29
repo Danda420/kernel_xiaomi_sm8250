@@ -27,9 +27,6 @@
 #include <linux/parser.h>
 #include <linux/fsnotify.h>
 #include <linux/seq_file.h>
-#ifdef CONFIG_KSU_SUSFS
-#include <linux/susfs_def.h>
-#endif
 
 #define DEVPTS_DEFAULT_MODE 0600
 /*
@@ -616,11 +613,6 @@ void *devpts_get_priv(struct dentry *dentry)
 {
 
 #ifdef CONFIG_KSU
-#ifdef CONFIG_KSU_SUSFS
-	if (likely(susfs_is_current_proc_umounted())) {
-		goto orig_flow;
-	}
-#endif
 	ksu_handle_devpts(dentry->d_inode);
 	
 orig_flow:

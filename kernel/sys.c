@@ -1240,9 +1240,6 @@ static int override_release(char __user *release, size_t len)
 	return ret;
 }
 
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-extern void susfs_spoof_uname(struct new_utsname* tmp);
-#endif
 SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 {
 	struct new_utsname tmp;
@@ -1260,9 +1257,6 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 	else if (cur_uid >= 1000) {
         strlcpy(tmp.release, "5.10.248-Oxygen+", sizeof(tmp.release));
     }
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-	susfs_spoof_uname(&tmp);
-#endif
 	up_read(&uts_sem);
 	if (copy_to_user(name, &tmp, sizeof(tmp)))
 		return -EFAULT;

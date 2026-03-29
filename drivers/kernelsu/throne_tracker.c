@@ -5,9 +5,16 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/version.h>
+#include <linux/workqueue.h>
+#include <linux/jiffies.h>
+#include <linux/delay.h>
+#include <linux/namei.h>
+#include <linux/cred.h>
 
 #include "allowlist.h"
+#include "apk_sign.h"
 #include "klog.h" // IWYU pragma: keep
+#include "ksu.h"
 #include "manager.h"
 #include "throne_tracker.h"
 #include "kernel_compat.h"
@@ -22,45 +29,6 @@ struct uid_data {
 	char package[KSU_MAX_PACKAGE_NAME];
 };
 
-static int get_pkg_from_apk_path(char *pkg, const char *path)
-{
-	int len = strlen(path);
-	if (len >= KSU_MAX_PACKAGE_NAME || len < 1)
-		return -1;
-
-	const char *last_slash = NULL;
-	const char *second_last_slash = NULL;
-
-	int i;
-	for (i = len - 1; i >= 0; i--) {
-		if (path[i] == '/') {
-			if (!last_slash) {
-				last_slash = &path[i];
-			} else {
-				second_last_slash = &path[i];
-				break;
-			}
-		}
-	}
-
-	if (!last_slash || !second_last_slash)
-		return -1;
-
-	const char *last_hyphen = strchr(second_last_slash, '-');
-	if (!last_hyphen || last_hyphen > last_slash)
-		return -1;
-
-	int pkg_len = last_hyphen - second_last_slash - 1;
-	if (pkg_len >= KSU_MAX_PACKAGE_NAME || pkg_len <= 0)
-		return -1;
-
-	// Copying the package name
-	strncpy(pkg, second_last_slash + 1, pkg_len);
-	pkg[pkg_len] = '\0';
-
-	return 0;
-}
-
 static void crown_manager(const char *apk, struct list_head *uid_data)
 {
 	char pkg[KSU_MAX_PACKAGE_NAME];
@@ -71,14 +39,6 @@ static void crown_manager(const char *apk, struct list_head *uid_data)
 
 	pr_info("manager pkg: %s\n", pkg);
 
-#ifdef KSU_MANAGER_PACKAGE
-	// pkg is `/<real package>`
-	if (strncmp(pkg, KSU_MANAGER_PACKAGE, sizeof(KSU_MANAGER_PACKAGE))) {
-		pr_info("manager package is inconsistent with kernel build: %s\n",
-				KSU_MANAGER_PACKAGE);
-		return;
-	}
-#endif
 	struct list_head *list = (struct list_head *)uid_data;
 	struct uid_data *np;
 
@@ -104,8 +64,6 @@ struct apk_path_hash {
 	bool exists;
 	struct list_head list;
 };
-
-static struct list_head apk_path_hash_list = LIST_HEAD_INIT(apk_path_hash_list);
 
 struct my_dir_context {
 	struct dir_context ctx;
@@ -133,6 +91,10 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 {
 	struct my_dir_context *my_ctx =
 		container_of(ctx, struct my_dir_context, ctx);
+
+	// we put the apk path we collected here
+	char *candidate_path = (char *)my_ctx->private_data;
+
 	char dirpath[DATA_PATH_LEN];
 
 	if (!my_ctx) {
@@ -171,41 +133,13 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 		strscpy(data->dirpath, dirpath, DATA_PATH_LEN);
 		data->depth = my_ctx->depth - 1;
 		list_add_tail(&data->list, my_ctx->data_path_list);
-	} else {
-		if ((namelen == 8) && (strncmp(name, "base.apk", namelen) == 0)) {
-			struct apk_path_hash *pos, *n;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
-			unsigned int hash = full_name_hash(dirpath, strlen(dirpath));
-#else
-			unsigned int hash = full_name_hash(NULL, dirpath, strlen(dirpath));
-#endif
-			list_for_each_entry (pos, &apk_path_hash_list, list) {
-				if (hash == pos->hash) {
-					pos->exists = true;
-					return FILLDIR_ACTOR_CONTINUE;
-				}
-			}
 
-			bool is_manager = is_manager_apk(dirpath);
-			pr_info("Found new base.apk at path: %s, is_manager: %d\n", dirpath,
-					is_manager);
-			if (is_manager) {
-				crown_manager(dirpath, my_ctx->private_data);
-				*my_ctx->stop = 1;
+		return FILLDIR_ACTOR_CONTINUE;
+	}
 
-				// Manager found, clear APK cache list
-				list_for_each_entry_safe (pos, n, &apk_path_hash_list, list) {
-					list_del(&pos->list);
-					kfree(pos);
-				}
-			} else {
-				struct apk_path_hash *apk_data =
-					kzalloc(sizeof(struct apk_path_hash), GFP_ATOMIC);
-				apk_data->hash = hash;
-				apk_data->exists = true;
-				list_add_tail(&apk_data->list, &apk_path_hash_list);
-			}
-		}
+	// now put this on candidate_path
+	if (d_type == DT_REG && !strncmp(name, "base.apk", 8)) {
+		snprintf(candidate_path, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir, namelen, name);
 	}
 
 	return FILLDIR_ACTOR_CONTINUE;
@@ -217,17 +151,14 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 	struct list_head data_path_list;
 	INIT_LIST_HEAD(&data_path_list);
 
-	// Initialize APK cache list
-	struct apk_path_hash *pos, *n;
-	list_for_each_entry (pos, &apk_path_hash_list, list) {
-		pos->exists = false;
-	}
-
 	// First depth
 	struct data_path data;
 	strscpy(data.dirpath, path, DATA_PATH_LEN);
 	data.depth = depth;
 	list_add_tail(&data.list, &data_path_list);
+
+	// we put the apk path we collected here
+	char candidate_path[DATA_PATH_LEN];
 
 	for (i = depth; i >= 0; i--) {
 		struct data_path *pos, *n;
@@ -236,9 +167,13 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 			struct my_dir_context ctx = { .ctx.actor = my_actor,
 										.data_path_list = &data_path_list,
 										.parent_dir = pos->dirpath,
-										.private_data = uid_data,
+										.private_data = candidate_path,
 										.depth = pos->depth,
 										.stop = &stop };
+
+			// make sure to clean buffer on every iteration
+			memset(candidate_path, 0, DATA_PATH_LEN);
+
 			struct file *file;
 
 			if (!stop) {
@@ -251,19 +186,27 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 
 				iterate_dir(file, &ctx.ctx);
 				filp_close(file, NULL);
+
+				// ^ oh so thats the issue!
+				// we were calling is_manager_apk inside iterate_dir
+				// now we defer file opens after iterate_dir
+				// this way we dont open apks while inside that
+				if (!strstarts(candidate_path, "/data/ap") )
+					goto skip_iterate;
+
+				bool is_manager = is_manager_apk(candidate_path);
+				pr_info("Found new base.apk at path: %s, is_manager: %d\n", candidate_path, is_manager);
+
+				if (likely(!is_manager))
+					goto skip_iterate;
+
+				crown_manager(candidate_path, uid_data);
+				stop = 1;
 			}
 		skip_iterate:
 			list_del(&pos->list);
 			if (pos != &data)
 				kfree(pos);
-		}
-	}
-
-	// Remove stale cached APK entries
-	list_for_each_entry_safe (pos, n, &apk_path_hash_list, list) {
-		if (!pos->exists) {
-			list_del(&pos->list);
-			kfree(pos);
 		}
 	}
 }
@@ -284,13 +227,50 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 	return exist;
 }
 
-void track_throne(bool prune_only)
+// Helper to know if Android is modifying the file
+static bool is_lock_held(const char *path) 
 {
+	struct path kpath;
+
+	if (kern_path(path, 0, &kpath))
+		return true; // If we cannot find the route, we assume it is not safe
+
+	if (!kpath.dentry) {
+		path_put(&kpath);
+		return true;
+	}
+
+	// Check the VFS lock (d_lock) without blocking ourselves
+	if (!spin_trylock(&kpath.dentry->d_lock)) {
+		pr_info("%s: lock held on %s, bail out!\n", __func__, path);
+		path_put(&kpath);
+		return true;
+	}
+
+	spin_unlock(&kpath.dentry->d_lock);
+	path_put(&kpath);
+	return false;
+}
+
+struct ksu_throne_work_data {
+	struct delayed_work dwork;
+	bool prune_only;
+	int retries;
+};
+
+static struct ksu_throne_work_data throne_data;
+static DEFINE_MUTEX(throne_tracker_mutex);
+
+static bool do_track_throne_core(bool prune_only)
+{
+	if (is_lock_held(SYSTEM_PACKAGES_LIST_PATH)) {
+		return false; // The file is blocked by Android, we ask for a retry
+	}
+
 	struct file *fp = ksu_filp_open_compat(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
-		pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__,
-			PTR_ERR(fp));
-		return;
+		pr_info("throne_tracker: %s not ready yet: %ld\n", SYSTEM_PACKAGES_LIST_PATH, PTR_ERR(fp));
+		return false; // It does not yet exist or cannot be read, we ask for a retry
 	}
 
 	struct list_head uid_list;
@@ -375,14 +355,72 @@ out:
 		list_del(&np->list);
 		kfree(np);
 	}
+
+	return true; // success
 }
 
-void ksu_throne_tracker_init()
+// kworker
+static void ksu_throne_work_fn(struct work_struct *work)
 {
-	// nothing to do
+	struct ksu_throne_work_data *data = container_of(to_delayed_work(work), struct ksu_throne_work_data, dwork);
+	bool success;
+
+	mutex_lock(&throne_tracker_mutex);
+
+	// Temporarily lend root credentials to the kworker
+	const struct cred *saved_cred = override_creds(ksu_cred);
+
+	success = do_track_throne_core(data->prune_only);
+
+	revert_creds(saved_cred);
+	mutex_unlock(&throne_tracker_mutex);
+
+	if (!success && data->retries < 10) {
+		data->retries++;
+		pr_info("throne_tracker: retrying (%d/10) in 100ms...\n", data->retries);
+		// Reschedule exactly this work instance
+		schedule_delayed_work(&data->dwork, msecs_to_jiffies(100));
+	} else {
+		if (!success) {
+			pr_warn("throne_tracker: giving up after 10 retries.\n");
+		}
+		data->retries = 0; // Resets for future triggers
+	}
 }
 
-void ksu_throne_tracker_exit()
+void track_throne(bool prune_only)
 {
-	// nothing to do
+	static bool throne_tracker_first_run __read_mostly = true;
+
+	// First scan must be synchronous to not break FDE/FBEv1 on older kernels
+	if (unlikely(throne_tracker_first_run)) {
+		mutex_lock(&throne_tracker_mutex);
+		
+		const struct cred *saved_cred = override_creds(ksu_cred);
+		do_track_throne_core(prune_only);
+		revert_creds(saved_cred);
+		
+		mutex_unlock(&throne_tracker_mutex);
+		throne_tracker_first_run = false;
+		return;
+	}
+
+	// For asynchronous runs, if a work is already pending, canceling it
+	// ensures we don't clobber the prune_only state while it's waiting.
+	cancel_delayed_work_sync(&throne_data.dwork);
+
+	// Update state safely and queue the new work
+	throne_data.prune_only = prune_only;
+	throne_data.retries = 0;
+	schedule_delayed_work(&throne_data.dwork, 0);
+}
+
+void ksu_throne_tracker_init(void)
+{
+	INIT_DELAYED_WORK(&throne_data.dwork, ksu_throne_work_fn);
+}
+
+void ksu_throne_tracker_exit(void)
+{
+	cancel_delayed_work_sync(&throne_data.dwork);
 }

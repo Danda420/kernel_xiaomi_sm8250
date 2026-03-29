@@ -57,7 +57,6 @@ vol_selectopt() {
 ### stuff ###
 
 kernvar="default"
-susfs=false
 dtbo="normal"
 
 var_select() {
@@ -68,18 +67,6 @@ var_select() {
     *KernelSU*)
       kernvar="ksu";;
   esac
-}
-
-susfs_select() {
-  if [[ $kernvar == "ksu" ]]; then
-    local opt=$(vol_selectopt "SUSFS amogus impostor?" "Default" "SUSFS")
-    case "$opt" in
-      *Default*)
-        susfs="false";;
-      *SUSFS*)
-        susfs="true";;
-    esac
-  fi
 }
 
 dtbo_select_alioth() {
@@ -107,14 +94,6 @@ autoinstall() {
       fi
     fi
     
-    local susfs_state=$(getvalue susfs kernel.conf)
-    if [ ! -z "$susfs_state" ]; then
-      susfs="$susfs_state"
-      if [[ $susfs == true ]]; then
-        ui_print "- SUSFS"
-      fi
-    fi
-    
     local dtbo_type=$(getvalue dtbo kernel.conf)
     if [ ! -z "$dtbo_type" ]; then
       dtbo="$dtbo_type"
@@ -135,7 +114,6 @@ autoinstall() {
 selectorinstall() {
   if keycheck; then
     var_select
-    susfs_select
     if [[ -f dtbo-5k.img ]]; then
       dtbo_select_alioth
     fi
@@ -164,11 +142,7 @@ applyconfig() {
   ui_print " "
   ui_print "Applying configuration..."
   if [[ $kernvar == "ksu" ]]; then
-    if [[ $susfs == true ]]; then
-      mv -f Image-ksu-susfs.gz Image.gz
-    else
-      mv -f Image-ksu.gz Image.gz
-    fi
+    mv -f Image-ksu.gz Image.gz
   fi
   if [[ -f dtbo-5k.img ]]; then
     if [[ $dtbo == "5k" ]]; then
