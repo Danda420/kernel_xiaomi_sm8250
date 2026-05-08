@@ -1,18 +1,10 @@
-#include <linux/security.h>
-#include <linux/atomic.h>
-#include <linux/version.h>
-
-#include "feature.h"
-#include "klog.h"
-#include "ksud.h"
-#include "seccomp_cache.h"
-
 // sorry for the ifdef hell
 // but im too lazy to fragment this out.
 // theres only one feature so far anyway
 // - xx, 20251019
 
 static u32 su_sid = 0;
+static u32 ksu_sid = 0;
 static u32 priv_app_sid = 0;
 
 // init as disabled by default
@@ -71,6 +63,13 @@ static int get_sid()
 	}
 	pr_info("avc_spoof/get_sid: su_sid: %u\n", su_sid);
 
+	err = security_secctx_to_secid("u:r:ksu:s0", strlen("u:r:ksu:s0"), &ksu_sid);
+	if (err) {
+		pr_info("avc_spoof/get_sid: ksu_sid not found!\n");
+		return -1;
+	}
+	pr_info("avc_spoof/get_sid: ksu_sid: %u\n", ksu_sid);
+
 	err = security_secctx_to_secid("u:r:priv_app:s0:c512,c768", strlen("u:r:priv_app:s0:c512,c768"), &priv_app_sid);
 	if (err) {
 		pr_info("avc_spoof/get_sid: priv_app_sid not found!\n");
@@ -80,28 +79,25 @@ static int get_sid()
 	return 0;
 }
 
-int ksu_handle_slow_avc_audit(u32 *tsid)
+#if defined(CONFIG_KPROBES) && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+#include <linux/kprobes.h>
+static struct kprobe *slow_avc_audit_kp;
+
+static int ksu_handle_slow_avc_audit(u32 *tsid)
 {
 	if (atomic_read(&disable_spoof))
 		return 0;
 
 	// if tsid is su, we just replace it
 	// unsure if its enough, but this is how it is aye?
-	if (*tsid == su_sid) {
-		pr_info("avc_spoof/slow_avc_audit: replacing su_sid: %u with priv_app_sid: %u\n", su_sid, priv_app_sid);
+	if (*tsid == su_sid || *tsid == ksu_sid) {
+		pr_info("avc_spoof/slow_avc_audit: replacing tsid: %u with priv_app_sid: %u\n", *tsid, priv_app_sid);
 		*tsid = priv_app_sid;
 	}
 
 	return 0;
 }
 
-#ifdef KSU_KPROBES_HOOK
-#include <linux/kprobes.h>
-#include <linux/slab.h>
-#include "arch.h"
-static struct kprobe *slow_avc_audit_kp;
-//	.symbol_name = "slow_avc_audit",
-//	.pre_handler = slow_avc_audit_pre_handler,
 static int slow_avc_audit_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
 	if (atomic_read(&disable_spoof))
@@ -157,11 +153,25 @@ static void destroy_kprobe(struct kprobe **kp_ptr)
 	kfree(kp);
 	*kp_ptr = NULL;
 }
-#endif // KSU_KPROBES_HOOK
+#else // CONFIG_KPROBES
+int ksu_handle_slow_avc_audit_new(u32 tsid, u16 *tclass)
+{
+	if (atomic_read(&disable_spoof))
+		return 0;
+
+	if (tsid != su_sid && tsid != ksu_sid)
+		return 0;
+
+	pr_info("avc_spoof/slow_avc_audit: prevent log for sid: %u\n", tsid);
+	*tclass = 0;
+
+	return 0;
+}
+#endif
 
 void ksu_avc_spoof_disable(void)
 {
-#ifdef KSU_KPROBES_HOOK
+#if defined(CONFIG_KPROBES) && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
 	pr_info("avc_spoof/exit: unregister slow_avc_audit kprobe!\n");
 	destroy_kprobe(&slow_avc_audit_kp);
 #endif
@@ -177,7 +187,7 @@ void ksu_avc_spoof_enable(void)
 		return;
 	}
 
-#ifdef KSU_KPROBES_HOOK
+#if defined(CONFIG_KPROBES) && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
 	pr_info("avc_spoof/init: register slow_avc_audit kprobe!\n");
 	slow_avc_audit_kp = init_kprobe("slow_avc_audit", slow_avc_audit_pre_handler);
 #endif	
@@ -191,7 +201,7 @@ void ksu_avc_spoof_late_init()
 {
 	boot_completed = true;
 	
-    if (ksu_avc_spoof_enabled) {
+	if (ksu_avc_spoof_enabled) {
 		ksu_avc_spoof_enable();
 	}
 }

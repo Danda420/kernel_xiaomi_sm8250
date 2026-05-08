@@ -1,84 +1,149 @@
-#include <linux/export.h>
-#include <linux/fs.h>
-#include <linux/kobject.h>
-#include <linux/module.h>
-#include <linux/rcupdate.h>
-#include <linux/sched.h>
-#include <linux/workqueue.h>
+#include "kernel_includes.h"
 
-#include "allowlist.h"
-#include "app_profile.h"
-#include "feature.h"
-#include "klog.h" // IWYU pragma: keep
-#include "manager.h"
-#include "throne_tracker.h"
-#include "syscall_hook_manager.h"
-#include "ksud.h"
-#include "supercalls.h"
-#include "ksu.h"
-#include "file_wrapper.h"
-#include "selinux/selinux.h"
+// uapi
+#include "include/uapi/app_profile.h"
+#include "include/uapi/feature.h"
+#include "include/uapi/selinux.h"
+#include "include/uapi/supercall.h"
+#include "include/uapi/sulog.h"
 
-extern void __init ksu_lsm_hook_init(void);
-extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
-					void *argv, void *envp, int *flags);
-extern int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
-				    void *argv, void *envp, int *flags);
-int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
-			void *envp, int *flags)
-{
-	ksu_handle_execveat_ksud(fd, filename_ptr, argv, envp, flags);
-	return ksu_handle_execveat_sucompat(fd, filename_ptr, argv, envp,
-					    flags);
-}
+// includes
+#include "include/klog.h"
+#include "include/arch.h"
+#include "include/ksu.h"
 
-// workaround for A12-5.10 kernel
-// Some third-party kernel (e.g. linegaeOS) uses wrong toolchain, which supports
-// CC_HAVE_STACKPROTECTOR_SYSREG while gki's toolchain doesn't.
-// Therefore, ksu lkm, which uses gki toolchain, requires this __stack_chk_guard,
-// while those third-party kernel can't provide.
-// Thus, we manually provide it instead of using kernel's
-#if defined(CONFIG_STACKPROTECTOR) &&                                          \
-    (defined(CONFIG_ARM64) && defined(MODULE) &&                               \
-     !defined(CONFIG_STACKPROTECTOR_PER_TASK))
-#include <linux/stackprotector.h>
-#include <linux/random.h>
-unsigned long __stack_chk_guard __ro_after_init
-    __attribute__((visibility("hidden")));
-
-__attribute__((no_stack_protector)) void ksu_setup_stack_chk_guard()
-{
-    unsigned long canary;
-
-    /* Try to get a semi random initial value. */
-    get_random_bytes(&canary, sizeof(canary));
-    canary ^= LINUX_VERSION_CODE;
-    canary &= CANARY_MASK;
-    __stack_chk_guard = canary;
-}
-
-__attribute__((naked)) int __init kernelsu_init_early(void)
-{
-    asm("mov x19, x30;\n"
-        "bl ksu_setup_stack_chk_guard;\n"
-        "mov x30, x19;\n"
-        "b kernelsu_init;\n");
-}
-#define NEED_OWN_STACKPROTECTOR 1
-#else
-#define NEED_OWN_STACKPROTECTOR 0
+// selinux includes
+#include "avc_ss.h"
+#include "objsec.h"
+#include "ss/services.h"
+#include "ss/symtab.h"
+#include "xfrm.h"
+#ifndef KSU_COMPAT_USE_SELINUX_STATE
+#include "avc.h"
 #endif
 
-struct cred *ksu_cred;
-bool ksu_late_loaded;
+// kernel compat, lite ones
+#include "kernel_compat.h"
+
+#include "policy/app_profile.h"
+#include "policy/allowlist.h"
+#include "policy/feature.h"
+#include "manager/apk_sign.h"
+#include "manager/manager_identity.h"
+#include "manager/throne_tracker.h"
+#include "supercall/internal.h"
+#include "supercall/supercall.h"
+#include "infra/su_mount_ns.h"
+#include "infra/file_wrapper.h"
+#include "infra/event_queue.h"
+#include "feature/adb_root.h"
+#include "feature/kernel_umount.h"
+#include "feature/sucompat.h"
+#include "feature/sulog.h"
+#include "runtime/ksud.h"
+#include "runtime/ksud_escape.h"
+#include "sulog/event.h"
+#include "sulog/fd.h"
+
+#include "selinux/selinux.h"
+#include "selinux/sepolicy.h"
+
+// unity build
+#include "tiny_sulog.c"
+#include "policy/allowlist.c"
+#include "policy/app_profile.c"
+#include "policy/feature.c"
+#include "manager/apk_sign.c"
+#include "manager/pkg_observer.c"
+#include "manager/throne_tracker.c"
+
+#include "supercall/perm.c"
+#include "supercall/dispatch.c"
+#include "supercall/supercall.c"
+
+#include "infra/su_mount_ns.c"
+#include "infra/file_wrapper.c"
+#include "infra/event_queue.c"
+
+#include "feature/adb_root.c"
+#include "feature/kernel_umount.c"
+#include "feature/sucompat.c"
+#include "feature/sulog.c"
+#include "runtime/ksud.c"
+#include "runtime/ksud_escape.c"
+
+#include "sulog/event.c"
+#include "sulog/fd.c"
+
+#include "hook/setuid_hook.c"
+#include "hook/core_hook.c"	// lsm
+
+#include "selinux/selinux.c"
+#include "selinux/sepolicy.c"
+#include "selinux/rules.c"
+
+#ifdef CONFIG_KSU_TAMPER_SYSCALL_TABLE
+#ifdef CONFIG_ARM64
+#include "hook/syscall_table_hook_arm64.c"
+#elif CONFIG_ARM
+#include "hook/syscall_table_hook_arm.c"
+#endif
+#endif
+
+#if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+#include "hook/kp_ksud.c"
+#endif
+
+#ifdef CONFIG_KSU_EXTRAS
+#include "extras.c"
+#endif
+
+// __weak fn's
+#include "kernel_compat.c"
+
+struct cred* ksu_cred;
+
+extern void ksu_supercalls_init();
+
+// track backports and other quirks here
+// ref: kernel_compat.c, Makefile
+// yes looks nasty
+#if defined(CONFIG_KSU_DEBUG)
+	#define FEAT_1 " +debug"
+#else
+	#define FEAT_1 ""
+#endif
+#if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+	#define FEAT_2 " +kp_ksud"
+#else
+	#define FEAT_2 ""
+#endif
+#if defined(CONFIG_KSU_EXTRAS)
+	#define FEAT_3 " +extras"
+#else
+	#define FEAT_3 ""
+#endif
+#if defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+	#define FEAT_4 " +syscall_table_hook"
+#else
+	#define FEAT_4 ""
+#endif
+#if !defined(CONFIG_KSU_LSM_SECURITY_HOOKS)
+	#define FEAT_5 " -lsm_hooks"
+#else
+	#define FEAT_5 ""
+#endif
+#if defined(KSU_COMPAT_HAS_EXPORTED_POLICY_RWLOCK)
+	#define FEAT_6 " +policy_rwlock"
+#else
+	#define FEAT_6 ""
+#endif
+
+#define EXTRA_FEATURES FEAT_1 FEAT_2 FEAT_3 FEAT_4 FEAT_5 FEAT_6
 
 int __init kernelsu_init(void)
 {
-#ifdef MODULE
-	ksu_late_loaded = (current->pid != 1);
-#else
-	ksu_late_loaded = false;
-#endif
+	pr_info("Initialized on: %s (%s) with ksuver: %s%s\n", UTS_RELEASE, UTS_MACHINE, __stringify(KSU_VERSION), EXTRA_FEATURES);
 
 #ifdef CONFIG_KSU_DEBUG
 	pr_alert("*************************************************************");
@@ -90,108 +155,46 @@ int __init kernelsu_init(void)
 	pr_alert("*************************************************************");
 #endif
 
-    ksu_cred = prepare_creds();
-    if (!ksu_cred) {
-        pr_err("prepare cred failed!\n");
-    }
+	ksu_cred = prepare_creds();
+	if (!ksu_cred) {
+		pr_err("prepare cred failed!\n");
+	}
 
 	ksu_feature_init();
 
 	ksu_supercalls_init();
 
-	
+	ksu_sucompat_init(); // so the feature is registered
 
-	if (ksu_late_loaded) {
-		pr_info("late load mode, skipping kprobe hooks\n");
+	ksu_kernel_umount_init(); // so the feature is registered
 
-		apply_kernelsu_rules();
-		cache_sid();
-		setup_ksu_cred();
-
-		// Grant current process (ksud late-load) root
-		// with KSU SELinux domain before enforcing SELinux, so it
-		// can continue to access /data/app etc. after enforcement.
-		escape_to_root_for_init();
-
-		ksu_allowlist_init();
-		ksu_load_allow_list();
-
-		ksu_syscall_hook_manager_init();
-
-		ksu_throne_tracker_init();
-		ksu_observer_init();
-		ksu_file_wrapper_init();
-
-		ksu_boot_completed = true;
-		track_throne(false);
-
-		if (!getenforce()) {
-			pr_info("Permissive SELinux, enforcing\n");
-			setenforce(true);
-		}
-
-	} else {
-		ksu_syscall_hook_manager_init();
-		
-		ksu_lsm_hook_init();
-
-		ksu_allowlist_init();
-
-		ksu_throne_tracker_init();
-
-		ksu_ksud_init();
-
-		ksu_file_wrapper_init();
-	}
-
-#ifdef MODULE
-#ifndef CONFIG_KSU_DEBUG
-	kobject_del(&THIS_MODULE->mkobj.kobj);
+#ifdef CONFIG_KSU_FEATURE_SULOG	
+	ksu_sulog_init(); // so the feature is registered
 #endif
+
+#ifdef CONFIG_KSU_FEATURE_ADBROOT
+	ksu_adb_root_init(); // so the feature is registered
 #endif
+
+	ksu_core_init();
+
+	ksu_allowlist_init();
+
+	ksu_throne_tracker_init();
+
+	ksu_ksud_init();
+
+	ksu_file_wrapper_init();
+
+#ifdef CONFIG_KSU_EXTRAS
+	ksu_avc_spoof_init(); // so the feature is registered
+#endif
+
 	return 0;
 }
 
-extern void ksu_observer_exit(void);
-void kernelsu_exit(void)
-{
-	// Phase 1: Stop all hooks first to prevent new callbacks
-	ksu_syscall_hook_manager_exit();
+device_initcall(kernelsu_init);
 
-	ksu_supercalls_exit();
-
-	if (!ksu_late_loaded)
-		ksu_ksud_exit();
-
-	// Wait for any in-flight RCU readers (e.g. handler traversing allow_list)
-	synchronize_rcu();
-
-	// Phase 2: Now safe to release data structures
-	ksu_observer_exit();
-
-	ksu_throne_tracker_exit();
-
-	ksu_allowlist_exit();
-
-	ksu_feature_exit();
-
-	if (ksu_cred) {
-		put_cred(ksu_cred);
-	}
-}
-
-#if NEED_OWN_STACKPROTECTOR
-module_init(kernelsu_init_early);
-#else
-module_init(kernelsu_init);
-#endif
-module_exit(kernelsu_exit);
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("weishu");
-MODULE_DESCRIPTION("Android KernelSU");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
-MODULE_IMPORT_NS("VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver");
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
-MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
-#endif
+// MODULE_LICENSE("GPL");
+// MODULE_AUTHOR("weishu");
+// MODULE_DESCRIPTION("Android KernelSU");
